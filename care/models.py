@@ -61,6 +61,7 @@ class ModuleSetting(models.Model):
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="module_settings")
     key = models.CharField(max_length=24)
     enabled = models.BooleanField(default=False)
+    pinned = models.BooleanField(default=False)
     position = models.PositiveSmallIntegerField(default=0)
     class Meta:
         ordering = ["position", "id"]
@@ -207,3 +208,28 @@ class ModuleConfigVersion(models.Model):
     settings = models.JSONField(default=dict)
     class Meta:
         ordering = ["-effective_at", "-id"]
+
+
+class CareCadence(models.Model):
+    """User-defined care intervals, separate from module availability and daily routines."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="cadences")
+    module = models.CharField(max_length=32)
+    variant_field = models.CharField(max_length=32, blank=True)
+    variant_value = models.CharField(max_length=80, blank=True)
+    title = models.CharField(max_length=80)
+    interval = models.PositiveSmallIntegerField()
+    unit = models.CharField(max_length=8, choices=[("days", "일"), ("weeks", "주"), ("months", "개월")])
+    first_due = models.DateField()
+    configured_at = models.DateTimeField(default=timezone.now)
+    snoozed_until = models.DateField(null=True, blank=True)
+    snoozed_at = models.DateTimeField(null=True, blank=True)
+    active = models.BooleanField(default=True)
+    version = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        ordering = ["first_due", "title", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["room", "module", "variant_field", "variant_value"], name="unique_care_cadence_activity"),
+            models.CheckConstraint(condition=models.Q(interval__gte=1, interval__lte=366), name="cadence_interval_range"),
+        ]

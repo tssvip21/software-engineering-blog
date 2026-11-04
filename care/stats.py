@@ -94,7 +94,7 @@ def get_statistics(room, module, start, end, all_records=None):
     count_daily = Counter(day_of(a) for a in rows)
     stats = {"key": module, "spec": MODULES[module], "count": len(rows), "has_data": bool(rows), "metrics": [], "breakdown": [], "charts": [],
              "notes": [], "primary": "미기록", "primary_unit": "", "reference": None,
-             "reference_note": "이 항목에 적용할 분류별 참고 기준을 확보하지 않았습니다. 기록과 추이는 사용할 수 있습니다."}
+             "reference_note": "이 항목에 적용할 분류별 참고 기준을 확보하지 않았습니다. 기록과 추이는 사용할 수 있어요."}
     add = lambda label, value, unit="", note="": stats["metrics"].append(metric(label, value, unit, note))
     def primary(value, unit=""):
         stats["primary"] = compact(value) if isinstance(value, (Decimal, int, float)) else str(value)
@@ -121,19 +121,26 @@ def get_statistics(room, module, start, end, all_records=None):
             primary(kcal, "kcal")
         add("확인된 열량", kcal if known else None, "kcal", f"열량 미확인 {missing}건" if missing else "확인 가능한 기록을 합산")
         provided = Counter(a.nutrition.get("basis", "provided") for a in rows)
+        for basis, label in (("consumed", "섭취량 확인분 열량"), ("provided", "제공량 기준 예상 열량")):
+            selected = [a for a in known if a.nutrition.get("basis") == basis]
+            add(label, sum((decimal(a.nutrition["kcal"]) for a in selected), ZERO) if selected else None, "kcal", "확인된 해당 기준의 기록만 합산")
         add("실제 섭취량을 확인한 기록", provided["consumed"] if rows else None, "건")
         add("제공량 기준 기록", provided["provided"] if rows else None, "건")
         amounts = defaultdict(lambda: ZERO)
         for a in rows:
             p = a.payload
             unit = p["unit"]
-            quantity = decimal(p["quantity"])
+            quantity = decimal(p.get("quantity"))
+            if quantity is None:
+                continue
             if unit in ("g", "kg", "oz"):
                 quantity *= {"g": Decimal(1), "kg": Decimal(1000), "oz": Decimal("28.349523125")}[unit]
                 unit = "g"
             amounts[unit] += quantity
         for unit, amount in amounts.items():
             add("제공량 합계", amount, UNIT_LABELS.get(unit, unit))
+        if rows:
+            add("양 미입력", sum(a.payload.get("quantity") is None for a in rows), "건", "급여 완료는 남기고 양·열량 계산에서는 제외해요.")
         for nutrient, label in (("protein", "단백질"), ("fat", "지방")):
             nutrient_groups = defaultdict(lambda: ZERO)
             for a in rows:
@@ -149,7 +156,7 @@ def get_statistics(room, module, start, end, all_records=None):
         stats["charts"].append(chart("날짜별 확인된 열량", "kcal", daily, start, end))
         for name, count in Counter(a.payload.get("food_name", "이름 없음") for a in rows).most_common():
             stats["breakdown"].append({"label": name, "value": str(count), "unit": "회"})
-        stats["notes"].append("실제 섭취량을 모르는 기록은 제공량 기준 예상치입니다. 열량이 없는 제품은 0 kcal로 계산하지 않습니다.")
+        stats["notes"].append("실제 섭취량을 모르는 기록은 제공량 기준 예상치입니다. 열량이 없는 제품은 0 kcal로 계산하지 않아요.")
         if provided["consumed"] and provided["provided"]:
             stats["notes"].append("이 합계에는 실제 섭취량 기준과 제공량 기준 기록이 함께 포함되어 있습니다.")
     elif module == "water":
@@ -165,7 +172,7 @@ def get_statistics(room, module, start, end, all_records=None):
         for a in measured:
             daily[day_of(a)] += decimal(a.payload["amount"]) * (1000 if a.payload["unit"] == "l" else 1)
         stats["charts"].append(chart("실제로 측정한 음수량", "ml", daily, start, end))
-        stats["notes"].append("교체하거나 보충한 물의 양은 음수량에 넣지 않습니다.")
+        stats["notes"].append("교체하거나 보충한 물의 양은 음수량에 넣지 않아요.")
         groups("kind")
     elif module == "toilet":
         for key, label in (("stool", "대변"), ("urine", "소변")):
@@ -173,11 +180,16 @@ def get_statistics(room, module, start, end, all_records=None):
         add("변화 관찰", sum(a.payload["condition"] == "different" for a in rows) if rows else None, "건")
         groups("condition")
     elif module in ("walk", "play", "training"):
-        minutes = sum((decimal(a.payload.get("minutes")) or ZERO for a in rows), ZERO)
-        add("활동 시간", minutes if rows else None, "분")
-        if rows:
+        timed = [a for a in rows if a.payload.get("minutes") is not None]
+        minutes = sum((decimal(a.payload["minutes"]) for a in timed), ZERO)
+        add("활동 시간", minutes if timed else None, "분", f"시간을 입력한 {len(timed)}건만 합산")
+        if timed:
             primary(minutes, "분")
-        add("기록당 평균", minutes / len(rows) if rows else None, "분")
+        elif rows:
+            primary("시간 미입력")
+        add("기록당 평균", minutes / len(timed) if timed else None, "분", "시간을 입력한 기록 기준")
+        if rows:
+            add("시간 미입력", len(rows) - len(timed), "건")
         series_from_payload("minutes", "분", "날짜별 활동 시간")
         if module == "walk":
             known = [a for a in rows if a.payload.get("distance") is not None]
@@ -203,7 +215,7 @@ def get_statistics(room, module, start, end, all_records=None):
             add("마지막 측정 체중", kg, "kg", latest.occurred_at.astimezone(tz).strftime("%Y.%m.%d %H:%M"))
             stats["measurement_date"] = day_of(latest)
             if day_of(latest) < start:
-                stats["notes"].append("선택 기간에 새 측정이 없어 이전의 마지막 측정값을 표시합니다.")
+                stats["notes"].append("선택 기간에 새 측정이 없어 이전의 마지막 측정값을 표시해요.")
         daily = {}
         for a in rows:
             daily[day_of(a)] = decimal(a.payload["weight"]) * {"kg": Decimal(1), "g": Decimal("0.001"), "lb": Decimal("0.45359237")}[a.payload["unit"]]
@@ -221,8 +233,8 @@ def get_statistics(room, module, start, end, all_records=None):
                                   "range": compact(ref.low) if ref.low == ref.high else compact(ref.low) + "–" + compact(ref.high),
                                   "position": position, "source": ref.source_name, "url": ref.source_url, "conditions": ref.conditions,
                                   "date": day_of(latest_bcs), "assessor": label_choice(module, "bcs_by", latest_bcs.payload.get("bcs_by"))}
-        stats["reference_note"] = "체격 분류의 평균 체중만으로 저체중·비만을 판정하지 않습니다. 확인한 BCS가 있으면 해당 종의 참고 범위와 별도로 비교합니다."
-        stats["notes"].append("체중은 합산하지 않습니다. BCS는 사용자가 별도로 입력한 관찰·평가값이며 체중에서 자동 산출하지 않습니다.")
+        stats["reference_note"] = "체격 분류의 평균 체중만으로 저체중·비만을 판정하지 않아요. 확인한 BCS가 있으면 해당 종의 참고 범위와 별도로 비교합니다."
+        stats["notes"].append("체중은 합산하지 않아요. BCS는 사용자가 별도로 입력한 관찰·평가값이며 체중에서 자동 산출하지 않아요.")
     elif module in ("hygiene", "grooming", "cleaning"):
         field = "target" if module == "cleaning" else "task"
         groups(field)
@@ -241,7 +253,7 @@ def get_statistics(room, module, start, end, all_records=None):
         for (name, unit), count in per_medicine.items():
             stats["breakdown"].append({"label": name + " · " + UNIT_LABELS.get(unit, unit), "value": str(count), "unit": "회"})
         stats["charts"].append(chart("날짜별 실제 투약 횟수", "회", Counter(day_of(a) for a in given), start, end))
-        stats["notes"].append("약이 다르거나 단위가 다른 용량은 합산하지 않습니다. 예정만 된 투약은 완료 통계에서 제외합니다.")
+        stats["notes"].append("약이 다르거나 단위가 다른 용량은 합산하지 않아요. 예정만 된 투약은 완료 통계에서 제외합니다.")
     elif module == "observation":
         add("평소와 다른 관찰", sum(a.payload["condition"] == "different" for a in rows) if rows else None, "건")
         groups("category")
@@ -273,7 +285,7 @@ def get_statistics(room, module, start, end, all_records=None):
                 if pieces:
                     daily[day] = union_seconds(pieces) / 60
             stats["charts"].append(chart("관찰한 " + ("수면" if kind == "sleep" else "휴식") + " 시간", "분", daily, start, end))
-        stats["notes"].append("미기록 구간을 수면으로 추정하지 않습니다. 자정을 넘는 구간은 각 날짜에 나누고 겹치는 관찰은 중복 집계하지 않습니다.")
+        stats["notes"].append("미기록 구간을 수면으로 추정하지 않아요. 자정을 넘는 구간은 각 날짜에 나누고 겹치는 관찰은 중복 집계하지 않습니다.")
     elif module == "environment":
         dimensions = defaultdict(list)
         for a in rows:
@@ -303,7 +315,13 @@ def get_statistics(room, module, start, end, all_records=None):
         daily = defaultdict(lambda: ZERO)
         for a in eggs:
             daily[day_of(a)] += decimal(a.payload["eggs"])
-        stats["charts"].append(chart("날짜별 관찰한 알", "개", daily, start, end))
+        if eggs:
+            stats["charts"].append(chart("이전 형식: 날짜별 관찰한 알", "개", daily, start, end))
+        changes = [a for a in rows if a.payload.get("kind") not in ("heat", "egg")]
+        add("생활 변화", len(changes) if changes else None, "건")
+        stats["charts"].insert(0, chart("생활 변화가 기록된 날", "건", Counter(day_of(a) for a in changes), start, end))
+        stats["notes"].append("성장·먹이·환경·관리 방식의 변화를 남긴 기록이에요. 다른 상태 변화의 원인으로 자동 판정하지 않아요. 이전 형식의 기록도 보존해요.")
+        stats["events"] = [{"date": day_of(a), "kind": label_choice(module, "kind", a.payload.get("kind")), "detail": a.payload.get("detail", ""), "id": a.pk} for a in reversed(rows)]
         groups("kind")
     elif module == "shedding":
         ongoing = [a for a in all_records if a.status == "active" and not a.voided]
@@ -367,7 +385,7 @@ def get_statistics(room, module, start, end, all_records=None):
             primary(len(totals), "개 통화")
         for (category, currency), amount in categories.items():
             stats["breakdown"].append({"label": str(label_choice(module, "category", category)), "value": compact(amount), "unit": currency})
-        stats["notes"].append("환율을 가정하지 않으며 서로 다른 통화는 합산하지 않습니다.")
+        stats["notes"].append("환율을 가정하지 않으며 서로 다른 통화는 합산하지 않아요.")
     if not stats["charts"]:
         stats["charts"].append(chart("날짜별 완료 기록", "건", count_daily, start, end))
     stats["notes"].append("취소·예정·진행 중 기록은 완료 합계에서 제외합니다. 빈 날짜는 미기록이며 실제 활동량 0이라는 뜻은 아닙니다.")

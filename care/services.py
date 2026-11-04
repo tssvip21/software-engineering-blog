@@ -126,7 +126,7 @@ def create_room(user, form):
     member = Membership.objects.create(room=room, user=user, display_name=(user.first_name or "보호자")[:40], role="owner")
     defaults = DEFAULT_MODULES.get(room.species, DEFAULT_MODULES["other"]) if form.cleaned_data.get("use_defaults", True) else ()
     ordering = list(defaults) + [k for k in MODULES if k not in defaults]
-    ModuleSetting.objects.bulk_create([ModuleSetting(room=room, key=k, enabled=k in defaults, position=i) for i, k in enumerate(ordering)])
+    ModuleSetting.objects.bulk_create([ModuleSetting(room=room, key=k, enabled=k in defaults, pinned=k in defaults, position=i) for i, k in enumerate(ordering)])
     ModuleConfigVersion.objects.create(room=room, settings={"enabled": list(defaults), "order": ordering})
     bump(room, member, "room.created", {"species": room.species})
     return room
@@ -151,7 +151,7 @@ def update_room(member, form):
 
 
 @transaction.atomic
-def update_modules(member, enabled, order, version):
+def update_modules(member, enabled, order, version, pinned=None):
     member = fresh_member(member)
     require_manager(member)
     if member.room.settings_version != version:
@@ -159,11 +159,15 @@ def update_modules(member, enabled, order, version):
     if not isinstance(order, list) or len(order) != len(MODULES) or set(order) != set(MODULES) or not set(enabled) <= set(MODULES):
         raise ValidationError("모듈 목록과 순서를 확인해 주세요.")
     rows = {m.key: m for m in member.room.module_settings.all()}
+    if pinned is not None and (not isinstance(pinned, list) or not set(pinned) <= set(enabled)):
+        raise ValidationError("오늘에 고정할 모듈은 넣은 모듈에서 선택해 주세요.")
     for index, key in enumerate(order):
         rows[key].position, rows[key].enabled = index, key in enabled
-    ModuleSetting.objects.bulk_update(list(rows.values()), ["position", "enabled"])
+        if pinned is not None:
+            rows[key].pinned = key in pinned
+    ModuleSetting.objects.bulk_update(list(rows.values()), ["position", "enabled", "pinned"])
     Room.objects.filter(pk=member.room_id).update(settings_version=F("settings_version") + 1)
-    ModuleConfigVersion.objects.create(room=member.room, settings={"enabled": list(enabled), "order": order})
+    ModuleConfigVersion.objects.create(room=member.room, settings={"enabled": list(enabled), "order": order, "pinned": [k for k in order if rows[k].pinned]})
     bump(member.room, member, "modules.updated", {"enabled_count": len(enabled)})
 
 
@@ -198,6 +202,8 @@ def nutrition_values(payload, snapshot):
     consumed = decimal(payload.get("consumed"))
     amount = consumed if consumed is not None else decimal(payload.get("quantity"))
     unit = payload.get("unit")
+    if amount is None:
+        return {"basis": "unknown", "kcal": None, "grams": None, "snapshot": snapshot, "nutrients": {}}
     grams = None
     if unit in ("g", "kg", "oz"):
         grams = amount * {"g": Decimal(1), "kg": Decimal(1000), "oz": Decimal("28.349523125")}[unit]

@@ -51,6 +51,7 @@
   document.addEventListener("submit", async (event) => {
     const form = event.target;
     if (!(form instanceof HTMLFormElement)) return;
+    if (form.matches("[data-quick-form], [data-snooze], [data-module-config]")) return;
     if (form.dataset.submitting === "1") { event.preventDefault(); return; }
     if (form.dataset.confirm && !window.confirm(form.dataset.confirm)) { event.preventDefault(); return; }
     if (form.id === "module-settings-form") updateOrder();
@@ -116,7 +117,7 @@
     }
     if (target.id === "id_metric") {
       const units = { temperature: ["C", "F"], humidity: ["percent"], light: ["hours"], ph: ["ph"] }[target.value];
-      const unitField = document.getElementById("id_unit");
+      const unitField = target.closest("form")?.querySelector("#id_unit");
       if (unitField && units && !units.includes(unitField.value)) {
         unitField.value = units[0];
         unitField.dispatchEvent(new Event("change", { bubbles: true }));
@@ -190,7 +191,8 @@
   document.addEventListener("dragend", endDrag);
 
   const endpoint = document.body.dataset.roomState;
-  const initialRevision = document.body.dataset.revision;
+  // The active revision is refreshed after an inline record save.
+  document.addEventListener("taily:refresh", () => initialize());
   async function refreshCheck() {
     if (!endpoint) return;
     if (document.hidden) { setTimeout(refreshCheck, 30000); return; }
@@ -200,7 +202,7 @@
       const response = await fetch(endpoint, { credentials: "same-origin", cache: "no-store", signal: controller.signal });
       if (response.ok) {
         const state = await response.json();
-        if (String(state.revision) !== initialRevision) {
+        if (String(state.revision) !== document.body.dataset.revision) {
           const notice = document.getElementById("refresh-notice");
           if (notice) notice.hidden = false;
         }

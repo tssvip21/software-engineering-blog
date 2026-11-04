@@ -6,6 +6,11 @@ register = template.Library()
 
 # Simple, original line symbols; all share the same coordinate grid and stroke.
 PATHS = {
+    "leaf": '<path d="M20 3c1 9-3 16-11 16-4 0-6-3-5-6C6 6 13 7 20 3ZM3 21l11-11"/>',
+    "sidebar": '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M5.5 8h1M5.5 12h1"/>',
+    "close": '<path d="m6 6 12 12M18 6 6 18"/>',
+    "grip": '<path d="M8 5h.01M16 5h.01M8 12h.01M16 12h.01M8 19h.01M16 19h.01"/>',
+    "crown": '<path d="m3 6 5 5 4-8 4 8 5-5-2 13H5ZM5 22h14"/>',
     "home": '<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/>',
     "grid": '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
     "list": '<path d="M8 5h13M8 12h13M8 19h13M3 5h.01M3 12h.01M3 19h.01"/>',

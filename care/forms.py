@@ -34,7 +34,7 @@ class RoomForm(forms.ModelForm):
         fields = ["name", "species", "subspecies", "size", "birth_date", "sex", "timezone", "guest_sensitive"]
         labels = {"name": "반려동물 이름", "species": "동물 종류", "subspecies": "세부 종·품종 (선택)", "size": "체격 분류 (강아지)", "birth_date": "생일 (모르면 비워 두세요)", "sex": "성별", "guest_sensitive": "일반 참여자에게 투약·병원·지출 기록도 공유"}
         widgets = {"birth_date": DateInput(), "name": forms.TextInput(attrs={"autocomplete": "off", "placeholder": "예: 보리"})}
-        help_texts = {"guest_sensitive": "끄면 방장·관리자만 해당 모듈을 열람하고 기록합니다. 기존 기록은 삭제하지 않습니다.", "size": "체격만으로 적정 체중을 판정하지 않습니다."}
+        help_texts = {"guest_sensitive": "끄면 방장·관리자만 해당 모듈을 열람하고 기록해요. 기존 기록은 삭제하지 않습니다.", "size": "체격만으로 적정 체중을 판정하지 않아요."}
     def __init__(self, *args, member=None, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance.pk and self.instance.created_at:
@@ -50,7 +50,7 @@ class RoomForm(forms.ModelForm):
     def clean_birth_date(self):
         value = self.cleaned_data.get("birth_date")
         if value and value > timezone.localdate():
-            raise ValidationError("생일은 미래 날짜일 수 없습니다.")
+            raise ValidationError("생일은 미래 날짜일 수 없어요.")
         return value
     def clean(self):
         data = super().clean()
@@ -69,7 +69,7 @@ class ProductForm(forms.ModelForm):
         model = Product
         fields = ["name", "category", "energy", "energy_basis", "grams_per_piece", "protein", "protein_kind", "fat", "fat_kind", "source", "active"]
         labels = {"name": "제품명", "category": "사용 모듈", "energy": "표시된 열량 (모르면 비워 두세요)", "energy_basis": "열량의 기준 단위", "grams_per_piece": "개당 무게 (g, 아는 경우만)", "protein": "단백질 (g / 100 g)", "protein_kind": "단백질 값의 의미", "fat": "지방 (g / 100 g)", "fat_kind": "지방 값의 의미", "source": "정보 출처", "active": "새 기록에서 사용할 제품"}
-        help_texts = {"source": "제품 포장지, 제조사 표시 또는 확인한 출처를 적어 주세요.", "protein": "건물 기준 값이 아닌 제품 그대로의 중량 기준만 입력합니다.", "active": "해제해도 과거 기록과 당시 계산값은 유지됩니다."}
+        help_texts = {"source": "제품 포장지, 제조사 표시 또는 확인한 출처를 적어 주세요.", "protein": "건물 기준 값이 아닌 제품 그대로의 중량 기준만 입력합니다.", "active": "해제해도 과거 기록과 당시 계산값은 유지돼요."}
         widgets = {"source": forms.TextInput(attrs={"placeholder": "예: 제품 포장지, 확인일 2026-11-03"})}
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -88,7 +88,7 @@ class ProductForm(forms.ModelForm):
         for key in ("protein", "fat"):
             value = data.get(key)
             if value is not None and value > 100:
-                self.add_error(key, "100 g당 성분량은 100 g을 넘을 수 없습니다.")
+                self.add_error(key, "100 g당 성분량은 100 g을 넘을 수 없어요.")
         if any(data.get(key) is not None for key in ("energy", "protein", "fat")) and not data.get("source", "").strip():
             self.add_error("source", "영양 정보의 출처를 함께 입력해 주세요.")
         return data
@@ -115,7 +115,8 @@ class RecordForm(forms.Form):
     routine_date = forms.DateField(widget=forms.HiddenInput, required=False)
     occurred_at = forms.DateTimeField(label="활동·측정 시각", widget=LocalDateTimeInput(), input_formats=["%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"])
     status = forms.ChoiceField(label="상태")
-    def __init__(self, *args, room, module, member, instance=None, **kwargs):
+    def __init__(self, *args, room, module, member, instance=None, quick=False, **kwargs):
+        self.quick = quick or bool(instance and instance.payload.get("_entry_mode") == "quick")
         self.room, self.spec, self.member, self.instance = room, MODULES[module], member, instance
         initial = kwargs.setdefault("initial", {})
         initial.setdefault("client_key", instance.client_key if instance else uuid.uuid4())
@@ -158,36 +159,54 @@ class RecordForm(forms.Form):
         self.fields["note"] = forms.CharField(label="메모 (선택)", max_length=2000, required=False, widget=forms.Textarea(attrs={"rows": 3}))
         if instance:
             self.fields["edit_reason"] = forms.CharField(label="수정 이유 (선택)", max_length=300, required=False)
+        if self.quick:
+            optional = {
+                "meal": ("quantity",), "treat": ("quantity",),
+                "play": ("kind", "minutes"), "training": ("skill", "minutes"),
+                "cleaning": ("task",), "observation": ("detail",),
+            }.get(module, ())
+            for key in optional:
+                self.fields[key].required = False
+            self.fields["occurred_at"].label = "기록 시각"
+            self.fields["performer"].label = "수행자"
+        if module == "reproduction":
+            self.fields["kind"].initial = "growth"
+            if not instance or instance.payload.get("kind") not in ("heat", "egg"):
+                # Legacy values remain accepted by the field for old clients, but are not offered for new entry.
+                self.fields["kind"].widget.choices = [(v, label) for v, label in self.fields["kind"].choices if v not in ("heat", "egg")]
 
     def clean(self):
         data = super().clean()
         status = data.get("status")
         occurred = data.get("occurred_at")
+        if self.quick and not self.instance and self.spec.key == "sleep" and occurred and data.get("minutes"):
+            occurred = occurred - timedelta(minutes=float(data["minutes"]))
+            data["occurred_at"] = occurred
         ended = data.get("ended_at")
         now = timezone.now()
         if occurred:
             if status != "planned" and occurred > now + timedelta(minutes=1):
-                self.add_error("occurred_at", "완료·진행 기록의 활동 시각은 미래일 수 없습니다.")
+                self.add_error("occurred_at", "완료·진행 기록의 활동 시각은 미래일 수 없어요.")
             if status == "planned" and occurred > now + timedelta(days=3660):
                 self.add_error("occurred_at", "예정일이 너무 멉니다. 입력한 날짜를 확인해 주세요.")
         if ended:
             if occurred and ended < occurred:
                 self.add_error("ended_at", "종료 시각은 활동 시각 이후여야 합니다.")
             if ended > now + timedelta(minutes=1):
-                self.add_error("ended_at", "종료 시각은 미래일 수 없습니다.")
+                self.add_error("ended_at", "종료 시각은 미래일 수 없어요.")
             if status != "done":
                 self.add_error("ended_at", "종료 시각을 입력하려면 완료 상태로 바꿔 주세요.")
         key = self.spec.key
         if key in ("meal", "treat"):
-            if not data.get("product") and not data.get("food_name"):
+            if not self.quick and not data.get("product") and not data.get("food_name"):
                 self.add_error("food_name", "제품을 선택하거나 먹이 이름을 입력해 주세요.")
             if data.get("consumed") is not None and data.get("quantity") is not None and data["consumed"] > data["quantity"]:
-                self.add_error("consumed", "실제 섭취량은 제공량보다 클 수 없습니다.")
+                self.add_error("consumed", "실제 섭취량은 제공량보다 클 수 없어요.")
         if key == "walk" and status == "done":
             if occurred and ended and ended >= occurred:
                 duration = Decimal(str((ended - occurred).total_seconds())) / Decimal(60)
                 data["minutes"] = duration.quantize(Decimal("0.001"))
-            if not data.get("minutes") or data["minutes"] <= 0:
+            if not self.quick and (not data.get("minutes") or data["minutes"] <= 0):
                 self.add_error("minutes", "완료한 산책의 시간 또는 종료 시각을 입력해 주세요.")
         if key == "walk" and status == "active":
             data["minutes"] = None
@@ -201,7 +220,7 @@ class RecordForm(forms.Form):
             if (attempts is None) != (successes is None):
                 self.add_error("attempts", "성공률을 기록하려면 시도·성공 횟수를 함께 입력해 주세요.")
             if attempts is not None and successes is not None and successes > attempts:
-                self.add_error("successes", "성공 횟수는 시도 횟수를 넘을 수 없습니다.")
+                self.add_error("successes", "성공 횟수는 시도 횟수를 넘을 수 없어요.")
             for k in ("attempts", "successes"):
                 if data.get(k) is not None and data[k] % 1:
                     self.add_error(k, "횟수는 정수로 입력해 주세요.")
@@ -219,6 +238,8 @@ class RecordForm(forms.Form):
                 self.add_error("value", "이 항목의 입력 가능 범위를 벗어났습니다.")
             data["location"] = data.get("location") or "생활공간"
         if key == "reproduction":
+            if data.get("kind") not in (None, "heat", "egg") and not data.get("detail"):
+                self.add_error("detail", "무엇이 달라졌는지 짧게 남겨 주세요.")
             eggs = data.get("eggs")
             if data.get("kind") == "egg" and eggs is None:
                 self.add_error("eggs", "관찰한 알 개수를 입력해 주세요.")
@@ -234,7 +255,10 @@ class RecordForm(forms.Form):
         return data
 
     def cleaned_payload(self):
-        result = {}
+        result = {"_entry_mode": "quick"} if self.quick else {}
+        marker = getattr(self, "cadence_marker", None) or (self.instance.payload.get("_cadence_id") if self.instance else None)
+        if marker:
+            result["_cadence_id"] = str(marker)
         for spec in self.spec.fields:
             value = self.cleaned_data.get(spec.key)
             if isinstance(value, Decimal):
@@ -299,7 +323,7 @@ class RoutineForm(forms.Form):
             except (ValueError, TypeError):
                 self.add_error("modules", "활동 순서를 다시 확인해 주세요.")
         if data.get("assignee") and data["assignee"].room_id != self.room.pk:
-            self.add_error("assignee", "이 방의 참여자만 지정할 수 있습니다.")
+            self.add_error("assignee", "이 방의 참여자만 지정할 수 있어요.")
         return data
 
 
@@ -312,7 +336,7 @@ class StatsFilterForm(forms.Form):
             if data["end"] < data["start"]:
                 self.add_error("end", "종료일은 시작일 이후여야 합니다.")
             if (data["end"] - data["start"]).days > 365:
-                self.add_error("end", "한 번에 최대 366일을 조회할 수 있습니다.")
+                self.add_error("end", "한 번에 최대 366일을 조회할 수 있어요.")
             if data["end"] > timezone.localdate():
-                self.add_error("end", "통계 종료일은 오늘까지 선택할 수 있습니다.")
+                self.add_error("end", "통계 종료일은 오늘까지 선택할 수 있어요.")
         return data

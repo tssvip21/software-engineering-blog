@@ -14,7 +14,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
-from . import services
+from . import services, cadences
+from .presentation import integrated_context, GROUPS
+from .interactions import config_state
 from .forms import RoomForm, ProductForm, RecordForm, InvitationForm, JoinForm, CancelForm, RoutineForm, StatsFilterForm
 from .models import Activity, Product, Routine, RoutineItem, RoutineRun, Membership
 from .modules import MODULES, MODULE_LIST, MODULE_CHOICES, payload_display, record_summary
@@ -55,7 +57,7 @@ def room_new(request):
             if not services.rate_limit(request, "room-create", 10, 3600):
                 return error(request, "잠시 후 다시 시도해 주세요", "방 생성 요청이 너무 많습니다.", 429)
             room = services.create_room(request.user, form)
-            messages.success(request, "돌봄 공간을 만들었습니다. 첫 기록을 남겨 보세요.")
+            messages.success(request, "돌봄 공간을 만들었어요. 첫 기록을 남겨 보세요.")
             return redirect("today", room_id=room.pk)
         except ValidationError as exc:
             add_form_error(form, exc)
@@ -73,16 +75,17 @@ def today(request, room_id):
     ongoing = [record_card(a, member) for a in activities if a.status == "active"]
     planned = sorted([record_card(a, member) for a in activities if a.status == "planned"], key=lambda a: a.occurred_at)[:8]
     cards = []
-    for setting in room.module_settings.filter(enabled=True):
+    for setting in room.module_settings.filter(enabled=True, pinned=True):
         if setting.key not in allowed:
             continue
         candidates = [a for a in activities if a.module == setting.key and a.status != "planned"]
         completed_today = [a for a in candidates if a.status == "done" and lower <= a.occurred_at < upper]
         cards.append({"spec": MODULES[setting.key], "count": len(completed_today), "latest": candidates[0] if candidates else None})
     schedule = routine_schedule(member, day)
+    due = [row for row in cadences.schedule(member) if row["due"]]
     total = sum(r["total"] for r in schedule)
     done = sum(r["done"] for r in schedule)
-    return render(request, "care/today.html", {"title": room.name + "의 오늘", "day": day, "cards": cards[:6], "cards_more": cards[6:], "recent": recent, "ongoing": ongoing,
+    return render(request, "care/today.html", {"title": room.name + "의 오늘", "day": day, "cards": cards, "due_cadences": due, "cards_more": [], "recent": recent, "ongoing": ongoing,
                   "planned": planned, "schedule": schedule, "routine_total": total, "routine_done": done, "active_tab": "today", "live_page": True,
                   "today_count": sum(a.status == "done" and lower <= a.occurred_at < upper for a in activities)})
 
@@ -100,7 +103,7 @@ def module_page(request, room_id, module):
     today_date = services.local_date(room)
     stats = get_statistics(room, module, today_date - timedelta(days=6), today_date)
     return render(request, "care/module.html", {"title": MODULES[module].name, "spec": MODULES[module], "enabled": enabled, "page_obj": page,
-                  "stats": stats, "active_tab": "modules", "include_cancelled": request.GET.get("include_cancelled") == "1", "live_page": True})
+                  "stats": stats, "cadences": [row for row in cadences.schedule(member, include_paused=True) if row["cadence"].module == module], "activity_options": [(key, value[3]) for key, value in cadences.activity_options([module]).items()], "active_tab": "modules", "include_cancelled": request.GET.get("include_cancelled") == "1", "live_page": True})
 
 
 @require_GET
@@ -108,12 +111,16 @@ def modules(request, room_id):
     room, member = services.get_room(request, room_id)
     allowed = services.visible_modules(member)
     groups = {}
+    enabled_modules = []
     for setting in room.module_settings.all():
         spec = MODULES[setting.key]
         if spec.key not in allowed:
             continue
-        groups.setdefault(spec.group, []).append({"spec": spec, "enabled": setting.enabled})
-    return render(request, "care/modules.html", {"title": "돌봄 모듈", "groups": groups.items(), "active_tab": "modules", "hidden_count": len(MODULES) - len(allowed)})
+        row = {"spec": spec, "enabled": setting.enabled, "pinned": setting.pinned}
+        groups.setdefault(spec.group, []).append(row)
+        if setting.enabled:
+            enabled_modules.append(row)
+    return render(request, "care/modules.html", {"title": "돌봄 모듈", "groups": groups.items(), "enabled_modules": enabled_modules, "active_tab": "modules", "hidden_count": len(MODULES) - len(allowed)})
 
 
 @require_http_methods(["GET", "POST"])
@@ -126,15 +133,15 @@ def module_settings(request, room_id):
             enabled = request.POST.getlist("enabled")
             order = json.loads(request.POST.get("order", "[]"))
             version = int(request.POST.get("version", "0"))
-            services.update_modules(member, enabled, order, version)
-            messages.success(request, "모듈 구성을 저장했습니다. 꺼진 모듈의 이전 기록은 유지됩니다.")
+            services.update_modules(member, enabled, order, version, request.POST.getlist("pinned") if "pin_config" in request.POST else None)
+            messages.success(request, "모듈 구성을 저장했어요. 꺼진 모듈의 이전 기록은 유지돼요.")
             return redirect("modules", room_id=room.pk)
         except (ValueError, TypeError, ValidationError) as exc:
             problem = " ".join(exc.messages) if isinstance(exc, ValidationError) else "모듈 설정값을 확인해 주세요."
             status = 409 if isinstance(exc, services.Conflict) else 400
     settings_rows = list(room.module_settings.all())
-    rows = [{"spec": MODULES[s.key], "enabled": s.enabled} for s in settings_rows]
-    return render(request, "care/module_settings.html", {"title": "모듈 선택·순서", "rows": rows, "order_json": json.dumps([s.key for s in settings_rows]),
+    rows = [{"spec": MODULES[s.key], "enabled": s.enabled, "pinned": s.pinned} for s in settings_rows]
+    return render(request, "care/module_settings.html", {"title": "모듈 구성", "rows": rows, "config_state": config_state(room), "chosen": [r for r in rows if r["enabled"]], "order_json": json.dumps([s.key for s in settings_rows]),
                   "problem": problem, "active_tab": "settings"}, status=status)
 
 
@@ -149,7 +156,7 @@ def record_edit(request, room_id, activity_id):
     activity = get_object_or_404(Activity, pk=activity_id, room=room)
     services.require_module(member, activity.module)
     if not services.can_edit_record(member, activity):
-        raise PermissionDenied("자신의 기록만 수정할 수 있습니다.")
+        raise PermissionDenied("자신의 기록만 수정할 수 있어요.")
     return record_form_view(request, room_id, activity.module, activity)
 
 
@@ -182,7 +189,7 @@ def record_form_view(request, room_id, module, activity=None):
     if request.method == "POST" and form.is_valid():
         try:
             record, changed = services.save_activity(member, module, form, activity.pk if activity else None)
-            messages.success(request, "기록을 저장했습니다." if changed else "이미 저장된 기록입니다. 중복으로 추가하지 않았습니다.")
+            messages.success(request, "기록을 저장했어요." if changed else "이미 저장된 기록입니다. 중복으로 추가하지 않았습니다.")
             return redirect("record_detail", room_id=room.pk, activity_id=record.pk)
         except ValidationError as exc:
             add_form_error(form, exc)
@@ -224,7 +231,7 @@ def record_cancel(request, room_id, activity_id):
     if form.is_valid():
         try:
             services.cancel_activity(member, activity.pk, form.cleaned_data["version"], form.cleaned_data["reason"])
-            messages.success(request, "기록을 취소했습니다. 통계에서 제외하고 변경 이력은 유지합니다.")
+            messages.success(request, "기록을 취소했어요. 통계에서 제외하고 변경 이력은 유지합니다.")
             return redirect("record_detail", room_id=room.pk, activity_id=activity.pk)
         except ValidationError as exc:
             add_form_error(form, exc)
@@ -239,6 +246,11 @@ def records(request, room_id):
     allowed = services.visible_modules(member)
     qs = Activity.objects.filter(room=room, module__in=allowed).select_related("author", "performer")
     selected_module = request.GET.get("module", "")
+    selected_group = request.GET.get("group", "")
+    if selected_group in GROUPS:
+        qs = qs.filter(module__in=set(GROUPS[selected_group][1]) & set(allowed))
+    elif selected_group:
+        raise Http404()
     selected_state = request.GET.get("state", "valid")
     selected_author = request.GET.get("author", "")
     problem = ""
@@ -279,7 +291,7 @@ def records(request, room_id):
     page.object_list = [record_card(a, member) for a in page.object_list]
     params = request.GET.copy(); params.pop("page", None)
     return render(request, "care/records.html", {"title": "전체 기록", "page_obj": page, "module_choices": [(k, MODULES[k].name) for k in allowed],
-                  "selected_module": selected_module, "selected_state": selected_state, "selected_author": selected_author,
+                  "selected_module": selected_module, "selected_group": selected_group, "group_label": GROUPS.get(selected_group, ("", ()))[0], "selected_state": selected_state, "selected_author": selected_author,
                   "authors": room.members.order_by("display_name"), "start": begin, "end": end, "query": query, "query_params": params.urlencode(),
                   "problem": problem, "active_tab": "records", "live_page": True})
 
@@ -303,7 +315,7 @@ def statistics(request, room_id, module):
 @require_GET
 def overview_page(request, room_id):
     room, member = services.get_room(request, room_id)
-    context = overview(member)
+    context = integrated_context(member)
     context.update({"title": "통합 상태", "active_tab": "overview", "live_page": True})
     return render(request, "care/overview.html", context)
 
@@ -324,12 +336,12 @@ def product_edit(request, room_id, product_id=None):
     if request.method == "POST" and form.is_valid():
         try:
             services.save_product(member, form, instance.pk if instance else None)
-            messages.success(request, "제품 정보를 저장했습니다. 이전 기록의 계산값은 바뀌지 않습니다.")
+            messages.success(request, "제품 정보를 저장했어요. 이전 기록의 계산값은 바뀌지 않습니다.")
             return redirect("products", room_id=room.pk)
         except ValidationError as exc:
             add_form_error(form, exc)
             status = 409 if isinstance(exc, services.Conflict) else 400
-    return render(request, "care/form.html", {"title": "제품 정보 수정" if instance else "제품 등록", "intro": "모르는 영양값은 비워 두세요. 표시된 단위와 정보 출처를 함께 남깁니다.",
+    return render(request, "care/form.html", {"title": "제품 정보 수정" if instance else "제품 등록", "intro": "모르는 영양값은 비워 두세요. 표시된 단위와 정보 출처를 함께 남겨요.",
                   "form": form, "submit_label": "제품 저장", "back_url": reverse("products", args=[room.pk]), "active_tab": "settings"}, status=status)
 
 
@@ -343,7 +355,7 @@ def room_settings(request, room_id):
     if request.method == "POST" and form.is_valid():
         try:
             services.update_room(member, form)
-            messages.success(request, "방 정보를 저장했습니다. 이미 선택한 모듈 구성은 유지됩니다.")
+            messages.success(request, "방 정보를 저장했어요. 이미 선택한 모듈 구성은 유지돼요.")
             return redirect("room_settings", room_id=room.pk)
         except ValidationError as exc:
             add_form_error(form, exc)
@@ -352,7 +364,7 @@ def room_settings(request, room_id):
 
 
 def members_context(room, member, form=None, invite_url=None):
-    return {"title": "구성원·초대", "people": room.members.filter(active=True).order_by("joined_at"), "invitation_form": form or InvitationForm(),
+    return {"title": "구성원", "people": room.members.filter(active=True).order_by("joined_at"), "invitation_form": form or InvitationForm(),
             "invitations": list(room.invitations.order_by("-created_at")[:20]) if member.role == "owner" else [], "invite_url": invite_url, "active_tab": "members"}
 
 
@@ -434,7 +446,7 @@ def member_change(request, room_id, member_id):
     get_object_or_404(Membership, pk=member_id, room=room, active=True)
     try:
         services.change_member(member, member_id, request.POST.get("action"), request.POST.get("revoke_links") == "1")
-        messages.success(request, "참여자 권한을 변경했습니다.")
+        messages.success(request, "참여자 권한을 변경했어요.")
     except ValidationError as exc:
         messages.error(request, " ".join(exc.messages))
     return redirect("members", room_id=room.pk)
@@ -447,7 +459,7 @@ def room_leave(request, room_id):
         services.leave_room(member)
     except ValidationError as exc:
         return error(request, "방을 나갈 수 없습니다", " ".join(exc.messages), 400)
-    messages.success(request, "돌봄 공간에서 나왔습니다. 작성한 기록은 공동 기록으로 유지됩니다.")
+    messages.success(request, "돌봄 공간에서 나왔습니다. 작성한 기록은 공동 기록으로 유지돼요.")
     return redirect("home")
 
 
@@ -471,7 +483,7 @@ def routines(request, room_id):
         if not today_date - timedelta(days=366) <= day <= today_date + timedelta(days=31):
             raise ValueError()
     except ValueError:
-        return error(request, "날짜를 확인해 주세요", "최근 1년부터 앞으로 31일까지 선택할 수 있습니다.")
+        return error(request, "날짜를 확인해 주세요", "최근 1년부터 앞으로 31일까지 선택할 수 있어요.")
     schedule = routine_schedule(member, day)
     return render(request, "care/routines.html", {"title": "루틴", "schedule": schedule, "day": day, "today_date": today_date, "future_day": day > today_date,
                   "routine_list": list(room.routines.all()) if member.can_manage else [], "active_tab": "routines", "live_page": True})
@@ -487,7 +499,7 @@ def routine_edit(request, room_id, routine_id=None):
     if request.method == "POST" and form.is_valid():
         try:
             services.save_routine(member, form, routine_id)
-            messages.success(request, "루틴을 저장했습니다. 오늘부터 변경된 일정을 사용합니다.")
+            messages.success(request, "루틴을 저장했어요. 오늘부터 변경된 일정을 사용합니다.")
             return redirect("routines", room_id=room.pk)
         except ValidationError as exc:
             add_form_error(form, exc)
@@ -537,7 +549,7 @@ def health(request):
 
 
 def csrf_failure(request, reason=""):
-    return error(request, "화면을 새로고침해 주세요", "요청을 확인할 수 없습니다. 오래 열린 탭이나 다른 사이트에서 보낸 요청일 수 있습니다.", 403)
+    return error(request, "화면을 새로고침해 주세요", "요청을 확인할 수 없어요. 오래 열린 탭이나 다른 사이트에서 보낸 요청일 수 있어요.", 403)
 
 
 def bad_request(request, exception=None):
@@ -545,7 +557,7 @@ def bad_request(request, exception=None):
 
 
 def permission_denied(request, exception=None):
-    return error(request, "이 작업을 할 권한이 없습니다", "방의 참여 상태와 역할을 확인해 주세요. 다른 방의 기록은 열 수 없습니다.", 403)
+    return error(request, "이 작업을 할 권한이 없습니다", "방의 참여 상태와 역할을 확인해 주세요. 다른 방의 기록은 열 수 없어요.", 403)
 
 
 def not_found(request, exception=None):

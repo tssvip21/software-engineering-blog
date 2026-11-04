@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.urls import path
-from . import auth, views
+from . import auth, views, interactions
 
 urlpatterns = [
     path("", views.home, name="home"),
@@ -15,6 +15,14 @@ urlpatterns = [
     path("rooms/<uuid:room_id>/", views.today, name="today"),
     path("rooms/<uuid:room_id>/state/", views.room_state, name="room_state"),
     path("rooms/<uuid:room_id>/modules/", views.modules, name="modules"),
+    path("rooms/<uuid:room_id>/modules/config/", interactions.module_config, name="module_config"),
+    path("rooms/<uuid:room_id>/modules/<slug:module>/quick/", interactions.quick_record, name="quick_record"),
+    path("rooms/<uuid:room_id>/records/<uuid:activity_id>/quick/", interactions.quick_record, name="quick_finish"),
+    path("rooms/<uuid:room_id>/records/<uuid:activity_id>/undo/", interactions.quick_undo, name="quick_undo"),
+    path("rooms/<uuid:room_id>/cadences/", interactions.cadence_list, name="cadence_list"),
+    path("rooms/<uuid:room_id>/cadences/new/", interactions.cadence_edit, name="cadence_new"),
+    path("rooms/<uuid:room_id>/cadences/<uuid:cadence_id>/edit/", interactions.cadence_edit, name="cadence_edit"),
+    path("rooms/<uuid:room_id>/cadences/<uuid:cadence_id>/snooze/", interactions.cadence_snooze, name="cadence_snooze"),
     path("rooms/<uuid:room_id>/modules/settings/", views.module_settings, name="module_settings"),
     path("rooms/<uuid:room_id>/modules/<slug:module>/", views.module_page, name="module"),
     path("rooms/<uuid:room_id>/modules/<slug:module>/new/", views.record_new, name="record_new"),

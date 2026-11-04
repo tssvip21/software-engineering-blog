@@ -1,0 +1,5 @@
+<article class="summary-story">
+  <h3>{{ story.title }}</h3><p>{{ story.text }}</p>
+  <div class="story-detail"><span class="meta">{{ story.note }}</span><a href="{{ story.url }}" class="quiet-link">상세 통계 {% load care_tags %}{% icon 'arrow' %}</a></div>
+  {% if story.reference %}<details class="reference-compact"><summary>기록한 BCS와 참고 기준</summary><p>{{ story.reference.value }} {{ story.reference.unit }} · {{ story.reference.position }}</p><p class="meta">참고 {{ story.reference.range }} · {{ story.reference.date|date:'Y.m.d' }} · {{ story.reference.assessor }}</p><p class="meta">{{ story.reference.conditions }}</p><a class="quiet-link" href="{{ story.reference.url }}" target="_blank" rel="noopener noreferrer">{{ story.reference.source }}</a></details>{% endif %}
+</article>
