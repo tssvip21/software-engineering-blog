@@ -326,7 +326,7 @@ def get_statistics(room, module, start, end, all_records=None):
     elif module == "shedding":
         ongoing = [a for a in all_records if a.status == "active" and not a.voided]
         add("진행 중", len(ongoing) if all_records else None, "건")
-        durations = [Decimal(str((a.ended_at - a.occurred_at).total_seconds())) / Decimal(86400) for a in rows if a.ended_at]
+        durations = [Decimal(str((a.ended_at.astimezone(dt_timezone.utc) - a.occurred_at.astimezone(dt_timezone.utc)).total_seconds())) / Decimal(86400) for a in rows if a.ended_at]
         add("종료 기록 평균 기간", sum(durations, ZERO) / len(durations) if durations else None, "일", "시작과 종료 시각이 모두 있는 기록만 사용")
         groups("kind")
     elif module == "inventory":

@@ -1,3 +1,4 @@
+from datetime import timezone as utc_timezone
 from datetime import timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -26,17 +27,29 @@ class LocalDateTimeInput(forms.DateTimeInput):
 
 
 class RoomForm(forms.ModelForm):
+    breed_key = forms.ChoiceField(label="품종 (선택)", required=False)
+    size_origin = forms.ChoiceField(label="체격 선택 방법", choices=[("auto", "품종 자료로 제안"), ("manual", "직접 선택")], required=False)
+
     timezone = forms.ChoiceField(label="기록 기준 시간대", choices=TIMEZONES, initial="Asia/Seoul")
     use_defaults = forms.BooleanField(label="종에 맞는 기본 모듈로 시작", required=False, initial=True)
     version = forms.IntegerField(widget=forms.HiddenInput, required=False)
     class Meta:
         model = Room
-        fields = ["name", "species", "subspecies", "size", "birth_date", "sex", "timezone", "guest_sensitive"]
+        fields = ["name", "species", "breed_key", "subspecies", "sex", "maturity", "size_origin", "size", "birth_date", "timezone", "guest_sensitive"]
         labels = {"name": "반려동물 이름", "species": "동물 종류", "subspecies": "세부 종·품종 (선택)", "size": "체격 분류 (강아지)", "birth_date": "생일 (모르면 비워 두세요)", "sex": "성별", "guest_sensitive": "일반 참여자에게 투약·병원·지출 기록도 공유"}
         widgets = {"birth_date": DateInput(), "name": forms.TextInput(attrs={"autocomplete": "off", "placeholder": "예: 보리"})}
         help_texts = {"guest_sensitive": "끄면 방장·관리자만 해당 모듈을 열람하고 기록해요. 기존 기록은 삭제하지 않습니다.", "size": "체격만으로 적정 체중을 판정하지 않아요."}
     def __init__(self, *args, member=None, **kwargs):
         super().__init__(*args, **kwargs)
+        from .breeds import choices, picker_data
+        self.fields["breed_key"].choices = choices()
+        self.breed_catalog = picker_data()
+        self.fields["maturity"].label = "성장 상태 (선택)"
+        self.fields["subspecies"].label = "목록에 없는 품종·세부 종 (선택)"
+        self.fields["size"].help_text = "개만 분류해요. 소형 10kg 이하·중형 10kg 초과 25kg 이하·대형 25kg 초과는 탐색용 구분이며 건강 기준이 아니에요. 직접 수정하거나 비워 둘 수 있어요."
+        self.fields["maturity"].help_text = "성장 완료를 확인한 경우에만 성견·성묘 참고 체중과 비교해요."
+        if not self.instance.created_at:
+            self.fields["size_origin"].initial = "auto"
         if self.instance.pk and self.instance.created_at:
             self.fields.pop("use_defaults", None)
             self.fields["version"].initial = self.instance.settings_version
@@ -54,8 +67,24 @@ class RoomForm(forms.ModelForm):
         return value
     def clean(self):
         data = super().clean()
-        if data.get("species") != "dog":
+        from .breeds import catalogue, suggest_size
+        species, key = data.get("species"), data.get("breed_key", "")
+        breed = catalogue().get(key)
+        if breed and breed["species"] != species:
+            self.add_error("breed_key", "동물 종류에 맞는 품종을 선택해 주세요.")
+        if species not in ("dog", "cat"):
+            data["breed_key"] = ""
+            data["size_origin"] = "manual"
+        elif breed:
+            data["subspecies"] = breed["ko"]
+        if not data.get("size_origin"):
+            data["size_origin"] = "manual"
+        if species == "dog" and data["size_origin"] == "auto":
+            proposed = suggest_size(breed, data.get("sex", ""))
+            data["size"] = proposed
+        if species != "dog":
             data["size"] = ""
+            data["size_origin"] = "manual"
         try:
             ZoneInfo(data.get("timezone", "Asia/Seoul"))
         except (ZoneInfoNotFoundError, ValueError):
@@ -180,7 +209,7 @@ class RecordForm(forms.Form):
         status = data.get("status")
         occurred = data.get("occurred_at")
         if self.quick and not self.instance and self.spec.key == "sleep" and occurred and data.get("minutes"):
-            occurred = occurred - timedelta(minutes=float(data["minutes"]))
+            occurred = (occurred.astimezone(utc_timezone.utc) - timedelta(minutes=float(data["minutes"]))).astimezone(occurred.tzinfo)
             data["occurred_at"] = occurred
         ended = data.get("ended_at")
         now = timezone.now()
@@ -204,7 +233,7 @@ class RecordForm(forms.Form):
                 self.add_error("consumed", "실제 섭취량은 제공량보다 클 수 없어요.")
         if key == "walk" and status == "done":
             if occurred and ended and ended >= occurred:
-                duration = Decimal(str((ended - occurred).total_seconds())) / Decimal(60)
+                duration = Decimal(str((ended.astimezone(utc_timezone.utc) - occurred.astimezone(utc_timezone.utc)).total_seconds())) / Decimal(60)
                 data["minutes"] = duration.quantize(Decimal("0.001"))
             if not self.quick and (not data.get("minutes") or data["minutes"] <= 0):
                 self.add_error("minutes", "완료한 산책의 시간 또는 종료 시각을 입력해 주세요.")
@@ -213,7 +242,7 @@ class RecordForm(forms.Form):
         if key == "water" and data.get("kind") == "measured" and data.get("amount") is None:
             self.add_error("amount", "실제로 측정한 음수량을 입력해 주세요.")
         if key == "sleep" and occurred and data.get("minutes"):
-            if occurred + timedelta(minutes=float(data["minutes"])) > now + timedelta(minutes=1):
+            if occurred.astimezone(utc_timezone.utc) + timedelta(minutes=float(data["minutes"])) > now + timedelta(minutes=1):
                 self.add_error("minutes", "관찰 시작 시각과 시간을 합친 종료 시각이 미래입니다. 실제로 관찰한 구간만 입력해 주세요.")
         if key == "training":
             attempts, successes = data.get("attempts"), data.get("successes")

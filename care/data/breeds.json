@@ -1,0 +1,1497 @@
+{
+  "version": 1,
+  "checked": "2026-11-04",
+  "breeds": [
+    {
+      "key": "dog-maltese",
+      "species": "dog",
+      "en": "Maltese",
+      "ko": "말티즈",
+      "aliases": [
+        "말티스"
+      ],
+      "reference": null,
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-pomeranian",
+      "species": "dog",
+      "en": "Pomeranian",
+      "ko": "포메라니안",
+      "aliases": [
+        "포메"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            3.0,
+            7.0
+          ],
+          "female": [
+            3.0,
+            7.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-poodle-toy",
+      "species": "dog",
+      "en": "Poodle (Toy)",
+      "ko": "토이 푸들",
+      "aliases": [
+        "푸들 토이"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            4.0,
+            6.0
+          ],
+          "female": [
+            4.0,
+            6.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-poodle-miniature",
+      "species": "dog",
+      "en": "Poodle (Miniature)",
+      "ko": "미니어처 푸들",
+      "aliases": [
+        "미니어쳐 푸들"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            10.0,
+            15.0
+          ],
+          "female": [
+            10.0,
+            15.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-poodle-standard",
+      "species": "dog",
+      "en": "Poodle (Standard)",
+      "ko": "스탠더드 푸들",
+      "aliases": [
+        "스탠다드 푸들"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            40.0,
+            70.0
+          ],
+          "female": [
+            40.0,
+            70.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-bichon-frise",
+      "species": "dog",
+      "en": "Bichon Frise",
+      "ko": "비숑 프리제",
+      "aliases": [
+        "비숑"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            12.0,
+            18.0
+          ],
+          "female": [
+            12.0,
+            18.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-chihuahua",
+      "species": "dog",
+      "en": "Chihuahua",
+      "ko": "치와와",
+      "aliases": [],
+      "reference": null,
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-shih-tzu",
+      "species": "dog",
+      "en": "Shih Tzu",
+      "ko": "시추",
+      "aliases": [
+        "시츄"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            9.0,
+            16.0
+          ],
+          "female": [
+            9.0,
+            16.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-yorkshire-terrier",
+      "species": "dog",
+      "en": "Yorkshire Terrier",
+      "ko": "요크셔 테리어",
+      "aliases": [
+        "요키"
+      ],
+      "reference": null,
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-golden-retriever",
+      "species": "dog",
+      "en": "Golden Retriever",
+      "ko": "골든 리트리버",
+      "aliases": [
+        "골든리트리버"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            55.0,
+            75.0
+          ],
+          "female": [
+            55.0,
+            75.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-labrador-retriever",
+      "species": "dog",
+      "en": "Labrador Retriever",
+      "ko": "래브라도 리트리버",
+      "aliases": [
+        "라브라도 리트리버"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            55.0,
+            80.0
+          ],
+          "female": [
+            55.0,
+            80.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-german-shepherd-dog",
+      "species": "dog",
+      "en": "German Shepherd Dog",
+      "ko": "저먼 셰퍼드",
+      "aliases": [
+        "셰퍼드"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            50.0,
+            90.0
+          ],
+          "female": [
+            50.0,
+            90.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-korean-jindo-dog",
+      "species": "dog",
+      "en": "Korean Jindo Dog",
+      "ko": "진돗개",
+      "aliases": [
+        "진도개"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            40.0,
+            50.0
+          ],
+          "female": [
+            30.0,
+            40.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-shiba-inu",
+      "species": "dog",
+      "en": "Shiba Inu",
+      "ko": "시바 이누",
+      "aliases": [
+        "시바견"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            17.0,
+            23.0
+          ],
+          "female": [
+            17.0,
+            23.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-welsh-corgi-pembroke",
+      "species": "dog",
+      "en": "Welsh Corgi (Pembroke)",
+      "ko": "펨브로크 웰시 코기",
+      "aliases": [
+        "웰시코기"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            28.0,
+            30.0
+          ],
+          "female": [
+            28.0,
+            30.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-cardigan-welsh-corgi",
+      "species": "dog",
+      "en": "Cardigan Welsh Corgi",
+      "ko": "카디건 웰시 코기",
+      "aliases": [
+        "웰시코기"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            25.0,
+            38.0
+          ],
+          "female": [
+            25.0,
+            38.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-dachshund",
+      "species": "dog",
+      "en": "Dachshund",
+      "ko": "닥스훈트",
+      "aliases": [],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            11.0,
+            32.0
+          ],
+          "female": [
+            11.0,
+            32.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-beagle",
+      "species": "dog",
+      "en": "Beagle",
+      "ko": "비글",
+      "aliases": [],
+      "reference": null,
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-french-bulldog",
+      "species": "dog",
+      "en": "French Bulldog",
+      "ko": "프렌치 불도그",
+      "aliases": [
+        "프렌치불독"
+      ],
+      "reference": null,
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-bulldog",
+      "species": "dog",
+      "en": "Bulldog",
+      "ko": "불도그",
+      "aliases": [
+        "불독"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            40.0,
+            50.0
+          ],
+          "female": [
+            40.0,
+            50.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-pug",
+      "species": "dog",
+      "en": "Pug",
+      "ko": "퍼그",
+      "aliases": [],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            14.0,
+            18.0
+          ],
+          "female": [
+            14.0,
+            18.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-boston-terrier",
+      "species": "dog",
+      "en": "Boston Terrier",
+      "ko": "보스턴 테리어",
+      "aliases": [],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            12.0,
+            25.0
+          ],
+          "female": [
+            12.0,
+            25.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-border-collie",
+      "species": "dog",
+      "en": "Border Collie",
+      "ko": "보더 콜리",
+      "aliases": [],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            30.0,
+            55.0
+          ],
+          "female": [
+            30.0,
+            55.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-shetland-sheepdog",
+      "species": "dog",
+      "en": "Shetland Sheepdog",
+      "ko": "셰틀랜드 쉽독",
+      "aliases": [
+        "쉘티"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            15.0,
+            25.0
+          ],
+          "female": [
+            15.0,
+            25.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-siberian-husky",
+      "species": "dog",
+      "en": "Siberian Husky",
+      "ko": "시베리안 허스키",
+      "aliases": [
+        "허스키"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            35.0,
+            60.0
+          ],
+          "female": [
+            35.0,
+            60.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-samoyed",
+      "species": "dog",
+      "en": "Samoyed",
+      "ko": "사모예드",
+      "aliases": [],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            35.0,
+            65.0
+          ],
+          "female": [
+            35.0,
+            65.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-alaskan-malamute",
+      "species": "dog",
+      "en": "Alaskan Malamute",
+      "ko": "알래스칸 맬러뮤트",
+      "aliases": [
+        "말라뮤트"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            75.0,
+            85.0
+          ],
+          "female": [
+            75.0,
+            85.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-akita",
+      "species": "dog",
+      "en": "Akita",
+      "ko": "아키타",
+      "aliases": [],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            70.0,
+            130.0
+          ],
+          "female": [
+            70.0,
+            130.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-rottweiler",
+      "species": "dog",
+      "en": "Rottweiler",
+      "ko": "로트와일러",
+      "aliases": [
+        "로트바일러"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            80.0,
+            135.0
+          ],
+          "female": [
+            80.0,
+            135.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-doberman-pinscher",
+      "species": "dog",
+      "en": "Doberman Pinscher",
+      "ko": "도베르만 핀셔",
+      "aliases": [
+        "도베르만"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            60.0,
+            100.0
+          ],
+          "female": [
+            60.0,
+            100.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-cavalier-king-charles-spaniel",
+      "species": "dog",
+      "en": "Cavalier King Charles Spaniel",
+      "ko": "캐벌리어 킹 찰스 스패니얼",
+      "aliases": [
+        "카발리에"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            13.0,
+            18.0
+          ],
+          "female": [
+            13.0,
+            18.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-cocker-spaniel",
+      "species": "dog",
+      "en": "Cocker Spaniel",
+      "ko": "코커 스패니얼",
+      "aliases": [],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            20.0,
+            30.0
+          ],
+          "female": [
+            20.0,
+            30.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-english-cocker-spaniel",
+      "species": "dog",
+      "en": "English Cocker Spaniel",
+      "ko": "잉글리시 코커 스패니얼",
+      "aliases": [],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            26.0,
+            34.0
+          ],
+          "female": [
+            26.0,
+            34.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-italian-greyhound",
+      "species": "dog",
+      "en": "Italian Greyhound",
+      "ko": "이탈리안 그레이하운드",
+      "aliases": [
+        "아이쥐"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            7.0,
+            14.0
+          ],
+          "female": [
+            7.0,
+            14.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-whippet",
+      "species": "dog",
+      "en": "Whippet",
+      "ko": "휘핏",
+      "aliases": [],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            25.0,
+            40.0
+          ],
+          "female": [
+            25.0,
+            40.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-great-dane",
+      "species": "dog",
+      "en": "Great Dane",
+      "ko": "그레이트 데인",
+      "aliases": [],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            110.0,
+            175.0
+          ],
+          "female": [
+            110.0,
+            175.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-saint-bernard",
+      "species": "dog",
+      "en": "Saint Bernard",
+      "ko": "세인트 버나드",
+      "aliases": [],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            120.0,
+            180.0
+          ],
+          "female": [
+            120.0,
+            180.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-australian-shepherd",
+      "species": "dog",
+      "en": "Australian Shepherd",
+      "ko": "오스트레일리안 셰퍼드",
+      "aliases": [],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            40.0,
+            65.0
+          ],
+          "female": [
+            40.0,
+            65.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-west-highland-white-terrier",
+      "species": "dog",
+      "en": "West Highland White Terrier",
+      "ko": "웨스트 하일랜드 화이트 테리어",
+      "aliases": [
+        "웨스티"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            15.0,
+            20.0
+          ],
+          "female": [
+            15.0,
+            20.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-miniature-schnauzer",
+      "species": "dog",
+      "en": "Miniature Schnauzer",
+      "ko": "미니어처 슈나우저",
+      "aliases": [
+        "슈나우저"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            11.0,
+            20.0
+          ],
+          "female": [
+            11.0,
+            20.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-papillon",
+      "species": "dog",
+      "en": "Papillon",
+      "ko": "파피용",
+      "aliases": [
+        "빠삐용"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            5.0,
+            10.0
+          ],
+          "female": [
+            5.0,
+            10.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-pekingese",
+      "species": "dog",
+      "en": "Pekingese",
+      "ko": "페키니즈",
+      "aliases": [],
+      "reference": null,
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-japanese-spitz",
+      "species": "dog",
+      "en": "Japanese Spitz",
+      "ko": "재패니즈 스피츠",
+      "aliases": [
+        "일본 스피츠"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            10.0,
+            25.0
+          ],
+          "female": [
+            10.0,
+            25.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-chow-chow",
+      "species": "dog",
+      "en": "Chow Chow",
+      "ko": "차우차우",
+      "aliases": [
+        "차우 차우"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            45.0,
+            70.0
+          ],
+          "female": [
+            45.0,
+            70.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "dog-dalmatian",
+      "species": "dog",
+      "en": "Dalmatian",
+      "ko": "달마시안",
+      "aliases": [
+        "달마티안"
+      ],
+      "reference": {
+        "source": "American Kennel Club",
+        "url": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/",
+        "unit": "lb",
+        "kind": "성견 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            45.0,
+            70.0
+          ],
+          "female": [
+            45.0,
+            70.0
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://www.akc.org/expert-advice/nutrition/breed-weight-chart/"
+    },
+    {
+      "key": "cat-abyssinian",
+      "species": "cat",
+      "en": "Abyssinian",
+      "ko": "아비시니안",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-american-bobtail",
+      "species": "cat",
+      "en": "American Bobtail",
+      "ko": "아메리칸 밥테일",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-american-curl",
+      "species": "cat",
+      "en": "American Curl",
+      "ko": "아메리칸 컬",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-american-shorthair",
+      "species": "cat",
+      "en": "American Shorthair",
+      "ko": "아메리칸 쇼트헤어",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-american-wirehair",
+      "species": "cat",
+      "en": "American Wirehair",
+      "ko": "아메리칸 와이어헤어",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-balinese",
+      "species": "cat",
+      "en": "Balinese",
+      "ko": "발리니즈",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-bengal",
+      "species": "cat",
+      "en": "Bengal",
+      "ko": "벵갈",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-birman",
+      "species": "cat",
+      "en": "Birman",
+      "ko": "버만",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-bombay",
+      "species": "cat",
+      "en": "Bombay",
+      "ko": "봄베이",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-british-shorthair",
+      "species": "cat",
+      "en": "British Shorthair",
+      "ko": "브리티시 쇼트헤어",
+      "aliases": [],
+      "reference": {
+        "source": "The International Cat Association",
+        "url": "https://tica.org/breed/british-shorthair/",
+        "unit": "lb",
+        "kind": "성묘 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            10,
+            16
+          ],
+          "female": [
+            8,
+            11
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-british-longhair",
+      "species": "cat",
+      "en": "British Longhair",
+      "ko": "브리티시 롱헤어",
+      "aliases": [],
+      "reference": {
+        "source": "The International Cat Association",
+        "url": "https://tica.org/breed/british-longhair/",
+        "unit": "lb",
+        "kind": "성묘 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            10,
+            16
+          ],
+          "female": [
+            8,
+            11
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://tica.org/breed/british-longhair/"
+    },
+    {
+      "key": "cat-burmese",
+      "species": "cat",
+      "en": "Burmese",
+      "ko": "버미즈",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-chartreux",
+      "species": "cat",
+      "en": "Chartreux",
+      "ko": "샤르트뢰",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-cornish-rex",
+      "species": "cat",
+      "en": "Cornish Rex",
+      "ko": "코니시 렉스",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-devon-rex",
+      "species": "cat",
+      "en": "Devon Rex",
+      "ko": "데본 렉스",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-egyptian-mau",
+      "species": "cat",
+      "en": "Egyptian Mau",
+      "ko": "이집션 마우",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-exotic",
+      "species": "cat",
+      "en": "Exotic",
+      "ko": "엑조틱 쇼트헤어",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-japanese-bobtail",
+      "species": "cat",
+      "en": "Japanese Bobtail",
+      "ko": "재패니즈 밥테일",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-korat",
+      "species": "cat",
+      "en": "Korat",
+      "ko": "코랏",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-laperm",
+      "species": "cat",
+      "en": "LaPerm",
+      "ko": "라펌",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-lykoi",
+      "species": "cat",
+      "en": "Lykoi",
+      "ko": "라이코이",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-maine-coon",
+      "species": "cat",
+      "en": "Maine Coon",
+      "ko": "메인쿤",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/",
+      "reference_note": "공식 소개 안의 체중 범위가 서로 달라 수치 비교에서 제외했어요."
+    },
+    {
+      "key": "cat-manx",
+      "species": "cat",
+      "en": "Manx",
+      "ko": "맹크스",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-norwegian-forest-cat",
+      "species": "cat",
+      "en": "Norwegian Forest Cat",
+      "ko": "노르웨이 숲 고양이",
+      "aliases": [
+        "노르웨이숲"
+      ],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-ocicat",
+      "species": "cat",
+      "en": "Ocicat",
+      "ko": "오시캣",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-oriental",
+      "species": "cat",
+      "en": "Oriental",
+      "ko": "오리엔탈",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-persian",
+      "species": "cat",
+      "en": "Persian",
+      "ko": "페르시안",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-ragdoll",
+      "species": "cat",
+      "en": "Ragdoll",
+      "ko": "랙돌",
+      "aliases": [],
+      "reference": {
+        "source": "The International Cat Association",
+        "url": "https://tica.org/breed/ragdoll/",
+        "unit": "lb",
+        "kind": "성묘 품종 참고 범위 (개별 적정 체중 아님)",
+        "weights": {
+          "male": [
+            15,
+            20
+          ],
+          "female": [
+            10,
+            15
+          ]
+        },
+        "checked": "2026-11-04"
+      },
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-russian-blue",
+      "species": "cat",
+      "en": "Russian Blue",
+      "ko": "러시안 블루",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-scottish-fold",
+      "species": "cat",
+      "en": "Scottish Fold",
+      "ko": "스코티시 폴드",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-selkirk-rex",
+      "species": "cat",
+      "en": "Selkirk Rex",
+      "ko": "셀커크 렉스",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-siamese",
+      "species": "cat",
+      "en": "Siamese",
+      "ko": "샴",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-siberian",
+      "species": "cat",
+      "en": "Siberian",
+      "ko": "시베리안",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-singapura",
+      "species": "cat",
+      "en": "Singapura",
+      "ko": "싱가푸라",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-somali",
+      "species": "cat",
+      "en": "Somali",
+      "ko": "소말리",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-sphynx",
+      "species": "cat",
+      "en": "Sphynx",
+      "ko": "스핑크스",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-tonkinese",
+      "species": "cat",
+      "en": "Tonkinese",
+      "ko": "통키니즈",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-turkish-angora",
+      "species": "cat",
+      "en": "Turkish Angora",
+      "ko": "터키시 앙고라",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    },
+    {
+      "key": "cat-turkish-van",
+      "species": "cat",
+      "en": "Turkish Van",
+      "ko": "터키시 반",
+      "aliases": [],
+      "reference": null,
+      "source": "https://cfa.org/breeds/"
+    }
+  ]
+}

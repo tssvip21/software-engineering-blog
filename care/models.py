@@ -19,6 +19,10 @@ class Room(models.Model):
     name = models.CharField(max_length=40)
     species = models.CharField(max_length=16, choices=SPECIES)
     subspecies = models.CharField(max_length=80, blank=True)
+    breed_key = models.CharField(max_length=64, blank=True)
+    size_origin = models.CharField(max_length=8, choices=[("auto", "품종 자료로 제안"), ("manual", "직접 선택")], default="manual")
+    maturity = models.CharField(max_length=8, choices=[("", "모름"), ("growing", "성장 중"), ("adult", "성장 완료")], blank=True)
+    groups_version = models.PositiveIntegerField(default=1)
     size = models.CharField(max_length=10, choices=SIZES, blank=True)
     birth_date = models.DateField(null=True, blank=True)
     sex = models.CharField(max_length=10, choices=[("", "모름"), ("male", "수컷"), ("female", "암컷")], blank=True)
@@ -233,3 +237,16 @@ class CareCadence(models.Model):
             models.UniqueConstraint(fields=["room", "module", "variant_field", "variant_value"], name="unique_care_cadence_activity"),
             models.CheckConstraint(condition=models.Q(interval__gte=1, interval__lte=366), name="cadence_interval_range"),
         ]
+
+
+class ModuleGroup(models.Model):
+    """A room's display organization; never changes analytical meaning or record ownership."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="module_groups")
+    name = models.CharField(max_length=40)
+    keys = models.JSONField(default=list)
+    position = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["position", "id"]
+        constraints = [models.UniqueConstraint(fields=["room", "name"], name="unique_room_module_group_name")]

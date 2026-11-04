@@ -139,7 +139,7 @@ def update_room(member, form):
     room = Room.objects.get(pk=member.room_id)
     if form.cleaned_data.get("version") != room.settings_version:
         raise Conflict("다른 참여자가 방 설정을 변경했습니다. 새로고침 후 다시 확인해 주세요.")
-    for key in ("name", "species", "subspecies", "size", "birth_date", "sex", "timezone"):
+    for key in ("name", "species", "subspecies", "breed_key", "size_origin", "maturity", "size", "birth_date", "sex", "timezone"):
         setattr(room, key, form.cleaned_data[key])
     if member.role == "owner":
         room.guest_sensitive = form.cleaned_data["guest_sensitive"]
