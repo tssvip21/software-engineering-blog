@@ -1,0 +1,22 @@
+# Runtime versions verified in the local Windows Python 3.13 environment.
+# Regenerate and re-test when changing dependencies.
+asgiref==3.13.0
+certifi==2026.10.23
+cffi==2.1.1
+charset-normalizer==3.5.2
+cryptography==50.0.2
+Django==5.2.18
+google-auth==2.62.1
+idna==3.20
+pyasn1==0.6.5
+pyasn1_modules==0.4.2
+pycparser==3.12
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.4
+requests==2.34.2
+six==1.17.0
+sqlparse==0.6.1
+tzdata==2026.6
+urllib3==2.8.0
+waitress==3.0.2
+whitenoise==6.12.0

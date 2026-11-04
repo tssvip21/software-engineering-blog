@@ -1,0 +1,209 @@
+import uuid
+from django.conf import settings
+from django.db import models
+from django.db.models import Q, F
+from django.utils import timezone
+
+SPECIES = [("dog", "강아지"), ("cat", "고양이"), ("bird", "조류·앵무새"), ("reptile", "파충류"), ("amphibian", "양서류"), ("other", "그 밖의 동물")]
+SIZES = [("", "모름·해당 없음"), ("small", "소형"), ("medium", "중형"), ("large", "대형")]
+ROLES = [("owner", "방장"), ("admin", "관리자"), ("guest", "참여자")]
+STATES = [("done", "완료"), ("active", "진행 중"), ("planned", "예정")]
+
+class GoogleAccount(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    subject = models.CharField(max_length=255, unique=True)
+
+class Room(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    name = models.CharField(max_length=40)
+    species = models.CharField(max_length=16, choices=SPECIES)
+    subspecies = models.CharField(max_length=80, blank=True)
+    size = models.CharField(max_length=10, choices=SIZES, blank=True)
+    birth_date = models.DateField(null=True, blank=True)
+    sex = models.CharField(max_length=10, choices=[("", "모름"), ("male", "수컷"), ("female", "암컷")], blank=True)
+    timezone = models.CharField(max_length=64, default="Asia/Seoul")
+    guest_sensitive = models.BooleanField(default=False)
+    archived_at = models.DateTimeField(null=True, blank=True)
+    settings_version = models.PositiveIntegerField(default=1)
+    revision = models.PositiveBigIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return self.name
+
+class Membership(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="members")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT)
+    guest_key = models.UUIDField(null=True, blank=True)
+    display_name = models.CharField(max_length=40)
+    role = models.CharField(max_length=10, choices=ROLES, default="guest")
+    active = models.BooleanField(default=True)
+    joined_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=(Q(user__isnull=False, guest_key__isnull=True) | Q(user__isnull=True, guest_key__isnull=False)), name="member_exactly_one_identity"),
+            models.CheckConstraint(condition=(Q(role="guest") | Q(user__isnull=False)), name="privileged_member_authenticated"),
+            models.UniqueConstraint(fields=["room", "user"], condition=Q(user__isnull=False), name="one_user_per_room"),
+            models.UniqueConstraint(fields=["room", "guest_key"], condition=Q(guest_key__isnull=False), name="one_guest_per_room"),
+            models.UniqueConstraint(fields=["room"], condition=Q(role="owner"), name="one_owner_per_room"),
+        ]
+    @property
+    def can_manage(self):
+        return self.active and self.role in ("owner", "admin") and self.user_id is not None
+    @property
+    def role_label(self):
+        return "게스트" if self.role == "guest" and self.user_id is None else self.get_role_display()
+    def __str__(self):
+        return self.display_name
+
+class ModuleSetting(models.Model):
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="module_settings")
+    key = models.CharField(max_length=24)
+    enabled = models.BooleanField(default=False)
+    position = models.PositiveSmallIntegerField(default=0)
+    class Meta:
+        ordering = ["position", "id"]
+        constraints = [models.UniqueConstraint(fields=["room", "key"], name="unique_room_module")]
+
+class Product(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="products")
+    name = models.CharField(max_length=100)
+    category = models.CharField(max_length=8, choices=[("meal", "식사"), ("treat", "간식"), ("both", "공용")], default="meal")
+    energy = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    energy_basis = models.CharField(max_length=10, choices=[("100g", "kcal / 100 g"), ("kg", "kcal / kg"), ("piece", "kcal / 개"), ("100ml", "kcal / 100 ml")], default="100g")
+    grams_per_piece = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
+    protein = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    protein_kind = models.CharField(max_length=8, choices=[("exact", "표시값"), ("min", "최소"), ("max", "최대")], default="min")
+    fat = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    fat_kind = models.CharField(max_length=8, choices=[("exact", "표시값"), ("min", "최소"), ("max", "최대")], default="min")
+    source = models.CharField(max_length=300, blank=True)
+    active = models.BooleanField(default=True)
+    version = models.PositiveIntegerField(default=1)
+    updated_at = models.DateTimeField(auto_now=True)
+    def __str__(self):
+        return self.name
+
+class Activity(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="activities")
+    module = models.CharField(max_length=24)
+    author = models.ForeignKey(Membership, on_delete=models.PROTECT, related_name="authored")
+    performer = models.ForeignKey(Membership, on_delete=models.PROTECT, null=True, blank=True, related_name="performed")
+    occurred_at = models.DateTimeField(default=timezone.now)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=10, choices=STATES, default="done")
+    payload = models.JSONField(default=dict)
+    nutrition = models.JSONField(default=dict)
+    note = models.CharField(max_length=2000, blank=True)
+    voided = models.BooleanField(default=False)
+    void_reason = models.CharField(max_length=300, blank=True)
+    version = models.PositiveIntegerField(default=1)
+    client_key = models.UUIDField(default=uuid.uuid4)
+    fingerprint = models.CharField(max_length=64, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    class Meta:
+        ordering = ["-occurred_at", "-created_at"]
+        indexes = [models.Index(fields=["room", "module", "occurred_at"]), models.Index(fields=["room", "status", "voided"])]
+        constraints = [models.UniqueConstraint(fields=["room", "client_key"], name="unique_room_request"), models.CheckConstraint(condition=(Q(ended_at__isnull=True) | Q(ended_at__gte=F("occurred_at"))), name="end_not_before_start")]
+
+class ActivityRevision(models.Model):
+    activity = models.ForeignKey(Activity, on_delete=models.CASCADE, related_name="revisions")
+    actor = models.ForeignKey(Membership, on_delete=models.PROTECT)
+    before = models.JSONField(default=dict)
+    after = models.JSONField(default=dict)
+    reason = models.CharField(max_length=300)
+    created_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+class Invitation(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="invitations")
+    token_hash = models.CharField(max_length=64, unique=True)
+    created_by = models.ForeignKey(Membership, on_delete=models.PROTECT)
+    expires_at = models.DateTimeField()
+    max_uses = models.PositiveIntegerField(default=10)
+    uses = models.PositiveIntegerField(default=0)
+    revoked = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    @property
+    def usable(self):
+        return not self.revoked and self.expires_at > timezone.now() and self.uses < self.max_uses and self.room.archived_at is None
+
+class Routine(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="routines")
+    name = models.CharField(max_length=80)
+    at = models.TimeField()
+    weekdays = models.JSONField(default=list)
+    assignee = models.ForeignKey(Membership, null=True, blank=True, on_delete=models.PROTECT)
+    start_date = models.DateField()
+    active = models.BooleanField(default=True)
+    version = models.PositiveIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        ordering = ["at", "name"]
+
+class RoutineItem(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    routine = models.ForeignKey(Routine, on_delete=models.CASCADE, related_name="items")
+    module = models.CharField(max_length=24)
+    position = models.PositiveSmallIntegerField(default=0)
+    active = models.BooleanField(default=True)
+    class Meta:
+        ordering = ["position", "id"]
+
+class RoutineVersion(models.Model):
+    routine = models.ForeignKey(Routine, on_delete=models.CASCADE, related_name="versions")
+    effective_on = models.DateField()
+    snapshot = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        ordering = ["-effective_on", "-id"]
+
+class RoutineRun(models.Model):
+    item = models.ForeignKey(RoutineItem, on_delete=models.CASCADE, related_name="runs")
+    date = models.DateField()
+    activity = models.OneToOneField(Activity, null=True, blank=True, on_delete=models.SET_NULL, related_name="routine_run")
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["item", "date"], name="one_routine_execution")]
+
+class Reference(models.Model):
+    key = models.CharField(max_length=80, unique=True)
+    species = models.CharField(max_length=16, choices=SPECIES)
+    size = models.CharField(max_length=10, blank=True)
+    module = models.CharField(max_length=24)
+    metric = models.CharField(max_length=30)
+    label = models.CharField(max_length=120)
+    low = models.DecimalField(max_digits=12, decimal_places=3)
+    high = models.DecimalField(max_digits=12, decimal_places=3)
+    unit = models.CharField(max_length=24)
+    source_name = models.CharField(max_length=160)
+    source_url = models.URLField(max_length=500)
+    conditions = models.CharField(max_length=1000)
+    checked_on = models.DateField()
+
+class AuditEvent(models.Model):
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="audit")
+    actor = models.ForeignKey(Membership, null=True, on_delete=models.PROTECT)
+    action = models.CharField(max_length=60)
+    details = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+class RateBucket(models.Model):
+    key = models.CharField(max_length=64, primary_key=True)
+    period = models.BigIntegerField()
+    count = models.PositiveIntegerField(default=0)
+
+
+class ModuleConfigVersion(models.Model):
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="module_versions")
+    effective_at = models.DateTimeField(default=timezone.now)
+    settings = models.JSONField(default=dict)
+    class Meta:
+        ordering = ["-effective_at", "-id"]
