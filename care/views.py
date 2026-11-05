@@ -1,4 +1,5 @@
 from .organization import browse_context
+from .navigation import record_return, with_return
 from datetime import date, timedelta
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
@@ -191,7 +192,7 @@ def record_form_view(request, room_id, module, activity=None):
         try:
             record, changed = services.save_activity(member, module, form, activity.pk if activity else None)
             messages.success(request, "기록을 저장했어요." if changed else "이미 저장된 기록입니다. 중복으로 추가하지 않았습니다.")
-            return redirect("record_detail", room_id=room.pk, activity_id=record.pk)
+            return redirect(with_return(reverse("record_detail", args=[room.pk, record.pk]), record_return(request, room)))
         except ValidationError as exc:
             add_form_error(form, exc)
             status = 409 if isinstance(exc, services.Conflict) else 400
@@ -199,7 +200,7 @@ def record_form_view(request, room_id, module, activity=None):
             form.add_error(None, "저장소가 잠시 사용 중입니다. 입력 내용은 그대로입니다. 잠시 후 같은 화면에서 다시 저장해 주세요.")
             status = 503
     return render(request, "care/record_form.html", {"title": MODULES[module].name + (" 기록 수정" if activity else " 기록"), "form": form,
-                  "spec": MODULES[module], "activity": activity, "active_tab": "modules", "back_url": reverse("module", args=[room.pk, module])}, status=status)
+                  "spec": MODULES[module], "activity": activity, "active_tab": "modules", "return_to": record_return(request, room), "back_url": with_return(reverse("record_detail", args=[room.pk, activity.pk]), record_return(request, room)) if activity else reverse("module", args=[room.pk, module])}, status=status)
 
 
 def datetime_for_day(room, day, at):
@@ -219,7 +220,7 @@ def record_detail(request, room_id, activity_id):
         revision.before_values = payload_display(activity.module, revision.before.get("payload", {})) if revision.before else []
     run = RoutineRun.objects.filter(activity=activity).select_related("item__routine").first()
     return render(request, "care/record_detail.html", {"title": activity.spec.name + " 기록", "activity": activity, "details": payload_display(activity.module, activity.payload),
-                  "revisions": revisions, "run": run, "cancel_form": CancelForm(initial={"version": activity.version}), "active_tab": "records"})
+                  "revisions": revisions, "run": run, "return_to": record_return(request, room), "edit_url": with_return(reverse("record_edit", args=[room.pk, activity.pk]) + ("?finish=1" if activity.status == "active" else ""), record_return(request, room)), "cancel_form": CancelForm(initial={"version": activity.version}), "active_tab": "records"})
 
 
 @require_POST
@@ -233,7 +234,7 @@ def record_cancel(request, room_id, activity_id):
         try:
             services.cancel_activity(member, activity.pk, form.cleaned_data["version"], form.cleaned_data["reason"])
             messages.success(request, "기록을 취소했어요. 통계에서 제외하고 변경 이력은 유지합니다.")
-            return redirect("record_detail", room_id=room.pk, activity_id=activity.pk)
+            return redirect(with_return(reverse("record_detail", args=[room.pk, activity.pk]), record_return(request, room)))
         except ValidationError as exc:
             add_form_error(form, exc)
             status = 409 if isinstance(exc, services.Conflict) else 400

@@ -3,7 +3,7 @@ import json
 from django.core.exceptions import ValidationError
 from django.db import OperationalError
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views.decorators.http import require_GET, require_http_methods
 from . import services, organization, insights
 from .modules import MODULES
@@ -28,7 +28,7 @@ def overview_page(request,room_id):
 @require_GET
 def analysis_method(request,room_id):
     services.get_room(request,room_id)
-    return render(request,"care/analysis_method.html",{"title":"종합 상태의 계산 기준","active_tab":"overview"})
+    return redirect("overview", room_id=room_id)
 
 
 @require_GET

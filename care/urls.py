@@ -1,8 +1,9 @@
 from django.conf import settings
 from django.urls import path
-from . import auth, views, interactions, workspace
+from . import auth, views, interactions, workspace, browsing
 
 urlpatterns = [
+    path("rooms/<uuid:room_id>/categories/<slug:category>/config/", browsing.category_config, name="category_config"),
     path("rooms/<uuid:room_id>/groups/", workspace.group_page, name="group_page"),
     path("rooms/<uuid:room_id>/groups/config/", workspace.group_config, name="group_config"),
     path("rooms/<uuid:room_id>/analysis/method/", workspace.analysis_method, name="analysis_method"),
@@ -30,7 +31,7 @@ urlpatterns = [
     path("rooms/<uuid:room_id>/modules/<slug:module>/", views.module_page, name="module"),
     path("rooms/<uuid:room_id>/modules/<slug:module>/new/", views.record_new, name="record_new"),
     path("rooms/<uuid:room_id>/modules/<slug:module>/statistics/", views.statistics, name="statistics"),
-    path("rooms/<uuid:room_id>/records/", views.records, name="records"),
+    path("rooms/<uuid:room_id>/records/", browsing.records, name="records"),
     path("rooms/<uuid:room_id>/records/<uuid:activity_id>/", views.record_detail, name="record_detail"),
     path("rooms/<uuid:room_id>/records/<uuid:activity_id>/edit/", views.record_edit, name="record_edit"),
     path("rooms/<uuid:room_id>/records/<uuid:activity_id>/cancel/", views.record_cancel, name="record_cancel"),
