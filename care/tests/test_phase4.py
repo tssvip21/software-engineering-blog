@@ -190,3 +190,62 @@ class StatusContextTests(CareCase):
         self.room.refresh_from_db()
         save_groups(self.owner, {"version": self.room.groups_version, "groups": [{"name": "아침", "keys": ["meal", "walk"]}]})
         self.assertEqual(before, context_for(self.owner))
+
+
+class Phase4AdditionalBoundaries(CareCase):
+    def test_category_navigation_counts_remain_useful_after_module_selection(self):
+        self.make("meal"); self.make("walk"); self.make("expense")
+        response = self.client.get(reverse("records", args=[self.room.pk]), {"category":"nutrition", "module":"meal"})
+        counts = {c["key"]:c["count"] for c in response.context["record_categories"]}
+        self.assertEqual(counts["activity"], 1)
+        self.assertEqual(counts["living"], 1)
+        self.assertEqual(len(response.context["page_obj"]), 1)
+        guest = self.client_for(self.guest).get(reverse("records", args=[self.room.pk]), {"module":"meal"})
+        self.assertEqual({c["key"]:c["count"] for c in guest.context["record_categories"]}["living"], 0)
+
+    def test_today_weight_is_visible_but_not_added_to_closed_day_comparison(self):
+        row = self.make("weight", weight="8.5", unit="kg")
+        result = context_for(self.owner)
+        self.assertEqual(str(result["latest_measurement"]["value"]), "8.5")
+        self.assertEqual(result["summary"]["count"], 0)
+        self.assertNotIn(str(row.pk), {i for m in result["insight"]["metrics"] for i in m["source_ids"]})
+
+    def test_revision_status_uses_korean_label_without_rewriting_saved_history(self):
+        from care.models import ActivityRevision
+        row = self.make("meal")
+        before = list(ActivityRevision.objects.filter(activity=row).values("before", "after"))
+        response = self.client.get(reverse("record_detail", args=[self.room.pk,row.pk]))
+        self.assertContains(response, "완료")
+        self.assertEqual(list(ActivityRevision.objects.filter(activity=row).values("before", "after")), before)
+
+    def test_saved_back_link_includes_author_dates_and_page(self):
+        a = self.make("meal")
+        query = urlencode({"category":"nutrition","module":"meal","author":str(self.owner.pk),"start":"2026-01-01","q":"보리","page":"2"})
+        wanted = reverse("records",args=[self.room.pk])+"?"+query
+        response = self.client.get(reverse("record_edit",args=[self.room.pk,a.pk]), {"return_to":wanted})
+        self.assertContains(response, "return_to")
+        self.assertEqual(response.context["return_to"], wanted)
+
+
+class Phase4InterpretationTests(SimpleTestCase):
+    def test_same_direction_activity_weight_not_described_as_opposite_directions(self):
+        from care.status_view import plain_result
+        result = assess(scenario(weight=11,activity=60), END)
+        self.assertEqual(result["code"], "mixed")
+        self.assertNotIn("서로 다른 방향", plain_result(result)["title"])
+
+    def test_change_day_overlap_is_not_only_shared_observation_days(self):
+        rows=[]
+        for offset in range(35):
+            day=END-timedelta(days=offset)
+            rows.append(record("weight",day,11 if offset in (0,1,2,3,4) else 10))
+            rows.append(record("meal",day,150 if offset in (2,3,4,5,6) else 100))
+        result=assess(rows,END)
+        relation=next(r for r in result["relations"] if r["key"]=="food-weight")
+        self.assertEqual(relation["overlap_days"], 3)
+
+    def test_insufficient_measurements_never_gain_confidence_from_grouping(self):
+        rows=[record("weight",END,10),record("meal",END,120),record("walk",END,20)]
+        result=assess(rows,END)
+        self.assertEqual(result["code"],"collecting")
+        self.assertEqual(result["relations"],[])

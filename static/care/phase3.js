@@ -25,8 +25,8 @@
       function filter(){const query=(search?.value||'').trim().toLocaleLowerCase('ko');let count=0;
         browseSelections.set(scope,{category,group,query:search?.value||''});
         $$('[data-module-key],[data-catalog-key]',root).forEach(row=>{const key=row.dataset.moduleKey||row.dataset.catalogKey;row.hidden=!((category==='all'||memberships[category]?.has(key))&&(group==='all'||memberships[group]?.has(key))&&row.dataset.search.toLocaleLowerCase('ko').includes(query));if(!row.hidden)count++;});
-        $$('[data-module-section]',root).forEach(section=>{const n=$$('[data-module-key]:not([hidden])',section).length;section.hidden=n===0;const c=$('[data-section-count]',section);if(c)c.textContent=n;});
-        const empty=$('[data-browser-empty]',root),counter=$('[data-browse-count]',root);if(empty)empty.hidden=count!==0;if(counter)counter.textContent=count+'개 활동';
+        $$('[data-module-section]',root).forEach(section=>{const n=$$('[data-module-key]:not([hidden])',section).length;section.hidden=n===0&&!(section.hasAttribute('data-empty-manage')&&(category==='all'||category===section.dataset.sectionCategory)&&group==='all'&&!query);const c=$('[data-section-count]',section);if(c)c.textContent=n;});
+        const empty=$('[data-browser-empty]',root),counter=$('[data-browse-count]',root);if(empty)empty.hidden=count!==0;if(counter)counter.textContent=count+'개 기능';
         $$('[data-module-filter]',root).forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.moduleFilter===category)));
       }
       root.addEventListener('click',e=>{const b=e.target.closest('[data-module-filter]');if(b){category=b.dataset.moduleFilter;filter();}if(e.target.closest('[data-clear-browse]')){category=group='all';if(search)search.value='';if(select)select.value='all';filter();}});
@@ -56,7 +56,7 @@
       if(['mixed','unknown','custom',''].includes(breed.value)&&userChange)source.value=sizePreference='manual';
       const suggested=chosen()?.sizes[sex?.value||'']||'';
       if(source.value==='auto')size.value=suggested;
-      hint.textContent=source.value==='manual'?'직접 고른 체격을 사용해요. 모르면 비워 두어도 돼요.':suggested?'품종 자료의 성견 범위로 제안했어요. 체격을 바꾸면 직접 선택으로 전환돼요.':'확인된 범위가 없거나 경계에 걸쳐 있어요. 체격을 직접 선택하거나 비워 두세요.';
+      hint.textContent=source.value==='manual'?'직접 고른 체격을 사용해요. 모르면 비워 두어도 돼요.':suggested?'품종 자료를 바탕으로 체격을 선택했어요. 우리 반려동물과 다르면 직접 바꿔 주세요.':'이 품종은 체격을 하나로 정하기 어려워요. 직접 고르거나 비워 두세요.';
     }
     function updateSelection(){selected.textContent='선택: '+text();free.closest('.field').hidden=Boolean(chosen());setSize(true);breed.dispatchEvent(new Event('change',{bubbles:true}));close();}
     function choose(key){breed.value=key;updateSelection();input.focus({preventScroll:true});close();}
@@ -98,22 +98,22 @@
     const current=()=>rows().map(row=>({id:row.dataset.id,name:$('[data-group-name]',row).value.trim(),keys:$$('[data-group-key]:checked',row).map(x=>x.dataset.groupKey)}));
     const equal=(a,b)=>JSON.stringify(a.map(g=>({...g,keys:[...g.keys].sort()})))===JSON.stringify(b.map(g=>({...g,keys:[...g.keys].sort()})));
     function announce(text,error=false){status.textContent=text;status.classList.toggle('form-errors',error);editor.dataset.status=error?'error':groupDirty?'dirty':'saved';}
-    function changed(){groupDirty=!equal(current(),state.groups);$('#groups-empty').hidden=rows().length>0;rows().forEach((row,index)=>{$('.group-drag-handle',row).setAttribute('aria-label',`${index+1}번째 그룹 순서 이동`);$('.group-summary',row).textContent=$$('[data-group-key]:checked',row).map(x=>modules.find(m=>m.key===x.dataset.groupKey)?.name||'').join(' · ')||'아직 모듈을 넣지 않았어요.';});announce(groupDirty?'변경한 그룹을 저장해 주세요.':'저장된 그룹이에요.');}
+    function changed(){groupDirty=!equal(current(),state.groups);$('#groups-empty').hidden=rows().length>0;rows().forEach((row,index)=>{$('.group-drag-handle',row).setAttribute('aria-label',`${index+1}번째 그룹 순서 이동`);$('.group-summary',row).textContent=$$('[data-group-key]:checked',row).map(x=>modules.find(m=>m.key===x.dataset.groupKey)?.name||'').join(' · ')||'이 그룹에 선택한 기능이 없어요.';});announce(groupDirty?'변경한 그룹을 저장해 주세요.':'저장된 그룹이에요.');}
     function rowFor(g,open=false){const row=document.createElement('section');row.className='group-editor-row';row.dataset.id=g.id;const header=document.createElement('div');header.className='group-row-heading';
       const handle=document.createElement('button');handle.type='button';handle.className='drag-handle group-drag-handle icon-button';handle.title='잡아서 이동 · Space로 선택, 방향키로 이동';handle.append(icon('grip'));
       const name=document.createElement('input');name.type='text';name.maxLength=40;name.required=true;name.value=g.name;name.dataset.groupName='';name.setAttribute('aria-label','그룹 이름');name.placeholder='그룹 이름';
-      const remove=document.createElement('button');remove.type='button';remove.className='icon-button remove-group';remove.dataset.removeGroup='';remove.setAttribute('aria-label','이 그룹 삭제');remove.title='그룹만 삭제 · 모듈과 기록은 유지';remove.append(icon('close'));header.append(handle,name,remove);row.append(header);
-      const summaryText=document.createElement('p');summaryText.className='group-summary';row.append(summaryText);const details=document.createElement('details');details.open=open;const summary=document.createElement('summary');summary.textContent='모듈 선택·변경';details.append(summary);
-      const choices=document.createElement('fieldset');choices.className='group-selection';const legend=document.createElement('legend');legend.className='sr-only';legend.textContent='그룹에 넣을 모듈';choices.append(legend);
+      const remove=document.createElement('button');remove.type='button';remove.className='icon-button remove-group';remove.dataset.removeGroup='';remove.setAttribute('aria-label','이 그룹 삭제');remove.title='이 그룹만 삭제 · 기능과 기록은 유지';remove.append(icon('close'));header.append(handle,name,remove);row.append(header);
+      const summaryText=document.createElement('p');summaryText.className='group-summary';row.append(summaryText);const details=document.createElement('details');details.open=open;const summary=document.createElement('summary');summary.textContent='기능 선택·변경';details.append(summary);
+      const choices=document.createElement('fieldset');choices.className='group-selection';const legend=document.createElement('legend');legend.className='sr-only';legend.textContent='그룹에 넣을 기능';choices.append(legend);
       modules.forEach(m=>{const label=document.createElement('label'),checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.dataset.groupKey=m.key;checkbox.checked=g.keys.includes(m.key);label.append(checkbox,document.createTextNode(m.name));choices.append(label);});details.append(choices);row.append(details);return row;
     }
     function render(data){list.replaceChildren(...data.groups.map(g=>rowFor(g)));state=data;version=data.version;groupDirty=false;reload.hidden=true;changed();}
     render(state);
     editor.addEventListener('input',changed);editor.addEventListener('change',changed);
     editor.addEventListener('click',e=>{if(drag||keyboard)return;if(e.target.closest('[data-group-add]')){if(rows().length>=20){announce('그룹은 최대 20개까지 만들 수 있어요.',true);return;}const row=rowFor({id:crypto.randomUUID(),name:'',keys:[]},true);list.append(row);changed();$('[data-group-name]',row).focus();}
-      if(e.target.closest('[data-remove-group]')){const row=e.target.closest('.group-editor-row');if(!confirm('이 그룹만 삭제할까요? 모듈과 돌봄 기록은 그대로 유지돼요.'))return;const next=row.nextElementSibling||row.previousElementSibling;row.remove();changed();(next?$('[data-group-name]',next):$('[data-group-add]')).focus();}});
+      if(e.target.closest('[data-remove-group]')){const row=e.target.closest('.group-editor-row');if(!confirm('이 그룹을 삭제할까요? 사용 중인 기능과 돌봄 기록은 그대로 남아요.'))return;const next=row.nextElementSibling||row.previousElementSibling;row.remove();changed();(next?$('[data-group-name]',next):$('[data-group-add]')).focus();}});
     editor.addEventListener('submit',async e=>{e.preventDefault();if(saving||drag||keyboard)return;if(!editor.reportValidity())return;saving=true;const button=$('button[type=submit]',editor);button.disabled=true;const desired=current();announce('그룹을 저장하고 있어요…');
-      try{const data=await api(editor.dataset.endpoint,{version,groups:desired});if(equal(current(),desired)){state=data;version=data.version;groupDirty=false;reload.hidden=true;announce('그룹을 저장했어요. 돌봄 모듈과 전체 모듈에서 사용할 수 있어요.');}else{state=data;version=data.version;changed();}}
+      try{const data=await api(editor.dataset.endpoint,{version,groups:desired});if(equal(current(),desired)){state=data;version=data.version;groupDirty=false;reload.hidden=true;announce('그룹을 저장했어요. 돌봄 기능에서 선택해 볼 수 있어요.');}else{state=data;version=data.version;changed();}}
       catch(error){if(!error.status){try{const server=await api(editor.dataset.endpoint);if(equal(server.groups,desired)){state=server;version=server.version;changed();announce('서버에 저장된 그룹을 확인했어요.');return;}}catch(_){} }
         announce(error.status===409?'다른 참여자가 그룹을 바꿨어요. 내 변경은 남아 있어요. 최신 그룹을 확인한 뒤 다시 편집해 주세요.':error.name==='AbortError'?'연결이 늦어지고 있어요. 입력은 유지돼요. 다시 저장해 주세요.':error.message,true);reload.hidden=false;
       }finally{saving=false;button.disabled=false;}});

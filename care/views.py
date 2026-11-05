@@ -51,19 +51,19 @@ def home(request):
 @require_http_methods(["GET", "POST"])
 def room_new(request):
     if not request.user.is_authenticated:
-        messages.info(request, "반려동물 방을 만들려면 먼저 구글 계정으로 로그인해 주세요.")
+        messages.info(request, "반려동물을 등록하려면 구글 계정으로 로그인해 주세요.")
         return redirect("home")
     form = RoomForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         try:
             if not services.rate_limit(request, "room-create", 10, 3600):
-                return error(request, "잠시 후 다시 시도해 주세요", "방 생성 요청이 너무 많습니다.", 429)
+                return error(request, "잠시 후 다시 시도해 주세요", "등록 요청이 여러 번 이어졌어요. 잠시 후 다시 시도해 주세요.", 429)
             room = services.create_room(request.user, form)
-            messages.success(request, "돌봄 공간을 만들었어요. 첫 기록을 남겨 보세요.")
+            messages.success(request, "반려동물을 등록했어요. 오늘의 돌봄을 남겨 보세요.")
             return redirect("today", room_id=room.pk)
         except ValidationError as exc:
             add_form_error(form, exc)
-    return render(request, "care/form.html", {"form": form, "title": "반려동물 등록", "eyebrow": "새 돌봄 공간", "intro": "이름과 종류만 먼저 정하세요. 모르는 정보는 나중에 채워도 됩니다.", "submit_label": "돌봄 공간 만들기", "back_url": reverse("home")})
+    return render(request, "care/form.html", {"form": form, "title": "반려동물 등록", "eyebrow": "새 돌봄 공간", "intro": "이름과 동물 종류를 알려 주세요. 나머지는 나중에 적어도 돼요.", "submit_label": "돌봄 공간 만들기", "back_url": reverse("home")})
 
 
 @require_GET
@@ -122,7 +122,7 @@ def modules(request, room_id):
         groups.setdefault(spec.group, []).append(row)
         if setting.enabled:
             enabled_modules.append(row)
-    return render(request, "care/modules.html", {"title": "돌봄 모듈", "groups": groups.items(), "enabled_modules": enabled_modules, "active_tab": "modules", "hidden_count": len(MODULES) - len(allowed)})
+    return render(request, "care/modules.html", {"title": "돌봄 기능", "groups": groups.items(), "enabled_modules": enabled_modules, "active_tab": "modules", "hidden_count": len(MODULES) - len(allowed)})
 
 
 @require_http_methods(["GET", "POST"])
@@ -136,14 +136,14 @@ def module_settings(request, room_id):
             order = json.loads(request.POST.get("order", "[]"))
             version = int(request.POST.get("version", "0"))
             services.update_modules(member, enabled, order, version, request.POST.getlist("pinned") if "pin_config" in request.POST else None)
-            messages.success(request, "모듈 구성을 저장했어요. 꺼진 모듈의 이전 기록은 유지돼요.")
+            messages.success(request, "사용할 기능을 저장했어요. 사용하지 않는 기능의 기록도 그대로 남아 있어요.")
             return redirect("modules", room_id=room.pk)
         except (ValueError, TypeError, ValidationError) as exc:
-            problem = " ".join(exc.messages) if isinstance(exc, ValidationError) else "모듈 설정값을 확인해 주세요."
+            problem = " ".join(exc.messages) if isinstance(exc, ValidationError) else "선택한 기능을 다시 확인해 주세요."
             status = 409 if isinstance(exc, services.Conflict) else 400
     settings_rows = list(room.module_settings.all())
     rows = [{"spec": MODULES[s.key], "enabled": s.enabled, "pinned": s.pinned} for s in settings_rows]
-    return render(request, "care/module_settings.html", {"title": "모듈 구성", "rows": rows, "config_state": config_state(room), "chosen": [r for r in rows if r["enabled"]], "order_json": json.dumps([s.key for s in settings_rows]),
+    return render(request, "care/module_settings.html", {"title": "기능 설정", "rows": rows, "config_state": config_state(room), "chosen": [r for r in rows if r["enabled"]], "order_json": json.dumps([s.key for s in settings_rows]),
                   "problem": problem, "active_tab": "settings", **browse_context(member)}, status=status)
 
 
@@ -167,9 +167,9 @@ def record_form_view(request, room_id, module, activity=None):
     try:
         services.require_module(member, module, adding=activity is None)
     except ValidationError as exc:
-        return error(request, "모듈이 꺼져 있습니다", " ".join(exc.messages), 409)
+        return error(request, "사용하지 않는 기능이에요", " ".join(exc.messages), 409)
     if activity and activity.voided:
-        return error(request, "취소한 기록입니다", "기존 이력은 상세 화면에서 확인하고, 필요한 경우 새로 기록해 주세요.", 409)
+        return error(request, "취소한 기록이에요", "기존 이력은 상세 화면에서 확인하고, 필요한 경우 새로 기록해 주세요.", 409)
     initial = {}
     if request.method == "GET":
         if request.GET.get("routine_item"):
@@ -191,13 +191,13 @@ def record_form_view(request, room_id, module, activity=None):
     if request.method == "POST" and form.is_valid():
         try:
             record, changed = services.save_activity(member, module, form, activity.pk if activity else None)
-            messages.success(request, "기록을 저장했어요." if changed else "이미 저장된 기록입니다. 중복으로 추가하지 않았습니다.")
+            messages.success(request, "기록을 저장했어요." if changed else "이미 저장한 기록이에요. 같은 기록을 다시 만들지 않았어요.")
             return redirect(with_return(reverse("record_detail", args=[room.pk, record.pk]), record_return(request, room)))
         except ValidationError as exc:
             add_form_error(form, exc)
             status = 409 if isinstance(exc, services.Conflict) else 400
         except OperationalError:
-            form.add_error(None, "저장소가 잠시 사용 중입니다. 입력 내용은 그대로입니다. 잠시 후 같은 화면에서 다시 저장해 주세요.")
+            form.add_error(None, "지금은 기록을 저장할 수 없어요. 입력은 유지했으니 잠시 후 다시 저장해 주세요.")
             status = 503
     return render(request, "care/record_form.html", {"title": MODULES[module].name + (" 기록 수정" if activity else " 기록"), "form": form,
                   "spec": MODULES[module], "activity": activity, "active_tab": "modules", "return_to": record_return(request, room), "back_url": with_return(reverse("record_detail", args=[room.pk, activity.pk]), record_return(request, room)) if activity else reverse("module", args=[room.pk, module])}, status=status)
@@ -233,7 +233,7 @@ def record_cancel(request, room_id, activity_id):
     if form.is_valid():
         try:
             services.cancel_activity(member, activity.pk, form.cleaned_data["version"], form.cleaned_data["reason"])
-            messages.success(request, "기록을 취소했어요. 통계에서 제외하고 변경 이력은 유지합니다.")
+            messages.success(request, "기록을 취소했어요. 통계에는 포함하지 않고 수정 이력은 남겨요.")
             return redirect(with_return(reverse("record_detail", args=[room.pk, activity.pk]), record_return(request, room)))
         except ValidationError as exc:
             add_form_error(form, exc)
@@ -324,14 +324,14 @@ def statistics(request, room_id, module):
 def overview_page(request, room_id):
     room, member = services.get_room(request, room_id)
     context = integrated_context(member)
-    context.update({"title": "통합 상태", "active_tab": "overview", "live_page": True})
+    context.update({"title": "최근 변화", "active_tab": "overview", "live_page": True})
     return render(request, "care/overview.html", context)
 
 
 @require_GET
 def products(request, room_id):
     room, member = services.get_room(request, room_id)
-    return render(request, "care/products.html", {"title": "먹이·제품 정보", "products": room.products.order_by("-active", "name"), "active_tab": "settings"})
+    return render(request, "care/products.html", {"title": "사료·간식 정보", "products": room.products.order_by("-active", "name"), "active_tab": "settings"})
 
 
 @require_http_methods(["GET", "POST"])
@@ -344,12 +344,12 @@ def product_edit(request, room_id, product_id=None):
     if request.method == "POST" and form.is_valid():
         try:
             services.save_product(member, form, instance.pk if instance else None)
-            messages.success(request, "제품 정보를 저장했어요. 이전 기록의 계산값은 바뀌지 않습니다.")
+            messages.success(request, "제품 정보를 저장했어요. 이전 기록에 쓰인 영양 정보는 그대로예요.")
             return redirect("products", room_id=room.pk)
         except ValidationError as exc:
             add_form_error(form, exc)
             status = 409 if isinstance(exc, services.Conflict) else 400
-    return render(request, "care/form.html", {"title": "제품 정보 수정" if instance else "제품 등록", "intro": "모르는 영양값은 비워 두세요. 표시된 단위와 정보 출처를 함께 남겨요.",
+    return render(request, "care/form.html", {"title": "제품 정보 수정" if instance else "제품 등록", "intro": "포장지에서 확인한 값과 단위를 적어 주세요. 모르는 값은 비워 두세요.",
                   "form": form, "submit_label": "제품 저장", "back_url": reverse("products", args=[room.pk]), "active_tab": "settings"}, status=status)
 
 
@@ -357,18 +357,18 @@ def product_edit(request, room_id, product_id=None):
 def room_settings(request, room_id):
     room, member = services.get_room(request, room_id)
     if not member.can_manage:
-        return render(request, "care/room_info.html", {"title": "방 정보", "active_tab": "settings"})
+        return render(request, "care/room_info.html", {"title": "반려동물 정보", "active_tab": "settings"})
     form = RoomForm(request.POST or None, instance=room, member=member)
     status = 200
     if request.method == "POST" and form.is_valid():
         try:
             services.update_room(member, form)
-            messages.success(request, "방 정보를 저장했어요. 이미 선택한 모듈 구성은 유지돼요.")
+            messages.success(request, "정보를 저장했어요. 사용 중인 돌봄 기능은 바뀌지 않았어요.")
             return redirect("room_settings", room_id=room.pk)
         except ValidationError as exc:
             add_form_error(form, exc)
             status = 409 if isinstance(exc, services.Conflict) else 400
-    return render(request, "care/settings.html", {"title": "방 설정", "form": form, "active_tab": "settings"}, status=status)
+    return render(request, "care/settings.html", {"title": "공간 설정", "form": form, "active_tab": "settings"}, status=status)
 
 
 def members_context(room, member, form=None, invite_url=None):
@@ -391,7 +391,7 @@ def invitation_create(request, room_id):
     form = InvitationForm(request.POST)
     if form.is_valid():
         if not services.rate_limit(request, "invite-create", 20, 3600):
-            return error(request, "잠시 후 다시 시도해 주세요", "초대 생성 요청이 너무 많습니다.", 429)
+            return error(request, "잠시 후 다시 시도해 주세요", "초대 링크를 여러 번 만들었어요. 잠시 후 다시 만들어 주세요.", 429)
         _, token = services.create_invitation(member, form.cleaned_data["hours"], form.cleaned_data["max_uses"])
         request.session["created_invitation"] = {"room_id": str(room.pk), "url": settings.APP_ORIGIN + reverse("join") + "#" + token}
         return redirect("members", room_id=room.pk)
@@ -404,7 +404,7 @@ def invitation_revoke(request, room_id, invite_id):
     services.require_owner(member)
     get_object_or_404(room.invitations, pk=invite_id)
     services.revoke_invitation(member, invite_id)
-    messages.success(request, "초대 링크를 폐기했습니다. 기존 참여자를 내보내려면 별도로 선택해 주세요.")
+    messages.success(request, "초대 링크 사용을 중단했어요. 이미 참여한 사람을 내보내려면 구성원 메뉴에서 선택해 주세요.")
     return redirect("members", room_id=room.pk)
 
 
@@ -416,14 +416,14 @@ def join_entry(request):
 @require_POST
 def join_preview(request):
     if not services.rate_limit(request, "invite-preview", 30, 60):
-        return error(request, "잠시 후 다시 시도해 주세요", "초대 확인 요청이 너무 많습니다.", 429)
+        return error(request, "잠시 후 다시 시도해 주세요", "초대를 여러 번 확인했어요. 잠시 후 다시 열어 주세요.", 429)
     token = request.POST.get("token", "").strip()
     if "#" in token:
         token = token.rsplit("#", 1)[-1]
     try:
         invite = services.get_invitation(token)
     except ValidationError as exc:
-        return error(request, "초대를 확인할 수 없습니다", " ".join(exc.messages), 410)
+        return error(request, "초대를 확인하지 못했어요", " ".join(exc.messages), 410)
     form = JoinForm(initial={"token": token, "display_name": request.user.first_name[:40] if request.user.is_authenticated else ""})
     return render(request, "care/join.html", {"title": "돌봄 공간에 참여", "invited_room": invite.room, "form": form, "expires_at": invite.expires_at})
 
@@ -431,16 +431,16 @@ def join_preview(request):
 @require_POST
 def join_confirm(request):
     if not services.rate_limit(request, "invite-join", 12, 60):
-        return error(request, "잠시 후 다시 시도해 주세요", "참여 요청이 너무 많습니다.", 429)
+        return error(request, "잠시 후 다시 시도해 주세요", "참여 요청이 여러 번 이어졌어요. 잠시 후 다시 시도해 주세요.", 429)
     form = JoinForm(request.POST)
     try:
         invite = services.get_invitation(request.POST.get("token", ""))
     except ValidationError as exc:
-        return error(request, "초대를 확인할 수 없습니다", " ".join(exc.messages), 410)
+        return error(request, "초대를 확인하지 못했어요", " ".join(exc.messages), 410)
     if form.is_valid():
         try:
             member = services.join_room(request, form.cleaned_data["token"], form.cleaned_data["display_name"])
-            messages.success(request, "돌봄 공간에 참여했습니다. 담당한 활동을 기록해 주세요.")
+            messages.success(request, "함께 돌보는 공간에 참여했어요. 맡은 돌봄을 기록해 주세요.")
             return redirect("today", room_id=member.room_id)
         except ValidationError as exc:
             add_form_error(form, exc)
@@ -470,8 +470,8 @@ def room_leave(request, room_id):
     try:
         services.leave_room(member)
     except ValidationError as exc:
-        return error(request, "방을 나갈 수 없습니다", " ".join(exc.messages), 400)
-    messages.success(request, "돌봄 공간에서 나왔습니다. 작성한 기록은 공동 기록으로 유지돼요.")
+        return error(request, "지금은 이 공간에서 나갈 수 없어요", " ".join(exc.messages), 400)
+    messages.success(request, "이 공간에서 나왔어요. 함께 돌보며 남긴 기록은 그대로 남아요.")
     return redirect("home")
 
 
@@ -482,7 +482,7 @@ def room_archive(request, room_id):
         services.archive_room(member, request.POST.get("confirmation", ""))
     except ValidationError as exc:
         return error(request, "이름을 확인해 주세요", " ".join(exc.messages), 400)
-    messages.success(request, "방을 보관했습니다. 목록과 초대 접근은 차단하고 기존 기록은 저장소에 보존합니다.")
+    messages.success(request, "공간을 보관했어요. 목록에서 숨기고 새 참여를 막았으며, 기존 기록은 보관했어요.")
     return redirect("home")
 
 
@@ -511,12 +511,12 @@ def routine_edit(request, room_id, routine_id=None):
     if request.method == "POST" and form.is_valid():
         try:
             services.save_routine(member, form, routine_id)
-            messages.success(request, "루틴을 저장했어요. 오늘부터 변경된 일정을 사용합니다.")
+            messages.success(request, "루틴을 저장했어요. 바꾼 내용은 오늘부터 적용돼요.")
             return redirect("routines", room_id=room.pk)
         except ValidationError as exc:
             add_form_error(form, exc)
             status = 409 if isinstance(exc, services.Conflict) else 400
-    return render(request, "care/form.html", {"title": "루틴 수정" if instance else "새 루틴", "intro": "반복되는 활동을 묶어 두세요. 실제 활동을 기록해야 완료로 표시됩니다.",
+    return render(request, "care/form.html", {"title": "루틴 수정" if instance else "새 루틴", "intro": "같은 시간에 확인할 활동을 묶어 주세요. 돌봄 기록을 남기면 완료로 표시해요.",
                   "form": form, "submit_label": "루틴 저장", "back_url": reverse("routines", args=[room.pk]), "active_tab": "routines", "routine_form": True}, status=status)
 
 
@@ -539,7 +539,7 @@ def routine_link(request, room_id, item_id):
         try:
             activity_id = uuid.UUID(request.POST.get("activity", ""))
             services.link_activity(member, item.pk, day, activity_id)
-            messages.success(request, "기존 기록을 루틴에 연결했습니다. 새 기록은 만들지 않았습니다.")
+            messages.success(request, "이미 남긴 기록을 연결했어요. 같은 기록을 새로 만들지는 않았어요.")
             return redirect(reverse("routines", args=[room.pk]) + "?" + urlencode({"date": day.isoformat()}))
         except (ValueError, ValidationError) as exc:
             problem = " ".join(exc.messages) if isinstance(exc, ValidationError) else "연결할 기록을 선택해 주세요."
@@ -569,15 +569,15 @@ def bad_request(request, exception=None):
 
 
 def permission_denied(request, exception=None):
-    return error(request, "이 작업을 할 권한이 없습니다", "방의 참여 상태와 역할을 확인해 주세요. 다른 방의 기록은 열 수 없어요.", 403)
+    return error(request, "이 작업을 할 수 없어요", "이 공간에 참여 중인지, 필요한 권한이 있는지 확인해 주세요.", 403)
 
 
 def not_found(request, exception=None):
-    return error(request, "페이지를 찾을 수 없습니다", "주소가 바뀌었거나 참여 권한이 없는 돌봄 공간입니다.", 404)
+    return error(request, "페이지를 찾지 못했어요", "주소가 바뀌었거나 참여하지 않은 공간일 수 있어요.", 404)
 
 
 def server_error(request):
-    return error(request, "요청을 처리하지 못했습니다", "잠시 후 다시 시도해 주세요. 저장 여부가 불확실하면 전체 기록을 먼저 확인해 주세요.", 500)
+    return error(request, "요청을 완료하지 못했어요", "잠시 후 다시 시도해 주세요. 저장 여부가 불확실하면 전체 기록을 먼저 확인해 주세요.", 500)
 
 
 @require_POST
@@ -587,5 +587,5 @@ def room_delete(request, room_id):
         services.delete_room(member, request.POST.get("confirmation", ""))
     except ValidationError as exc:
         return error(request, "삭제 확인 문구를 확인해 주세요", " ".join(exc.messages), 400)
-    messages.success(request, "방과 관련 기록을 삭제했습니다. 다른 돌봄 공간에는 영향을 주지 않았습니다.")
+    messages.success(request, "이 공간과 기록을 삭제했어요. 다른 반려동물의 기록은 그대로예요.")
     return redirect("home")

@@ -15,7 +15,7 @@ NAMES = {
     "weight": ("체중", "kg"), "food_actual": ("먹은 음식의 열량", "kcal"),
     "food_offered": ("준 음식의 예상 열량", "kcal"), "food_mass": ("준 먹이의 양", "g"),
     "meal_gap": ("기록한 식사 사이의 간격", "시간"), "activity": ("기록한 활동 시간", "분"),
-    "rest": ("기록한 수면·휴식 시간", "분"), "water": ("측정한 음수량", "ml"),
+    "rest": ("기록한 수면·휴식 시간", "분"), "water": ("마신 물의 양", "ml"),
 }
 
 
@@ -27,9 +27,8 @@ def describe_metric(metric):
         detail = "기록한 종류나 횟수가 달라 양과 시간의 차이를 따로 확인할 필요가 있어요."
         state = "recording"
     elif direction:
-        title = name + ("이 늘었어요" if metric["key"] != "weight" else "이 늘었어요") if direction > 0 else name + ("이 줄었어요")
         # Korean subjects, not a generic English-to-Korean suffix concatenation.
-        stems = {"weight": "체중이", "food_actual": "먹은 음식의 열량이", "food_offered": "준 음식의 예상 열량이", "food_mass": "준 먹이의 양이", "meal_gap": "기록한 식사 간격이", "activity": "기록한 활동 시간이", "rest": "기록한 수면·휴식 시간이", "water": "측정한 음수량이"}
+        stems = {"weight": "체중이", "food_actual": "먹은 음식의 열량이", "food_offered": "준 음식의 예상 열량이", "food_mass": "준 먹이의 양이", "meal_gap": "기록한 식사 간격이", "activity": "기록한 활동 시간이", "rest": "기록한 수면·휴식 시간이", "water": "마신 물의 양이"}
         title = stems[metric["key"]] + (" 늘었어요" if direction > 0 else " 줄었어요")
         detail = "최근 기록에서 같은 방향의 변화가 이어졌어요."
         state = "up" if direction > 0 else "down"
@@ -67,7 +66,7 @@ def plain_result(result):
     code = result["code"]
     titles = {
         "observed": "평소와 다르다고 남긴 기록이 있어요",
-        "mixed": "서로 다른 방향의 변화가 함께 나타났어요",
+        "mixed": "한쪽 변화만으로 설명하기 어려워요",
         "linked": "같은 시기에 함께 달라진 기록이 있어요",
         "multiple": "여러 기록에서 변화가 이어졌어요",
         "single": describe_metric(changed[0])["title"] if changed else "최근 기록에 변화가 있어요",
@@ -77,7 +76,6 @@ def plain_result(result):
         "collecting": "아직은 최근과 이전을 비교하기 어려워요",
     }
     if changed:
-        description = " · ".join(describe_metric(m)["title"].removesuffix("어요") for m in changed) + "요."
         # Independent clauses avoid misleading one-cause or causal language.
         description = " ".join(describe_metric(m)["title"] + "." for m in changed)
     elif code == "check":
@@ -118,7 +116,7 @@ def context_for(member, end_date=None):
     labels = {m["key"]: NAMES[m["key"]][0] for m in current["metrics"]}
     for relation in current["relations"]:
         relationships.append({"title": " · ".join(labels[k] for k in relation["metric_keys"]),
-                              "text": "서로 다른 방향의 변화예요. 한쪽 값만 보고 판단하지 마세요." if relation["kind"] == "mixed" else "같은 날짜에 변화가 함께 나타났어요. 서로의 원인이라는 뜻은 아니에요.",
+                              "text": "한쪽 변화만으로 설명하기 어려운 조합이에요. 두 기록을 함께 확인해 주세요." if relation["kind"] == "mixed" else "같은 날짜에 변화가 함께 나타났어요. 서로의 원인이라는 뜻은 아니에요.",
                               "days": relation["overlap_dates"], "url": evidence_url(room, [m for m in relation["modules"] if m in allowed], current["start"], end)})
     now_lower, now_upper = bounds(room, today, today)
     new_observations = list(Activity.objects.filter(room=room, module__in=allowed & {"observation", "toilet"}, voided=False, status="done", payload__condition="different", occurred_at__gte=now_lower, occurred_at__lt=now_upper, occurred_at__lte=timezone.now()).order_by("-occurred_at")[:5])
@@ -129,7 +127,7 @@ def context_for(member, end_date=None):
     observation_rows = [{"date": a.occurred_at, "name": "배변" if a.module == "toilet" else "상태 관찰", "url": reverse("record_detail", args=[room.pk, a.pk])} for a in new_observations + observations]
     weight = get_statistics(room, "weight", today - timedelta(days=6), today) if "weight" in allowed else {}
     latest = {"value": weight["primary"], "date": weight["measurement_date"]} if weight.get("measurement_date") else None
-    return {"summary": summary, "status_cards": cards, "relationships": relationships,
+    return {"summary": summary, "latest_measurement": latest if latest and latest["date"] == today else None, "status_cards": cards, "relationships": relationships,
             "status_periods": [plain_result(r) for r in results], "observations": observation_rows,
             "breed_reference": reference_for(room, latest), "body_reference": weight.get("reference"),
             "day": today, "insight": current, "dates": endpoints, "today": today}

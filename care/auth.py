@@ -36,10 +36,10 @@ def google_start(request):
     if request.user.is_authenticated:
         return redirect("home")
     if settings.DEMO_MODE or not settings.GOOGLE_CONFIGURED:
-        messages.error(request, "구글 로그인 설정이 필요합니다. 로컬 실행 안내에서 설정할 항목을 확인해 주세요.")
+        messages.error(request, "구글 로그인 연결이 아직 준비되지 않았어요. 운영자의 설정이 필요해요.")
         return redirect("home")
     if not rate_limit(request, "google-start", 12, 60):
-        return render(request, "care/error.html", {"title": "잠시 후 다시 시도해 주세요", "detail": "로그인 요청이 너무 많습니다."}, status=429)
+        return render(request, "care/error.html", {"title": "잠시 후 다시 시도해 주세요", "detail": "로그인 시도가 여러 번 이어졌어요. 잠시 후 다시 시도해 주세요."}, status=429)
     state, nonce, verifier = secrets.token_urlsafe(32), secrets.token_urlsafe(32), secrets.token_urlsafe(64)
     request.session.cycle_key()
     request.session["google_login"] = {"state": state, "nonce": nonce, "verifier": verifier, "created": time.time()}
@@ -74,15 +74,15 @@ def google_callback(request):
     attempt = request.session.pop("google_login", None)
     state = request.GET.get("state", "")
     if not attempt or not isinstance(state, str) or len(state) > 200 or not hmac.compare_digest(state, attempt.get("state", "")):
-        return render(request, "care/error.html", {"title": "로그인을 다시 시작해 주세요", "detail": "로그인 요청을 확인할 수 없습니다. 기존 화면으로 돌아가 다시 시도해 주세요."}, status=400)
+        return render(request, "care/error.html", {"title": "로그인을 다시 시작해 주세요", "detail": "로그인을 시작한 화면을 확인하지 못했어요. 처음 화면에서 다시 로그인해 주세요."}, status=400)
     if time.time() - attempt.get("created", 0) > 600 or not settings.GOOGLE_CONFIGURED:
-        return render(request, "care/error.html", {"title": "로그인 요청이 만료되었습니다", "detail": "시작 화면에서 구글 로그인을 다시 진행해 주세요."}, status=400)
+        return render(request, "care/error.html", {"title": "로그인할 수 있는 시간이 지났어요", "detail": "처음 화면으로 돌아가 구글 로그인을 다시 눌러 주세요."}, status=400)
     if request.GET.get("error"):
-        messages.info(request, "구글 로그인이 취소되었습니다. 기존 게스트 기록은 그대로 남아 있습니다.")
+        messages.info(request, "로그인을 취소했어요. 게스트로 남긴 기록은 그대로예요.")
         return redirect("home")
     code = request.GET.get("code", "")
     if not code or len(code) > 4096:
-        return render(request, "care/error.html", {"title": "로그인 응답을 확인하지 못했습니다", "detail": "구글 로그인을 다시 시작해 주세요."}, status=400)
+        return render(request, "care/error.html", {"title": "로그인 결과를 확인하지 못했어요", "detail": "구글 로그인을 다시 시작해 주세요."}, status=400)
     try:
         response = requests.post(TOKEN_URL, data={"code": code, "client_id": settings.GOOGLE_CLIENT_ID,
                     "client_secret": settings.GOOGLE_CLIENT_SECRET, "redirect_uri": settings.GOOGLE_REDIRECT_URI,
@@ -106,16 +106,16 @@ def google_callback(request):
             merge_guest_memberships(previous_guest, user)
         login(request, user, backend="django.contrib.auth.backends.ModelBackend")
         request.session.pop("guest_identity", None)
-        messages.success(request, "구글 계정으로 로그인했습니다. 연결된 돌봄 기록을 이어서 사용할 수 있습니다.")
+        messages.success(request, "로그인했어요. 연결한 반려동물의 기록을 이어서 볼 수 있어요.")
         return redirect("home")
     except (ValueError, requests.RequestException, GoogleAuthError, KeyError, TypeError):
-        return render(request, "care/error.html", {"title": "로그인을 완료하지 못했습니다", "detail": "네트워크와 구글 인증 설정을 확인한 뒤 다시 시도해 주세요. 기존 기록은 변경하지 않았습니다."}, status=400)
+        return render(request, "care/error.html", {"title": "로그인하지 못했어요", "detail": "연결 상태를 확인하고 다시 로그인해 주세요. 계속 안 되면 운영자에게 알려 주세요. 기존 기록은 바뀌지 않았어요."}, status=400)
 
 
 @require_POST
 def logout_view(request):
     logout(request)
-    messages.info(request, "이 브라우저에서 로그아웃했습니다. 게스트로 작성한 기록을 다시 관리하려면 연결한 계정으로 로그인해 주세요.")
+    messages.info(request, "로그아웃했어요. 게스트 기록을 계정에 연결했다면 그 계정으로 다시 로그인해 주세요.")
     return redirect("home")
 
 
@@ -131,5 +131,5 @@ def demo_login(request):
         return render(request, "care/error.html", {"title": "시연 데이터를 준비해 주세요", "detail": "로컬 실행 스크립트를 --demo 옵션으로 다시 실행해 주세요."}, status=503)
     logout(request)
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-    messages.info(request, "시연 전용 계정입니다. 실제 구글 로그인으로 인증한 계정이 아닙니다.")
+    messages.info(request, "시연 계정으로 접속했어요. 실제 구글 인증을 거친 계정은 아니에요.")
     return redirect("home")

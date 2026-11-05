@@ -87,17 +87,18 @@ def records(request, room_id):
     selected_group = request.GET.get("group", "")
     if module and module not in allowed:
         raise PermissionDenied()
+    selected_keys = []
+    legacy_keys = []
     if selected_modules:
         keys = selected_modules.split(",")
         if len(keys) > len(MODULES) or any(k not in allowed for k in keys):
             raise PermissionDenied()
-        qs = qs.filter(module__in=keys)
+        selected_keys = keys
     if selected_group:
         if selected_group not in GROUPS:
             raise Http404()
-        qs = qs.filter(module__in=set(GROUPS[selected_group][1]) & allowed)
+        legacy_keys = set(GROUPS[selected_group][1]) & allowed
     if module:
-        qs = qs.filter(module=module)
         category = category or CATEGORY_OF[module]
     state = request.GET.get("state", "valid")
     if state == "cancelled":
@@ -133,6 +134,14 @@ def records(request, room_id):
         qs = qs.filter(Q(note__icontains=query) | Q(payload__icontains=query))
     # Counts are permission-scoped and computed over all matches, not a first page.
     counts = {row["module"]: row["n"] for row in qs.values("module").annotate(n=Count("id")).order_by()}
+    # Navigation counts reflect the same date/search/person filters before a
+    # single activity is chosen. Category links clear that activity selection.
+    if selected_keys:
+        qs = qs.filter(module__in=selected_keys)
+    if selected_group:
+        qs = qs.filter(module__in=legacy_keys)
+    if module:
+        qs = qs.filter(module=module)
     root = reverse("records", args=[room.pk])
     return_to = request.get_full_path()
     def link(**changes):

@@ -93,7 +93,7 @@
       dirtyForms.delete(form);
       initialize(document.getElementById("main"));
     } catch (_error) {
-      if (status) status.textContent = "서버 응답을 확인하지 못했습니다. 입력은 유지됩니다. 기록 목록을 확인하거나 같은 화면에서 다시 저장해 주세요.";
+      if (status) status.textContent = "저장 여부를 확인하지 못했어요. 입력은 남아 있으니 같은 화면에서 다시 저장해 주세요.";
       setBusy(form, false);
     } finally {
       clearTimeout(timeout);
@@ -149,11 +149,11 @@
       const output = button.closest(".invite-result")?.querySelector(".copy-status");
       try {
         await navigator.clipboard.writeText(input.value);
-        if (output) output.textContent = "초대 링크를 복사했습니다.";
+        if (output) output.textContent = "초대 링크를 복사했어요.";
       } catch (_error) {
         input.focus(); input.select();
         const copied = document.execCommand("copy");
-        if (output) output.textContent = copied ? "초대 링크를 복사했습니다." : "선택된 링크를 직접 복사해 주세요.";
+        if (output) output.textContent = copied ? "초대 링크를 복사했어요." : "선택된 링크를 직접 복사해 주세요.";
       }
     }
     const direction = button.dataset.move || button.dataset.choiceMove;
@@ -208,7 +208,7 @@
         }
       } else if (response.status === 403 || response.status === 404) {
         const notice = document.getElementById("refresh-notice");
-        if (notice) { notice.hidden = false; notice.firstChild.textContent = "참여 권한이나 방 상태가 변경되었습니다. "; }
+        if (notice) { notice.hidden = false; notice.firstChild.textContent = "참여 권한이나 공간 상태가 바뀌었어요. "; }
         return;
       }
     } catch (_error) {

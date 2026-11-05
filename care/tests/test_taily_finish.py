@@ -7,7 +7,7 @@ from django.urls import reverse
 from care import services
 from care.models import CareCadence
 from care.presentation import integrated_context
-from care.insights import context_for
+from care.status_view import context_for
 from .test_taily import TailyCase, UI
 
 
@@ -18,16 +18,19 @@ class OverviewDisclosureTests(TailyCase):
             self.assertEqual(response.status_code, 200, response.content)
         self.quick("observation", condition="different", detail="관찰한 변화")
 
-    def test_pattern_summary_replaces_fixed_four_story_selection(self):
+    def test_plain_summary_exposes_results_not_methods(self):
         self.populate()
         context = context_for(self.owner)
         response = self.client.get(reverse("overview", args=[self.room.pk]))
-        self.assertContains(response, context["insight"]["title"])
-        self.assertContains(response, "이번 결과의 근거")
+        self.assertContains(response, context["summary"]["title"])
+        self.assertContains(response, "오늘 평소와 다르다고")
         self.assertNotContains(response, "data-summary-primary")
-        for metric in context["focus_metrics"]:
-            self.assertContains(response, metric["label"])
-            self.assertEqual(self.client.get(metric["url"]).status_code, 200)
+        for term in ("중앙값", "실측", "MAD", "기울기", "계산 방법과 한계"):
+            self.assertNotContains(response, term)
+        for item in context["status_cards"]:
+            self.assertContains(response, item["title"])
+            self.assertEqual(self.client.get(item["url"]).status_code, 200)
+        self.assertEqual(self.client.get(reverse("analysis_method", args=[self.room.pk])).status_code, 302)
 
     def test_guest_summary_and_distribution_do_not_reveal_sensitive_records(self):
         self.populate()
@@ -49,7 +52,7 @@ class OverviewDisclosureTests(TailyCase):
         self.assertEqual(context["summary_additional"], [])
         self.assertEqual(context["record_count"], 0)
         response = self.client.get(reverse("overview", args=[self.room.pk]))
-        self.assertContains(response, '평소 패턴을 모으고 있어요')
+        self.assertContains(response, '아직은 최근과 이전을 비교하기 어려워요')
         self.assertNotContains(response, 'class="summary-more"')
 
     def test_summary_detail_links_keep_same_room_and_period(self):
@@ -73,7 +76,7 @@ class CadenceFailureRecoveryTests(TailyCase):
             response = self.client.post(url, data)
         self.assertEqual(response.status_code, 503)
         self.assertContains(response, '재시도 양치', status_code=503)
-        self.assertContains(response, '입력은 그대로니 다시 저장해 주세요', status_code=503)
+        self.assertContains(response, '입력한 내용은 남아 있으니 다시 저장해 주세요', status_code=503)
         self.assertEqual(CareCadence.objects.filter(room=self.room).count(), 0)
         self.assertEqual(self.client.post(url, data).status_code, 302)
         self.assertEqual(CareCadence.objects.filter(room=self.room).count(), 1)

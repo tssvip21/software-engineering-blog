@@ -40,12 +40,12 @@ def activity_options(keys):
 
 
 class CadenceForm(forms.Form):
-    activity = forms.ChoiceField(label="주기를 정할 활동")
-    title = forms.CharField(label="안내 이름 (선택)", max_length=80, required=False)
+    activity = forms.ChoiceField(label="반복해서 할 돌봄")
+    title = forms.CharField(label="알림 이름 (선택)", max_length=80, required=False)
     interval = forms.IntegerField(label="반복 간격", min_value=1, max_value=366, widget=forms.NumberInput(attrs={"inputmode": "numeric", "placeholder": "직접 정해 주세요"}))
     unit = forms.ChoiceField(label="간격 단위", choices=[("days", "일"), ("weeks", "주"), ("months", "개월")])
-    first_due = forms.DateField(label="다음 안내 날짜", widget=DateInput())
-    active = forms.BooleanField(label="주기 안내 켜기", required=False, initial=True)
+    first_due = forms.DateField(label="다음에 알려줄 날짜", widget=DateInput())
+    active = forms.BooleanField(label="반복 알림 사용", required=False, initial=True)
     version = forms.IntegerField(widget=forms.HiddenInput, required=False, min_value=1)
 
     def __init__(self, *args, member, instance=None, **kwargs):
@@ -64,8 +64,8 @@ class CadenceForm(forms.Form):
                             "version": instance.version})
         super().__init__(*args, **kwargs)
         self.fields["activity"].choices = [("", "활동을 선택해 주세요")] + [(k, v[3]) for k, v in self.options.items()]
-        self.fields["first_due"].help_text = "간격이나 안내 날짜를 바꾸면 이 날짜부터 새 주기를 시작해요."
-        self.fields["interval"].help_text = "의학적 권장값이 아닌, 직접 정한 돌봄 간격이에요. 완료 기록을 남기면 다음 날짜를 계산해요."
+        self.fields["first_due"].help_text = "날짜나 간격을 바꾸면 여기서 정한 날짜부터 다시 알려드려요."
+        self.fields["interval"].help_text = "원하는 간격을 직접 정해 주세요. 완료한 날부터 다음 날짜를 잡아요. 의료적 권장 주기는 아니에요."
 
     def clean(self):
         data = super().clean()
@@ -144,18 +144,18 @@ def save(member, form, cadence_id=None):
     member = services.fresh_member(member)
     services.require_manager(member)
     if not form.is_valid():
-        raise ValidationError("주기 입력값을 확인해 주세요.")
+        raise ValidationError("활동과 반복 간격을 확인해 주세요.")
     data = form.cleaned_data
     key, field, value, _ = data["selection"]
     services.require_module(member, key, adding=cadence_id is None)
     current = CareCadence.objects.select_for_update().get(pk=cadence_id, room=member.room) if cadence_id else CareCadence(room=member.room)
     if cadence_id and current.version != data.get("version"):
-        raise services.Conflict("다른 참여자가 이 주기를 바꿨어요. 새로고침해서 확인해 주세요.")
+        raise services.Conflict("다른 사람이 반복 알림을 바꿨어요. 새로고침한 뒤 다시 확인해 주세요.")
     same = CareCadence.objects.filter(room=member.room, module=key, variant_field=field, variant_value=value)
     if cadence_id:
         same = same.exclude(pk=cadence_id)
     if same.exists():
-        raise ValidationError("이 활동에는 이미 주기가 있어요. 기존 주기를 수정해 주세요.")
+        raise ValidationError("이 활동의 반복 알림이 이미 있어요. 새로 만들지 말고 기존 알림을 바꿔 주세요.")
     old_due = state(current, member.room)["next_due"] if cadence_id else None
     reset = not cadence_id or (key, field, value, data["interval"], data["unit"], data["first_due"]) != (
         current.module, current.variant_field, current.variant_value, current.interval, current.unit, old_due)
@@ -178,13 +178,13 @@ def snooze(member, cadence_id, version, until):
     services.require_manager(member)
     current = CareCadence.objects.select_for_update().get(pk=cadence_id, room=member.room)
     if current.version != version:
-        raise services.Conflict("주기가 이미 변경됐어요. 새로고침해서 확인해 주세요.")
+        raise services.Conflict("반복 알림이 바뀌었어요. 최신 내용을 먼저 확인해 주세요.")
     services.require_module(member, current.module)
     today = services.local_date(member.room)
     if not today < until <= today + timedelta(days=366):
         raise ValidationError("내일부터 1년 안의 날짜를 선택해 주세요.")
     if not current.active or not member.room.module_settings.filter(key=current.module, enabled=True).exists():
-        raise ValidationError("주기나 모듈이 꺼져 있어요. 먼저 모듈과 주기 안내를 켜 주세요.")
+        raise ValidationError("이 기능이나 반복 알림을 사용하지 않는 상태예요. 사용하도록 바꾼 뒤 미뤄 주세요.")
     current.snoozed_until, current.snoozed_at = until, timezone.now()
     current.version += 1
     current.save(update_fields=["snoozed_until", "snoozed_at", "version"])

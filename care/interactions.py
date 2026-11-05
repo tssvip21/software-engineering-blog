@@ -69,12 +69,12 @@ def save_quick(member, module, form, activity=None):
         cadence = get_object_or_404(CareCadence.objects.select_for_update(), pk=cadence_id, room=member.room, module=module)
         services.require_module(member, module, adding=activity is None)
         if cadence.variant_field and str(data.get(cadence.variant_field, "")) != cadence.variant_value:
-            raise ValidationError("선택한 주기의 활동과 기록 종류가 달라요. 활동을 다시 확인해 주세요.")
+            raise ValidationError("반복 알림에 정한 활동과 지금 기록이 달라요. 활동 종류를 확인해 주세요.")
         if not duplicate:
             if (not cadence.active and activity is None) or cadence.version != data.get("cadence_version"):
-                raise services.Conflict("이 주기가 바뀌었어요. 저장하지 않았으니 최신 안내를 확인해 주세요.")
+                raise services.Conflict("반복 알림이 바뀌어 저장하지 않았어요. 최신 내용을 먼저 확인해 주세요.")
             if activity is None and not cadences.state(cadence, member.room)["due"]:
-                raise services.Conflict("이미 완료했거나 미룬 안내예요. 다른 활동은 모듈에서 새로 기록해 주세요.")
+                raise services.Conflict("이미 완료했거나 미룬 알림이에요. 별개의 활동은 돌봄 기능에서 새로 기록해 주세요.")
             if activity is None and Activity.objects.filter(room=member.room, module=module, status="active", voided=False, payload___cadence_id=str(cadence.pk)).exists():
                 raise services.Conflict("이 활동은 이미 진행 중이에요. 오늘 화면에서 진행 기록을 종료해 주세요.")
         form.cadence_marker = str(cadence.pk)
@@ -98,7 +98,7 @@ def quick_record(request, room_id, module=None, activity_id=None):
     try:
         services.require_module(member, module, adding=activity is None)
     except ValidationError as exc:
-        return fail_json(exc, 409) if wants_fragment(request) else render(request, "care/error.html", {"title": "모듈이 꺼져 있어요", "detail": " ".join(exc.messages)}, status=409)
+        return fail_json(exc, 409) if wants_fragment(request) else render(request, "care/error.html", {"title": "사용하지 않는 기능이에요", "detail": " ".join(exc.messages)}, status=409)
     initial = {}
     selected_cadence = None
     reuse = None
@@ -164,8 +164,8 @@ def quick_record(request, room_id, module=None, activity_id=None):
     if module == "reproduction" and (not activity or activity.payload.get("kind") not in ("heat", "egg")):
         form.fields["eggs"].widget = forms.HiddenInput()
     if module == "sleep" and not activity:
-        form.fields["occurred_at"].label = "관찰 종료 시각"
-        form.fields["occurred_at"].help_text = "입력한 시간만큼 거슬러 올라간 구간을 기록해요."
+        form.fields["occurred_at"].label = "확인을 마친 시각"
+        form.fields["occurred_at"].help_text = "이 시각에서 입력한 시간만큼 앞선 때부터 수면·휴식을 기록해요."
     status = 200
     if request.method == "POST":
         status = 422
@@ -184,7 +184,7 @@ def quick_record(request, room_id, module=None, activity_id=None):
                 form.add_error(None, " ".join(exc.messages))
                 status = 409 if isinstance(exc, services.Conflict) else 422
             except OperationalError:
-                form.add_error(None, "저장소가 잠시 사용 중이에요. 입력은 그대로니 같은 화면에서 다시 저장해 주세요.")
+                form.add_error(None, "지금은 저장할 수 없어요. 입력한 내용은 남아 있으니 같은 화면에서 다시 저장해 주세요.")
                 status = 503
     core = [form[key] for key in CORE_FIELDS[module] if key in form.fields and not form[key].is_hidden]
     core_names = {field.name for field in core}
@@ -216,7 +216,7 @@ def quick_undo(request, room_id, activity_id):
         services.cancel_activity(member, activity_id, version, "빠른 기록 실행 취소")
     except (ValueError, ValidationError) as exc:
         return fail_json(exc if isinstance(exc, ValidationError) else "기록 버전을 확인해 주세요.", 409)
-    return JsonResponse({"ok": True, "message": "기록을 취소했어요. 통계와 주기 안내에도 반영했어요."})
+    return JsonResponse({"ok": True, "message": "기록을 취소했어요. 통계와 반복 알림에도 반영했어요."})
 
 
 def config_state(room):
@@ -250,9 +250,9 @@ def module_config(request, room_id):
     except services.Conflict as exc:
         return fail_json(exc, 409)
     except (ValueError, TypeError, ValidationError):
-        return fail_json("모듈 구성값을 확인해 주세요. 저장하지 않았어요.", 400)
+        return fail_json("기능 설정값을 확인해 주세요. 저장하지 않았어요.", 400)
     except OperationalError:
-        return fail_json("저장소가 잠시 사용 중이에요. 변경한 구성은 화면에 남아 있어요.", 503)
+        return fail_json("지금은 설정을 저장할 수 없어요. 선택한 기능은 화면에 남아 있어요.", 503)
 
 
 @require_http_methods(["GET", "POST"])
@@ -266,22 +266,22 @@ def cadence_edit(request, room_id, cadence_id=None):
     if request.method == "POST" and form.is_valid():
         try:
             cadences.save(member, form, cadence_id)
-            messages.success(request, "활동 주기를 저장했어요. 기록은 그대로 유지돼요.")
+            messages.success(request, "반복 알림를 저장했어요. 기록은 그대로 유지돼요.")
             return redirect("cadence_list", room_id=room.pk)
         except ValidationError as exc:
             form.add_error(None, " ".join(exc.messages))
             status = 409 if isinstance(exc, services.Conflict) else 422
         except OperationalError:
-            form.add_error(None, "저장소가 잠시 사용 중이에요. 입력은 그대로니 다시 저장해 주세요.")
+            form.add_error(None, "지금은 저장할 수 없어요. 입력한 내용은 남아 있으니 다시 저장해 주세요.")
             status = 503
-    return render(request, "care/form.html", {"title": "활동 주기 수정" if instance else "활동 주기 추가", "intro": "양치와 목욕처럼 같은 모듈 안의 활동도 따로 정할 수 있어요.",
-                  "form": form, "submit_label": "주기 저장", "back_url": reverse("cadence_list", args=[room.pk]), "active_tab": "routines"}, status=status)
+    return render(request, "care/form.html", {"title": "반복 알림 수정" if instance else "반복 알림 추가", "intro": "양치와 목욕처럼 같은 기능 안의 활동도 각각 간격을 정할 수 있어요.",
+                  "form": form, "submit_label": "알림 저장", "back_url": reverse("cadence_list", args=[room.pk]), "active_tab": "routines"}, status=status)
 
 
 @require_http_methods(["GET"])
 def cadence_list(request, room_id):
     room, member = services.get_room(request, room_id)
-    return render(request, "care/cadences.html", {"title": "활동 주기", "cadences": cadences.schedule(member, include_paused=True), "active_tab": "routines", "live_page": True})
+    return render(request, "care/cadences.html", {"title": "반복 알림", "cadences": cadences.schedule(member, include_paused=True), "active_tab": "routines", "live_page": True})
 
 
 @require_POST
@@ -296,7 +296,7 @@ def cadence_snooze(request, room_id, cadence_id):
     except (ValueError, ValidationError) as exc:
         return fail_json(exc if isinstance(exc, ValidationError) else "미룰 날짜를 확인해 주세요.", 409)
     except OperationalError:
-        return fail_json("저장소가 잠시 사용 중이에요. 미룰 날짜를 다시 확인한 뒤 시도해 주세요.", 503)
+        return fail_json("지금은 날짜를 바꿀 수 없어요. 잠시 후 다시 미뤄 주세요.", 503)
     if wants_fragment(request):
-        return JsonResponse({"ok": True, "message": "이번 안내를 미뤘어요. 반복 간격은 그대로예요."})
+        return JsonResponse({"ok": True, "message": "이번 알림 날짜를 미뤘어요. 반복 간격은 그대로예요."})
     return redirect("cadence_list", room_id=room.pk)

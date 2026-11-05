@@ -23,7 +23,7 @@
   async function jsonResponse(response) {
     const type = response.headers.get('content-type') || '';
     if (!type.includes('application/json')) {
-      const message = response.status === 403 ? '참여 권한이나 로그인 상태가 바뀌었어요. 새로고침해서 확인해 주세요.' : response.status === 404 ? '이 방이나 활동에 접근할 수 없어요.' : '응답을 확인하지 못했어요. 입력은 그대로니 다시 시도해 주세요.';
+      const message = response.status === 403 ? '참여 권한이나 로그인 상태가 바뀌었어요. 새로고침해서 확인해 주세요.' : response.status === 404 ? '이 방이나 활동에 접근할 수 없어요.' : '응답을 확인하지 못했어요. 입력은 그대로예요. 다시 시도해 주세요.';
       throw Object.assign(new Error(message), {status: response.status});
     }
     const value = await response.json();
@@ -128,7 +128,7 @@
       const response = await request(url, {headers: {'X-Taily-UI': '1'}});
       if (!response.ok) {
         if ((response.headers.get('content-type') || '').includes('application/json')) await jsonResponse(response);
-        throw new Error('이 활동을 열 수 없어요. 모듈과 참여 권한을 확인해 주세요.');
+        throw new Error('기록창을 열 수 없어요. 이 기능의 사용 설정과 참여 권한을 확인해 주세요.');
       }
       const html = await response.text();
       if (generation !== quickGeneration) return;
@@ -196,7 +196,7 @@
       feedback(result.message, result);
       try { await refreshSurface(); } catch (error) { feedback(`${result.message} ${error.message}`, result); }
     } catch (error) {
-      if (status) status.textContent = error.name === 'AbortError' ? '서버 응답을 확인하지 못했어요. 입력은 유지돼요. 같은 화면에서 다시 저장하면 중복 요청을 확인해요.' : error.message === 'Failed to fetch' ? '연결이 끊겼어요. 입력은 그대로니 연결 후 다시 저장해 주세요.' : error.message;
+      if (status) status.textContent = error.name === 'AbortError' ? '서버 응답을 확인하지 못했어요. 입력은 유지돼요. 같은 화면에서 다시 저장하면 중복 요청을 확인해요.' : error.message === 'Failed to fetch' ? '연결이 끊겼어요. 입력은 그대로예요. 연결 후 다시 저장해 주세요.' : error.message;
     } finally { quickBusy = false; buttons.forEach(b => b.disabled = false); }
   }
   document.addEventListener('invalid', event => {
@@ -300,7 +300,7 @@
     async function save() {
       if (saving || blocked || drag || keyboard || !configDirty) return;
       const payload = {...current(), version}, sentEpoch = epoch;
-      saving = true; announce('모듈 구성을 저장하고 있어요…');
+      saving = true; announce('기능 설정을 저장하고 있어요…');
       try {
         const response = await request(config.dataset.endpoint, {method: 'POST', headers: {...headers(), 'Content-Type': 'application/json'}, body: JSON.stringify(payload)});
         const result = await jsonResponse(response);
@@ -309,7 +309,7 @@
         configDirty = epoch !== sentEpoch || !equal(current(), stored);
         retry.hidden = true; reload.hidden = true;
         saving = false;
-        announce(configDirty ? '추가 변경을 저장하고 있어요…' : '저장했어요. 오늘과 모듈 화면에도 반영돼요.');
+        announce(configDirty ? '추가 변경을 저장하고 있어요…' : '저장했어요. 오늘과 돌봄 기능 화면에도 반영돼요.');
         if (configDirty) await save();
       } catch (error) {
         saving = false; blocked = true;

@@ -94,7 +94,7 @@ def get_statistics(room, module, start, end, all_records=None):
     count_daily = Counter(day_of(a) for a in rows)
     stats = {"key": module, "spec": MODULES[module], "count": len(rows), "has_data": bool(rows), "metrics": [], "breakdown": [], "charts": [],
              "notes": [], "primary": "미기록", "primary_unit": "", "reference": None,
-             "reference_note": "이 항목에 적용할 분류별 참고 기준을 확보하지 않았습니다. 기록과 추이는 사용할 수 있어요."}
+             "reference_note": "이 항목은 비교할 참고 자료가 아직 없어요. 남긴 기록과 변화는 볼 수 있어요."}
     add = lambda label, value, unit="", note="": stats["metrics"].append(metric(label, value, unit, note))
     def primary(value, unit=""):
         stats["primary"] = compact(value) if isinstance(value, (Decimal, int, float)) else str(value)
@@ -156,13 +156,13 @@ def get_statistics(room, module, start, end, all_records=None):
         stats["charts"].append(chart("날짜별 확인된 열량", "kcal", daily, start, end))
         for name, count in Counter(a.payload.get("food_name", "이름 없음") for a in rows).most_common():
             stats["breakdown"].append({"label": name, "value": str(count), "unit": "회"})
-        stats["notes"].append("실제 섭취량을 모르는 기록은 제공량 기준 예상치입니다. 열량이 없는 제품은 0 kcal로 계산하지 않아요.")
+        stats["notes"].append("먹은 양을 모르면 준 양으로 열량을 예상해요. 제품의 열량을 모르는 기록은 0 kcal로 채우지 않아요.")
         if provided["consumed"] and provided["provided"]:
-            stats["notes"].append("이 합계에는 실제 섭취량 기준과 제공량 기준 기록이 함께 포함되어 있습니다.")
+            stats["notes"].append("이 합계에는 먹은 양으로 계산한 값과 준 양으로 예상한 값이 함께 있어요.")
     elif module == "water":
         measured = [a for a in rows if a.payload["kind"] == "measured"]
         value = sum((decimal(a.payload["amount"]) * (1000 if a.payload["unit"] == "l" else 1) for a in measured), ZERO)
-        add("측정한 음수량", value if measured else None, "ml")
+        add("마신 물의 양", value if measured else None, "ml")
         if measured:
             primary(value, "ml")
         kinds = Counter(a.payload["kind"] for a in rows)
@@ -171,8 +171,8 @@ def get_statistics(room, module, start, end, all_records=None):
         daily = defaultdict(lambda: ZERO)
         for a in measured:
             daily[day_of(a)] += decimal(a.payload["amount"]) * (1000 if a.payload["unit"] == "l" else 1)
-        stats["charts"].append(chart("실제로 측정한 음수량", "ml", daily, start, end))
-        stats["notes"].append("교체하거나 보충한 물의 양은 음수량에 넣지 않아요.")
+        stats["charts"].append(chart("마신 물의 양", "ml", daily, start, end))
+        stats["notes"].append("갈아주거나 보충한 물을 마신 양으로 계산하지 않아요.")
         groups("kind")
     elif module == "toilet":
         for key, label in (("stool", "대변"), ("urine", "소변")):
@@ -198,7 +198,7 @@ def get_statistics(room, module, start, end, all_records=None):
             series_from_payload("distance", "km", "날짜별 확인된 거리", lambda a: Decimal("0.001") if a.payload["distance_unit"] == "m" else Decimal(1))
         elif module == "play":
             groups("kind")
-            stats["notes"].append("반응은 보호자의 관찰입니다. 기록된 놀이 시간과 함께 참고해 주세요.")
+            stats["notes"].append("놀이 반응은 보호자가 보고 남긴 내용이에요. 시간 기록과 함께 봐 주세요.")
         else:
             tracked = [a for a in rows if a.payload.get("attempts") is not None and a.payload.get("successes") is not None]
             attempts = sum((decimal(a.payload["attempts"]) for a in tracked), ZERO)
@@ -233,8 +233,8 @@ def get_statistics(room, module, start, end, all_records=None):
                                   "range": compact(ref.low) if ref.low == ref.high else compact(ref.low) + "–" + compact(ref.high),
                                   "position": position, "source": ref.source_name, "url": ref.source_url, "conditions": ref.conditions,
                                   "date": day_of(latest_bcs), "assessor": label_choice(module, "bcs_by", latest_bcs.payload.get("bcs_by"))}
-        stats["reference_note"] = "체격 분류의 평균 체중만으로 저체중·비만을 판정하지 않아요. 확인한 BCS가 있으면 해당 종의 참고 범위와 별도로 비교합니다."
-        stats["notes"].append("체중은 합산하지 않아요. BCS는 사용자가 별도로 입력한 관찰·평가값이며 체중에서 자동 산출하지 않아요.")
+        stats["reference_note"] = "평균 체중과 다르다고 저체중이나 비만인 것은 아니에요. 평가한 체형 점수(BCS)가 있다면 따로 비교해요."
+        stats["notes"].append("체중은 더하지 않고 측정할 때마다 비교해요. 체형 점수(BCS)는 직접 평가한 값을 사용해요.")
     elif module in ("hygiene", "grooming", "cleaning"):
         field = "target" if module == "cleaning" else "task"
         groups(field)
@@ -253,16 +253,16 @@ def get_statistics(room, module, start, end, all_records=None):
         for (name, unit), count in per_medicine.items():
             stats["breakdown"].append({"label": name + " · " + UNIT_LABELS.get(unit, unit), "value": str(count), "unit": "회"})
         stats["charts"].append(chart("날짜별 실제 투약 횟수", "회", Counter(day_of(a) for a in given), start, end))
-        stats["notes"].append("약이 다르거나 단위가 다른 용량은 합산하지 않아요. 예정만 된 투약은 완료 통계에서 제외합니다.")
+        stats["notes"].append("약이나 용량 단위가 다르면 더하지 않아요. 투약 예정만 남긴 기록도 완료 횟수에서 빼요.")
     elif module == "observation":
         add("평소와 다른 관찰", sum(a.payload["condition"] == "different" for a in rows) if rows else None, "건")
         groups("category")
-        stats["notes"].append("관찰 기록의 분포입니다. 질병 진단이나 위험 점수로 해석하지 않습니다.")
+        stats["notes"].append("보호자가 어떤 상태를 기록했는지 모아 봤어요. 질병을 진단하거나 위험도를 매긴 결과는 아니에요.")
     elif module == "veterinary":
         groups("kind")
         if completed:
             add("최근 방문·접종", completed[-1].occurred_at.astimezone(tz).strftime("%Y.%m.%d"))
-        stats["notes"].append("예약과 실제 방문을 구분하며, 예정 기록은 완료 횟수에 포함하지 않습니다.")
+        stats["notes"].append("다녀온 기록만 완료 횟수에 넣어요. 예약은 따로 확인해 주세요.")
     elif module == "sleep":
         intervals = defaultdict(list)
         for a in completed:
@@ -285,7 +285,7 @@ def get_statistics(room, module, start, end, all_records=None):
                 if pieces:
                     daily[day] = union_seconds(pieces) / 60
             stats["charts"].append(chart("관찰한 " + ("수면" if kind == "sleep" else "휴식") + " 시간", "분", daily, start, end))
-        stats["notes"].append("미기록 구간을 수면으로 추정하지 않아요. 자정을 넘는 구간은 각 날짜에 나누고 겹치는 관찰은 중복 집계하지 않습니다.")
+        stats["notes"].append("직접 확인한 시간만 모았어요. 자정을 지나면 날짜별로 나누고 겹친 시간은 한 번만 계산해요.")
     elif module == "environment":
         dimensions = defaultdict(list)
         for a in rows:
@@ -306,7 +306,7 @@ def get_statistics(room, module, start, end, all_records=None):
                 daily[day_of(a)] = value
             if len(stats["charts"]) < 12:
                 stats["charts"].append(chart(name, UNIT_LABELS.get(unit, unit), daily, start, end, "line"))
-        stats["notes"].append("측정 항목과 위치가 같은 값만 비교합니다. 그래프는 같은 날 마지막 측정값, 평균은 실제 측정값의 산술평균입니다.")
+        stats["notes"].append("같은 장소에서 같은 항목을 잰 값끼리 비교해요. 그래프에는 하루의 마지막 측정값, 평균에는 모든 측정값을 사용해요.")
     elif module == "reproduction":
         eggs = [a for a in rows if a.payload["kind"] == "egg"]
         egg_count = sum((decimal(a.payload["eggs"]) for a in eggs), ZERO)
@@ -322,7 +322,7 @@ def get_statistics(room, module, start, end, all_records=None):
         changes = [a for a in rows if a.payload.get("kind") not in ("heat", "egg")]
         add("생활 변화", len(changes) if changes else None, "건")
         stats["charts"].insert(0, chart("생활 변화가 기록된 날", "건", Counter(day_of(a) for a in changes), start, end))
-        stats["notes"].append("성장·먹이·환경·관리 방식의 변화를 남긴 기록이에요. 다른 상태 변화의 원인으로 자동 판정하지 않아요. 이전 형식의 기록도 보존해요.")
+        stats["notes"].append("생활에서 달라진 일을 모았어요. 다른 변화의 원인이라고 단정하지 않아요. 이전 형식으로 남긴 기록도 볼 수 있어요.")
         stats["events"] = [{"date": day_of(a), "kind": label_choice(module, "kind", a.payload.get("kind")), "detail": a.payload.get("detail", ""), "id": a.pk} for a in reversed(rows)]
         groups("kind")
     elif module == "shedding":
@@ -368,7 +368,7 @@ def get_statistics(room, module, start, end, all_records=None):
             stats["has_data"] = True
             primary(len(balances), "품목")
         add("구매 필요", low if balances else None, "품목")
-        stats["notes"].append("재고는 선택 기간 이전 입고·사용도 포함한 잔량입니다. 실사 조정 이후의 변동을 이어 계산하며 품목과 단위를 섞지 않습니다.")
+        stats["notes"].append("이전부터 들어오고 사용한 양을 반영한 남은 수량이에요. 직접 센 수량으로 맞춘 뒤에는 그 이후의 변동을 계산해요. 품목과 단위는 따로 구분해요.")
     elif module == "expense":
         totals, categories, daily = defaultdict(lambda: ZERO), defaultdict(lambda: ZERO), defaultdict(lambda: defaultdict(lambda: ZERO))
         for a in rows:
@@ -387,10 +387,10 @@ def get_statistics(room, module, start, end, all_records=None):
             primary(len(totals), "개 통화")
         for (category, currency), amount in categories.items():
             stats["breakdown"].append({"label": str(label_choice(module, "category", category)), "value": compact(amount), "unit": currency})
-        stats["notes"].append("환율을 가정하지 않으며 서로 다른 통화는 합산하지 않아요.")
+        stats["notes"].append("통화별로 따로 합산해요. 환율을 가정해 다른 통화로 바꾸지 않아요.")
     if not stats["charts"]:
         stats["charts"].append(chart("날짜별 완료 기록", "건", count_daily, start, end))
-    stats["notes"].append("취소·예정·진행 중 기록은 완료 합계에서 제외합니다. 빈 날짜는 미기록이며 실제 활동량 0이라는 뜻은 아닙니다.")
+    stats["notes"].append("완료한 기록만 모았어요. 취소했거나 예정·진행 중인 기록은 제외해요. 빈 날짜는 기록이 없다는 뜻이지 활동을 하지 않았다는 뜻은 아니에요.")
     return stats
 
 
@@ -441,13 +441,13 @@ def routine_schedule(member, day):
             paused = key not in enabled and activity is None
             items.append({"id": item["id"], "key": key, "spec": MODULES[key], "activity": activity,
                           "paused": paused, "done": bool(activity and activity.status == "done"),
-                          "status": "완료" if activity and activity.status == "done" else "진행 중" if activity else "모듈 꺼짐" if paused else "완료 기록 없음"})
+                          "status": "완료" if activity and activity.status == "done" else "진행 중" if activity else "기능 사용 안 함" if paused else "완료 기록 없음"})
         if not items:
             continue
         pending_count = sum(not i["done"] and not i["paused"] for i in items)
         scheduled_at = datetime.combine(day, time.fromisoformat(snap["at"]), ZoneInfo(room.timezone))
         result.append({"id": routine.pk, "name": snap["name"] if all(i["module"] in allowed for i in snap["items"]) else "공유된 루틴 활동",
-                       "time": snap["at"][:5], "assignee": participants.get(snap.get("assignee_id"), "공동 담당"),
+                       "time": snap["at"][:5], "assignee": participants.get(snap.get("assignee_id"), "함께 담당"),
                        "items": items, "done": sum(i["done"] for i in items), "total": sum(not i["paused"] for i in items),
                        "overdue": scheduled_at < timezone.now() and pending_count > 0})
     return sorted(result, key=lambda row: (row["time"], row["name"]))

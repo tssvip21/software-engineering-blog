@@ -44,7 +44,7 @@ def my_memberships(request):
 def get_room(request, room_id):
     member = my_memberships(request).filter(room_id=room_id).first()
     if member is None:
-        raise Http404("참여 중인 방을 찾을 수 없습니다.")
+        raise Http404("참여 중인 돌봄 공간을 찾지 못했어요.")
     timezone.activate(ZoneInfo(member.room.timezone))
     request.care_room, request.care_member = member.room, member
     return member.room, member
@@ -58,30 +58,30 @@ def visible_modules(member):
 
 def require_module(member, key, *, adding=False):
     if key not in MODULES:
-        raise Http404("모듈을 찾을 수 없습니다.")
+        raise Http404("이 돌봄 기능을 찾지 못했어요.")
     if key not in visible_modules(member):
-        raise PermissionDenied("이 모듈은 방장과 관리자에게만 공유됩니다.")
+        raise PermissionDenied("이 기록은 방장과 관리자만 볼 수 있어요.")
     if adding and not ModuleSetting.objects.filter(room=member.room, key=key, enabled=True).exists():
-        raise ValidationError("이 모듈이 꺼져 있습니다. 방장 또는 관리자에게 활성화를 요청해 주세요.")
+        raise ValidationError("사용하지 않는 기능이에요. 방장이나 관리자에게 사용 설정을 요청해 주세요.")
 
 
 def require_manager(member):
     if not member.can_manage:
-        raise PermissionDenied("방장 또는 관리자만 변경할 수 있습니다.")
+        raise PermissionDenied("방장이나 관리자만 바꿀 수 있어요.")
 
 
 def require_owner(member):
     if not member.can_manage or member.role != "owner" or member.room.owner_id != member.user_id:
-        raise PermissionDenied("방장만 할 수 있는 작업입니다.")
+        raise PermissionDenied("방장만 할 수 있는 작업이에요.")
 
 
 def fresh_member(member):
     room = Room.objects.select_for_update().filter(pk=member.room_id, archived_at__isnull=True).first()
     if room is None:
-        raise PermissionDenied("접근할 수 없는 방입니다.")
+        raise PermissionDenied("이 돌봄 공간에 참여하고 있지 않아요.")
     fresh = Membership.objects.select_related("room").filter(pk=member.pk, room=room, active=True).first()
     if fresh is None or (fresh.user_id != member.user_id) or (fresh.guest_key != member.guest_key):
-        raise PermissionDenied("참여 권한이 변경되었습니다. 다시 확인해 주세요.")
+        raise PermissionDenied("참여 권한이 바뀌었어요. 새로고침해서 확인해 주세요.")
     return fresh
 
 
@@ -116,7 +116,7 @@ def activity_snapshot(activity):
 @transaction.atomic
 def create_room(user, form):
     if not user.is_authenticated:
-        raise PermissionDenied("방을 만들려면 구글 로그인이 필요합니다.")
+        raise PermissionDenied("반려동물을 등록하려면 구글 로그인이 필요해요.")
     if not form.is_valid():
         raise ValidationError("입력값을 확인해 주세요.")
     room = form.save(commit=False)
@@ -138,7 +138,7 @@ def update_room(member, form):
     require_manager(member)
     room = Room.objects.get(pk=member.room_id)
     if form.cleaned_data.get("version") != room.settings_version:
-        raise Conflict("다른 참여자가 방 설정을 변경했습니다. 새로고침 후 다시 확인해 주세요.")
+        raise Conflict("다른 사람이 공간 설정을 바꿨어요. 최신 내용을 불러온 뒤 다시 확인해 주세요.")
     for key in ("name", "species", "subspecies", "breed_key", "size_origin", "maturity", "size", "birth_date", "sex", "timezone"):
         setattr(room, key, form.cleaned_data[key])
     if member.role == "owner":
@@ -155,12 +155,12 @@ def update_modules(member, enabled, order, version, pinned=None):
     member = fresh_member(member)
     require_manager(member)
     if member.room.settings_version != version:
-        raise Conflict("설정이 이미 변경되었습니다. 새로고침한 뒤 다시 시도해 주세요.")
+        raise Conflict("기능 설정이 이미 바뀌었어요. 최신 설정을 확인한 뒤 다시 선택해 주세요.")
     if not isinstance(order, list) or len(order) != len(MODULES) or set(order) != set(MODULES) or not set(enabled) <= set(MODULES):
-        raise ValidationError("모듈 목록과 순서를 확인해 주세요.")
+        raise ValidationError("기능 목록과 순서를 확인해 주세요.")
     rows = {m.key: m for m in member.room.module_settings.all()}
     if pinned is not None and (not isinstance(pinned, list) or not set(pinned) <= set(enabled)):
-        raise ValidationError("오늘에 고정할 모듈은 넣은 모듈에서 선택해 주세요.")
+        raise ValidationError("오늘 화면에 표시할 기능은 사용 중인 기능에서 골라 주세요.")
     for index, key in enumerate(order):
         rows[key].position, rows[key].enabled = index, key in enabled
         if pinned is not None:
@@ -180,7 +180,7 @@ def save_product(member, form, product_id=None):
     if product_id:
         product = Product.objects.select_for_update().get(pk=product_id, room=member.room)
         if product.version != form.cleaned_data.get("version"):
-            raise Conflict("제품 정보가 변경되었습니다. 새로고침 후 다시 확인해 주세요.")
+            raise Conflict("제품 정보가 바뀌었어요. 새로고침한 뒤 다시 확인해 주세요.")
         product.version += 1
     else:
         product = Product(room=member.room)
@@ -245,7 +245,7 @@ def validate_inventory(room):
         previous = balances.get(key, Decimal(0))
         value = amount if movement == "set" else previous + amount if movement == "in" else previous - amount
         if value < 0:
-            raise ValidationError(f"'{activity.payload['item']}'의 재고가 음수가 됩니다. 앞선 입고·실사 기록과 사용 순서를 먼저 확인해 주세요.")
+            raise ValidationError(f"'{activity.payload['item']}'의 남은 수량이 0보다 작아져요. 사 온 수량, 직접 센 수량과 사용한 순서를 확인해 주세요.")
         balances[key] = value
 
 
@@ -275,15 +275,15 @@ def module_enabled_on(room, key, day):
 
 def require_routine_slot(member, item_id, day, module):
     if not day or day > local_date(member.room):
-        raise ValidationError("오늘까지의 루틴만 기록할 수 있습니다.")
+        raise ValidationError("아직 오지 않은 날의 할 일은 완료로 기록할 수 없어요.")
     item = RoutineItem.objects.select_related("routine").filter(pk=item_id, routine__room=member.room).first()
     if not item or item.module != module:
-        raise ValidationError("이 방의 해당 모듈 루틴을 선택해 주세요.")
+        raise ValidationError("이 공간에서 해당 활동이 포함된 루틴을 선택해 주세요.")
     snap = effective_routine(item.routine, day)
     if not snap or not snap["active"] or day.weekday() not in snap["weekdays"] or not any(i["id"] == str(item.pk) for i in snap["items"]):
-        raise ValidationError("이 날짜에는 해당 루틴이 예정되어 있지 않습니다.")
+        raise ValidationError("선택한 날짜에는 이 루틴이 없어요. 날짜를 다시 골라 주세요.")
     if not module_enabled_on(member.room, module, day):
-        raise ValidationError("이 루틴은 모듈 비활성화로 일시 중지되어 있습니다.")
+        raise ValidationError("이 활동의 기능을 사용하지 않아 루틴도 잠시 멈췄어요.")
     return item
 
 
@@ -300,16 +300,16 @@ def save_activity(member, module, form, activity_id=None):
         if activity is None:
             raise Http404()
         if not can_edit_record(member, activity):
-            raise PermissionDenied("자신이 작성한 기록만 수정할 수 있습니다.")
+            raise PermissionDenied("직접 작성한 기록만 수정할 수 있어요.")
         if activity.voided:
-            raise Conflict("이미 취소한 기록입니다. 필요한 경우 새로 기록해 주세요.")
+            raise Conflict("취소한 기록은 수정할 수 없어요. 필요한 내용은 새 기록으로 남겨 주세요.")
         if activity.version != data.get("version"):
-            raise Conflict("다른 참여자가 이 기록을 변경했습니다. 새로고침 후 다시 확인해 주세요.")
+            raise Conflict("다른 사람이 기록을 수정했어요. 새로고침해서 최신 내용을 먼저 확인해 주세요.")
     performer = data.get("performer")
     if performer:
         valid_performer = Membership.objects.filter(pk=performer.pk, room=member.room).first()
         if valid_performer is None or (not valid_performer.active and (activity is None or activity.performer_id != performer.pk)):
-            raise ValidationError("이 방에 참여 중인 수행자를 선택해 주세요.")
+            raise ValidationError("이 공간의 구성원 중 돌본 사람을 골라 주세요.")
     raw = json_safe({"module": module, "payload": payload, "status": data["status"], "occurred_at": data["occurred_at"],
                      "ended_at": data.get("ended_at"), "performer": performer.pk if performer else None, "note": data.get("note", ""),
                      "routine_item": data.get("routine_item"), "routine_date": data.get("routine_date")})
@@ -319,21 +319,21 @@ def save_activity(member, module, form, activity_id=None):
         if duplicate:
             if duplicate.author_id == member.pk and duplicate.module == module and hmac.compare_digest(duplicate.fingerprint, fingerprint):
                 return duplicate, False
-            raise Conflict("같은 요청 번호로 다른 내용을 저장할 수 없습니다. 새 입력 화면에서 다시 기록해 주세요.")
+            raise Conflict("앞서 저장한 요청과 내용이 달라요. 새 입력창을 열어 기록해 주세요.")
     slot = None
     if not activity and data.get("routine_item"):
         if data["status"] == "planned":
-            raise ValidationError("예정 기록은 루틴 완료로 연결할 수 없습니다.")
+            raise ValidationError("예정만 적은 기록으로는 루틴을 완료할 수 없어요.")
         item = require_routine_slot(member, data["routine_item"], data.get("routine_date"), module)
         if data["occurred_at"].astimezone(ZoneInfo(member.room.timezone)).date() != data["routine_date"]:
-            raise ValidationError("활동 날짜와 루틴 날짜가 같아야 합니다.")
+            raise ValidationError("활동한 날짜와 루틴 날짜를 맞춰 주세요.")
         slot, _ = RoutineRun.objects.get_or_create(item=item, date=data["routine_date"])
         if slot.activity_id and not slot.activity.voided:
-            raise Conflict("이미 연결된 기록이 있습니다. 기존 기록을 열어 확인해 주세요.")
+            raise Conflict("이미 완료 기록이 연결돼 있어요. 기존 기록을 먼저 확인해 주세요.")
     elif activity:
         existing_run = RoutineRun.objects.filter(activity=activity).first()
         if existing_run and (data["status"] == "planned" or data["occurred_at"].astimezone(ZoneInfo(member.room.timezone)).date() != existing_run.date):
-            raise ValidationError("루틴에 연결된 기록은 같은 날짜의 진행·완료 상태를 유지해야 합니다. 잘못된 기록은 취소 후 다시 입력해 주세요.")
+            raise ValidationError("루틴에 연결한 기록은 같은 날짜의 진행 중 또는 완료 상태여야 해요. 잘못 남긴 기록은 취소하고 다시 적어 주세요.")
     nutrition = {}
     if module in ("meal", "treat"):
         product = data.get("product")
@@ -341,7 +341,7 @@ def save_activity(member, module, form, activity_id=None):
         if product:
             product = Product.objects.filter(pk=product.pk, room=member.room).first()
             if product is None:
-                raise ValidationError("이 방의 제품을 선택해 주세요.")
+                raise ValidationError("이 공간에 등록한 제품을 선택해 주세요.")
             same_product = bool(activity and activity.payload.get("product_id") == str(product.pk))
             if not product.active and not same_product:
                 raise ValidationError("사용 중인 제품을 선택해 주세요.")
@@ -376,11 +376,11 @@ def cancel_activity(member, activity_id, version, reason):
     activity = Activity.objects.select_for_update().get(pk=activity_id, room=member.room)
     require_module(member, activity.module)
     if not can_edit_record(member, activity):
-        raise PermissionDenied("자신이 작성한 기록만 취소할 수 있습니다.")
+        raise PermissionDenied("직접 작성한 기록만 취소할 수 있어요.")
     if activity.voided:
         return activity
     if activity.version != version:
-        raise Conflict("기록이 변경되었습니다. 최신 내용을 확인한 뒤 취소해 주세요.")
+        raise Conflict("기록 내용이 바뀌었어요. 최신 내용을 확인한 뒤 취소해 주세요.")
     before = activity_snapshot(activity)
     activity.voided, activity.void_reason = True, reason.strip()
     if not activity.void_reason:
@@ -409,13 +409,13 @@ def create_invitation(member, hours, max_uses):
 
 def get_invitation(token, lock=False):
     if not isinstance(token, str) or not 32 <= len(token) <= 120:
-        raise ValidationError("올바른 초대 링크가 아닙니다.")
+        raise ValidationError("초대 링크를 확인해 주세요.")
     qs = Invitation.objects.select_related("room")
     if lock:
         qs = qs.select_for_update()
     invite = qs.filter(token_hash=hashlib.sha256(token.encode()).hexdigest()).first()
     if invite is None or not invite.usable:
-        raise ValidationError("만료되었거나 폐기된 초대입니다. 방장에게 새 링크를 요청해 주세요.")
+        raise ValidationError("기간이 지났거나 사용을 중단한 초대예요. 방장에게 새 링크를 요청해 주세요.")
     return invite
 
 
@@ -434,7 +434,7 @@ def join_room(request, token, name):
     if member and member.active:
         return member
     if not invite.usable:
-        raise Conflict("이 초대는 더 이상 사용할 수 없습니다.")
+        raise Conflict("사용할 수 없는 초대예요. 새 링크를 받아 주세요.")
     if member:
         member.active, member.role, member.display_name = True, "guest", name.strip()[:40]
         member.save(update_fields=["active", "role", "display_name"])
@@ -462,10 +462,10 @@ def change_member(member, target_id, action, revoke_links=False):
     require_owner(member)
     target = Membership.objects.get(pk=target_id, room=member.room, active=True)
     if target.role == "owner":
-        raise ValidationError("방장의 권한은 변경할 수 없습니다.")
+        raise ValidationError("방장의 권한은 이 메뉴에서 바꿀 수 없어요.")
     if action == "promote":
         if target.user_id is None:
-            raise ValidationError("구글 로그인으로 계정을 연결한 참여자만 관리자로 지정할 수 있습니다.")
+            raise ValidationError("구글 계정을 연결한 구성원만 관리자로 지정할 수 있어요.")
         target.role = "admin"
     elif action == "demote":
         target.role = "guest"
@@ -475,7 +475,7 @@ def change_member(member, target_id, action, revoke_links=False):
         if revoke_links:
             member.room.invitations.filter(revoked=False).update(revoked=True)
     else:
-        raise ValidationError("지원하지 않는 변경입니다.")
+        raise ValidationError("이 작업은 할 수 없어요. 메뉴에서 다시 선택해 주세요.")
     target.save(update_fields=["role", "active"])
     bump(member.room, member, "member." + action, {"member_id": str(target.pk), "links_revoked": bool(revoke_links)})
 
@@ -484,7 +484,7 @@ def change_member(member, target_id, action, revoke_links=False):
 def leave_room(member):
     member = fresh_member(member)
     if member.role == "owner":
-        raise ValidationError("방장은 방을 나갈 수 없습니다. 방 설정에서 보관을 이용해 주세요.")
+        raise ValidationError("방장은 바로 나갈 수 없어요. 더 이상 사용하지 않으면 공간 설정에서 보관해 주세요.")
     member.active = False
     member.role = "guest"
     member.save(update_fields=["active", "role"])
@@ -513,7 +513,7 @@ def save_routine(member, form, routine_id=None):
     if routine_id:
         routine = Routine.objects.select_for_update().get(pk=routine_id, room=member.room)
         if routine.version != data.get("version"):
-            raise Conflict("루틴이 변경되었습니다. 새로고침한 뒤 다시 확인해 주세요.")
+            raise Conflict("루틴이 바뀌었어요. 최신 내용을 확인한 뒤 다시 저장해 주세요.")
         routine.version += 1
     else:
         routine = Routine(room=member.room, start_date=local_date(member.room))
@@ -521,7 +521,7 @@ def save_routine(member, form, routine_id=None):
         require_module(member, key)
     assignee = data.get("assignee")
     if assignee and not Membership.objects.filter(pk=assignee.pk, room=member.room, active=True).exists():
-        raise ValidationError("이 방에 참여 중인 담당자를 선택해 주세요.")
+        raise ValidationError("이 공간의 구성원 중 담당할 사람을 골라 주세요.")
     routine.name, routine.at = data["name"], data["at"]
     routine.weekdays, routine.active, routine.assignee = [int(x) for x in data["weekdays"]], data["active"], assignee
     routine.save()
@@ -543,18 +543,18 @@ def link_activity(member, item_id, day, activity_id):
     member = fresh_member(member)
     activity = Activity.objects.filter(pk=activity_id, room=member.room, voided=False, status__in=("done", "active")).first()
     if not activity:
-        raise ValidationError("연결할 수 있는 기록을 찾지 못했습니다.")
+        raise ValidationError("이 루틴에 연결할 기록이 없어요. 날짜와 활동을 확인해 주세요.")
     require_module(member, activity.module)
     if not can_edit_record(member, activity):
-        raise PermissionDenied("자신의 기록만 루틴에 연결할 수 있습니다.")
+        raise PermissionDenied("직접 작성한 기록만 루틴에 연결할 수 있어요.")
     if activity.occurred_at.astimezone(ZoneInfo(member.room.timezone)).date() != day:
-        raise ValidationError("같은 날짜의 기록만 연결할 수 있습니다.")
+        raise ValidationError("루틴과 같은 날짜에 남긴 기록을 선택해 주세요.")
     item = require_routine_slot(member, item_id, day, activity.module)
     slot, _ = RoutineRun.objects.get_or_create(item=item, date=day)
     if slot.activity_id == activity.pk:
         return slot
     if slot.activity_id or RoutineRun.objects.filter(activity=activity).exists():
-        raise Conflict("이미 다른 기록 또는 루틴에 연결되어 있습니다.")
+        raise Conflict("이미 다른 기록이나 루틴과 연결돼 있어요. 기존 연결을 먼저 확인해 주세요.")
     slot.activity = activity
     slot.save(update_fields=["activity"])
     bump(member.room, member, "routine.linked", {"activity_id": str(activity.pk)})

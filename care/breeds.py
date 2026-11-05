@@ -50,20 +50,20 @@ def picker_data():
 
 def reference_for(room, latest_weight=None):
     breed = catalogue().get(getattr(room, "breed_key", ""))
-    result = {"available": False, "breed": breed, "message": "품종 자료가 없어도 개별 기록의 변화 분석은 사용할 수 있어요."}
+    result = {"available": False, "breed": breed, "message": "품종을 몰라도 기록을 남기고 최근 변화를 볼 수 있어요."}
     if not breed or breed["species"] != room.species:
         return result
     ref = breed.get("reference")
     if not ref or not weight_range(breed, room.sex):
-        result["message"] = "이 품종에 확인된 체중 참고 범위가 없어요. 임의의 평균을 넣지 않았어요."
+        result["message"] = "이 품종은 비교할 체중 자료가 아직 없어요."
         return result
     low, high = weight_range(breed, room.sex)
-    result.update(source=ref["source"], url=ref["url"], checked=ref["checked"], low=round(low,3), high=round(high,3), kind=ref["kind"], sex_label="수컷" if room.sex=="male" else "암컷" if room.sex=="female" else "암수 범위를 함께 표시")
+    result.update(source=ref["source"], url=ref["url"], checked=ref["checked"], low=round(low,3), high=round(high,3), kind=ref["kind"], sex_label="수컷" if room.sex=="male" else "암컷" if room.sex=="female" else "성별을 몰라 암수 범위를 함께 표시")
     if getattr(room,"maturity", "") != "adult":
-        result["message"] = "성장 완료가 확인된 동물의 참고 범위예요. 성장 중이거나 모르는 경우 체중 위치를 판정하지 않아요."
+        result["message"] = "다 자란 반려동물의 자료예요. 아직 자라는 중이거나 성장 상태를 모르면 이 범위와 비교하지 않아요."
         return result
     result["available"] = True
-    result["message"] = "평균이나 개별 적정 체중이 아닌 품종 설명상의 참고 범위예요. 기록 기반 종합 상태와는 별도로 보세요."
+    result["message"] = "품종 안내에 나온 체중 범위예요. 평균이나 우리 반려동물에게 알맞은 체중을 뜻하지는 않아요."
     if latest_weight:
         kg = Decimal(str(latest_weight["value"]))
         result.update(value=round(kg,3), date=latest_weight["date"], position="참고 범위 안" if low<=kg<=high else "참고 범위보다 아래" if kg<low else "참고 범위보다 위")

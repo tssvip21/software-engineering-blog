@@ -57,3 +57,8 @@ def number(value):
         return compact(value)
     except (ValueError, TypeError, ArithmeticError):
         return value
+
+
+@register.filter
+def record_status(value):
+    return {"done": "완료", "active": "진행 중", "planned": "예정"}.get(value, value)
