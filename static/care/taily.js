@@ -232,7 +232,7 @@
     if (link && event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
       event.preventDefault(); await openQuick(link.href, link); return;
     }
-    if (event.target.closest('[data-quick-close]')) { closeQuick(); return; }
+    if (event.target.closest('[data-quick-close]')) { if (dialog?.open) closeQuick(); else { const back = $('.quick-standalone > a'); if (back) location.assign(back.href); } return; }
     if (event.target.closest('[data-feedback-dismiss]')) { $('#action-feedback').hidden = true; return; }
     const undoButton = event.target.closest('[data-feedback-undo]');
     if (undoButton && undo) {
@@ -449,7 +449,7 @@
         event.preventDefault();
         if(event.key==='ArrowUp'&&row.previousElementSibling) reorder(row,row.previousElementSibling);
         if(event.key==='ArrowDown'&&row.nextElementSibling) reorder(row,row.nextElementSibling.nextElementSibling);
-        if(event.key==='Home') reorder(row,list.firstElementChild===row?row.nextElementSibling:list.firstElementChild);
+        if(event.key==='Home'&&list.firstElementChild!==row) reorder(row,list.firstElementChild);
         if(event.key==='End') reorder(row,null);
         catalog(); handle.focus({preventScroll:true}); row.scrollIntoView({block:'nearest'});
         announce(`${order().indexOf(row.dataset.key)+1}번째 위치예요. Enter로 저장해요.`);

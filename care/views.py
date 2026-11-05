@@ -1,3 +1,4 @@
+from .organization import browse_context
 from datetime import date, timedelta
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
@@ -142,7 +143,7 @@ def module_settings(request, room_id):
     settings_rows = list(room.module_settings.all())
     rows = [{"spec": MODULES[s.key], "enabled": s.enabled, "pinned": s.pinned} for s in settings_rows]
     return render(request, "care/module_settings.html", {"title": "모듈 구성", "rows": rows, "config_state": config_state(room), "chosen": [r for r in rows if r["enabled"]], "order_json": json.dumps([s.key for s in settings_rows]),
-                  "problem": problem, "active_tab": "settings"}, status=status)
+                  "problem": problem, "active_tab": "settings", **browse_context(member)}, status=status)
 
 
 @require_http_methods(["GET", "POST"])
@@ -245,6 +246,12 @@ def records(request, room_id):
     room, member = services.get_room(request, room_id)
     allowed = services.visible_modules(member)
     qs = Activity.objects.filter(room=room, module__in=allowed).select_related("author", "performer")
+    selected_modules = request.GET.get("modules", "")
+    if selected_modules:
+        keys = selected_modules.split(",")
+        if len(keys) > len(MODULES) or any(k not in allowed for k in keys):
+            raise PermissionDenied()
+        qs = qs.filter(module__in=keys)
     selected_module = request.GET.get("module", "")
     selected_group = request.GET.get("group", "")
     if selected_group in GROUPS:
@@ -291,7 +298,7 @@ def records(request, room_id):
     page.object_list = [record_card(a, member) for a in page.object_list]
     params = request.GET.copy(); params.pop("page", None)
     return render(request, "care/records.html", {"title": "전체 기록", "page_obj": page, "module_choices": [(k, MODULES[k].name) for k in allowed],
-                  "selected_module": selected_module, "selected_group": selected_group, "group_label": GROUPS.get(selected_group, ("", ()))[0], "selected_state": selected_state, "selected_author": selected_author,
+                  "selected_modules": selected_modules, "selected_module": selected_module, "selected_group": selected_group, "group_label": GROUPS.get(selected_group, ("", ()))[0], "selected_state": selected_state, "selected_author": selected_author,
                   "authors": room.members.order_by("display_name"), "start": begin, "end": end, "query": query, "query_params": params.urlencode(),
                   "problem": problem, "active_tab": "records", "live_page": True})
 
@@ -446,8 +453,12 @@ def member_change(request, room_id, member_id):
     get_object_or_404(Membership, pk=member_id, room=room, active=True)
     try:
         services.change_member(member, member_id, request.POST.get("action"), request.POST.get("revoke_links") == "1")
+        if request.headers.get("X-Taily-UI") == "1":
+            return JsonResponse({"ok": True, "message": "구성원 정보를 변경했어요."})
         messages.success(request, "참여자 권한을 변경했어요.")
     except ValidationError as exc:
+        if request.headers.get("X-Taily-UI") == "1":
+            return JsonResponse({"ok": False, "message": " ".join(exc.messages)}, status=400)
         messages.error(request, " ".join(exc.messages))
     return redirect("members", room_id=room.pk)
 

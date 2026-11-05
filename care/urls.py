@@ -1,8 +1,11 @@
 from django.conf import settings
 from django.urls import path
-from . import auth, views, interactions
+from . import auth, views, interactions, workspace
 
 urlpatterns = [
+    path("rooms/<uuid:room_id>/groups/", workspace.group_page, name="group_page"),
+    path("rooms/<uuid:room_id>/groups/config/", workspace.group_config, name="group_config"),
+    path("rooms/<uuid:room_id>/analysis/method/", workspace.analysis_method, name="analysis_method"),
     path("", views.home, name="home"),
     path("health/", views.health, name="health"),
     path("auth/google/start/", auth.google_start, name="google_start"),
@@ -14,7 +17,7 @@ urlpatterns = [
     path("rooms/new/", views.room_new, name="room_new"),
     path("rooms/<uuid:room_id>/", views.today, name="today"),
     path("rooms/<uuid:room_id>/state/", views.room_state, name="room_state"),
-    path("rooms/<uuid:room_id>/modules/", views.modules, name="modules"),
+    path("rooms/<uuid:room_id>/modules/", workspace.module_workspace, name="modules"),
     path("rooms/<uuid:room_id>/modules/config/", interactions.module_config, name="module_config"),
     path("rooms/<uuid:room_id>/modules/<slug:module>/quick/", interactions.quick_record, name="quick_record"),
     path("rooms/<uuid:room_id>/records/<uuid:activity_id>/quick/", interactions.quick_record, name="quick_finish"),
@@ -31,7 +34,7 @@ urlpatterns = [
     path("rooms/<uuid:room_id>/records/<uuid:activity_id>/", views.record_detail, name="record_detail"),
     path("rooms/<uuid:room_id>/records/<uuid:activity_id>/edit/", views.record_edit, name="record_edit"),
     path("rooms/<uuid:room_id>/records/<uuid:activity_id>/cancel/", views.record_cancel, name="record_cancel"),
-    path("rooms/<uuid:room_id>/overview/", views.overview_page, name="overview"),
+    path("rooms/<uuid:room_id>/overview/", workspace.overview_page, name="overview"),
     path("rooms/<uuid:room_id>/products/", views.products, name="products"),
     path("rooms/<uuid:room_id>/products/new/", views.product_edit, name="product_new"),
     path("rooms/<uuid:room_id>/products/<uuid:product_id>/", views.product_edit, name="product_edit"),

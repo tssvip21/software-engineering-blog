@@ -29,9 +29,9 @@ def integrated_context(member):
     tz = ZoneInfo(room.timezone)
     lookup = {card["key"]: card for card in context["cards"]}
     stories = []
-    def story(title, text, note, module, detail=None):
+    def story(title, text, note, module, detail=None, modules=None):
         stories.append({"title": title, "text": text, "note": note, "module": module,
-                        "url": reverse("statistics", args=[room.pk, module]) + "?" + urlencode({"start": start.isoformat(), "end": today.isoformat()}), "reference": detail})
+                        "url": (reverse("records", args=[room.pk]) + "?" + urlencode({"modules": ",".join(sorted(set(modules))), "start": start.isoformat(), "end": today.isoformat(), "state": "done"}) if modules else reverse("statistics", args=[room.pk, module]) + "?" + urlencode({"start": start.isoformat(), "end": today.isoformat()})), "reference": detail})
     foods = [a for a in records if a.module in ("meal", "treat")]
     if foods:
         known = [a for a in foods if a.nutrition.get("kcal") is not None]
@@ -41,14 +41,14 @@ def integrated_context(member):
             if selected:
                 kcal = sum((decimal(a.nutrition["kcal"]) for a in selected), Decimal(0))
                 text += f" {label} {len(selected)}건은 {compact(kcal)} kcal예요."
-        story("먹은 것과 기록한 양", text, f"열량 미확인 {len(foods)-len(known)}건. 실제 섭취량과 제공량 기준 예상치는 따로 읽어 주세요.", "meal" if "meal" in allowed else "treat")
+        story("먹은 것과 기록한 양", text, f"열량 미확인 {len(foods)-len(known)}건. 실제 섭취량과 제공량 기준 예상치는 따로 읽어 주세요.", foods[0].module, modules=[a.module for a in foods])
     activities = [a for a in records if a.module in ("walk", "play", "training")]
     if activities:
         timed = [a for a in activities if a.payload.get("minutes") is not None]
         minutes = sum((decimal(a.payload["minutes"]) for a in timed), Decimal(0))
         text = f"산책·놀이·훈련을 {len(activities)}번 기록했어요."
         text += f" 시간을 남긴 활동은 총 {compact(minutes)}분이에요." if timed else " 활동 시간은 아직 입력하지 않았어요."
-        story("함께 보낸 활동 시간", text, f"시간 미입력 {len(activities)-len(timed)}건은 0분으로 계산하지 않아요.", max(Counter(a.module for a in activities), key=Counter(a.module for a in activities).get))
+        story("함께 보낸 활동 시간", text, f"시간 미입력 {len(activities)-len(timed)}건은 0분으로 계산하지 않아요.", max(Counter(a.module for a in activities), key=Counter(a.module for a in activities).get), modules=[a.module for a in activities])
     weight = lookup.get("weight")
     if weight and weight["current"].get("measurement_date"):
         current = weight["current"]
@@ -64,7 +64,7 @@ def integrated_context(member):
     if care:
         names = Counter(MODULES[a.module].name for a in care)
         description = ", ".join(f"{name} {n}건" for name, n in names.items())
-        story("생활을 돌본 기록", description + "을 남겼어요.", "서로 다른 관리 활동의 수행 횟수예요. 관리 효과를 점수로 환산하지 않아요.", care[0].module)
+        story("생활을 돌본 기록", description + "을 남겼어요.", "서로 다른 관리 활동의 수행 횟수예요. 관리 효과를 점수로 환산하지 않아요.", care[0].module, modules=[a.module for a in care])
     for key in ("medication", "veterinary", "inventory"):
         card = lookup.get(key)
         if not card or not card["current"]["has_data"]:

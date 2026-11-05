@@ -6,3 +6,5 @@
 {% else %}<label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span class="required-text">필수</span>{% endif %}</label>{{ field }}{% endif %}
 {% if field.help_text %}<p class="field-help" {% if field.id_for_label %}id="{{ field.id_for_label }}_helptext"{% endif %}>{{ field.help_text }}</p>{% endif %}
 {% for error in field.errors %}<p class="field-error" role="alert">{{ error }}</p>{% endfor %}</div>{% endfor %}
+
+{% if form.breed_catalog %}{{ form.breed_catalog|json_script:"breed-catalog" }}{% endif %}

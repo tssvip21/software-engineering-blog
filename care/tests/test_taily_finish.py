@@ -7,6 +7,7 @@ from django.urls import reverse
 from care import services
 from care.models import CareCadence
 from care.presentation import integrated_context
+from care.insights import context_for
 from .test_taily import TailyCase, UI
 
 
@@ -17,20 +18,16 @@ class OverviewDisclosureTests(TailyCase):
             self.assertEqual(response.status_code, 200, response.content)
         self.quick("observation", condition="different", detail="관찰한 변화")
 
-    def test_four_primary_summaries_keep_every_additional_story(self):
+    def test_pattern_summary_replaces_fixed_four_story_selection(self):
         self.populate()
-        context = integrated_context(self.owner)
-        self.assertGreater(len(context["stories"]), 4)
-        self.assertEqual(len(context["summary_primary"]), 4)
-        expected = sorted(x["title"] for x in context["stories"])
-        actual = sorted(x["title"] for x in context["summary_primary"] + context["summary_additional"])
-        self.assertEqual(expected, actual)
-        self.assertEqual(context["summary_primary"][0]["module"], "observation")
+        context = context_for(self.owner)
         response = self.client.get(reverse("overview", args=[self.room.pk]))
-        self.assertContains(response, 'data-summary-primary')
-        self.assertContains(response, 'class="summary-more"')
-        for story in context["summary_additional"]:
-            self.assertContains(response, story["text"])
+        self.assertContains(response, context["insight"]["title"])
+        self.assertContains(response, "이번 결과의 근거")
+        self.assertNotContains(response, "data-summary-primary")
+        for metric in context["focus_metrics"]:
+            self.assertContains(response, metric["label"])
+            self.assertEqual(self.client.get(metric["url"]).status_code, 200)
 
     def test_guest_summary_and_distribution_do_not_reveal_sensitive_records(self):
         self.populate()
@@ -52,7 +49,7 @@ class OverviewDisclosureTests(TailyCase):
         self.assertEqual(context["summary_additional"], [])
         self.assertEqual(context["record_count"], 0)
         response = self.client.get(reverse("overview", args=[self.room.pk]))
-        self.assertContains(response, '기록이 모이면 변화를 함께 볼 수 있어요')
+        self.assertContains(response, '평소 패턴을 모으고 있어요')
         self.assertNotContains(response, 'class="summary-more"')
 
     def test_summary_detail_links_keep_same_room_and_period(self):

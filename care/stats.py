@@ -310,8 +310,10 @@ def get_statistics(room, module, start, end, all_records=None):
     elif module == "reproduction":
         eggs = [a for a in rows if a.payload["kind"] == "egg"]
         egg_count = sum((decimal(a.payload["eggs"]) for a in eggs), ZERO)
-        add("관찰한 알", egg_count if eggs else None, "개")
-        add("발정 관찰", sum(a.payload["kind"] == "heat" for a in rows) if rows else None, "건")
+        if eggs:
+            add("관찰한 알", egg_count if eggs else None, "개")
+        if any(a.payload.get("kind")=="heat" for a in rows):
+            add("발정 관찰", sum(a.payload["kind"] == "heat" for a in rows) if rows else None, "건")
         daily = defaultdict(lambda: ZERO)
         for a in eggs:
             daily[day_of(a)] += decimal(a.payload["eggs"])

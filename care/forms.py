@@ -50,6 +50,7 @@ class RoomForm(forms.ModelForm):
         self.fields["maturity"].help_text = "성장 완료를 확인한 경우에만 성견·성묘 참고 체중과 비교해요."
         if not self.instance.created_at:
             self.fields["size_origin"].initial = "auto"
+            self.initial["size_origin"] = "auto"
         if self.instance.pk and self.instance.created_at:
             self.fields.pop("use_defaults", None)
             self.fields["version"].initial = self.instance.settings_version
