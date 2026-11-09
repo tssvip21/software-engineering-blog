@@ -149,7 +149,7 @@ class DiscoveryPresentationTests(CareCase):
         for name in ["today", "modules", "records", "routines", "overview"]:
             response = self.client.get(reverse(name, args=[self.room.pk]))
             self.assertContains(response, 'aria-label="모바일 주요 화면"')
-            self.assertContains(response, "care/phase5.css")
+            self.assertContains(response, "care/studio.css")
         config = self.client.get(reverse("module_settings", args=[self.room.pk]))
         self.assertContains(config, 'id="module-to-move"')
         self.assertContains(config, 'data-place-module')

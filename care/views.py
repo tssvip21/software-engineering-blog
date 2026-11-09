@@ -90,7 +90,7 @@ def today(request, room_id):
     total = sum(r["total"] for r in schedule)
     done = sum(r["done"] for r in schedule)
     return render(request, "care/today.html", {"title": room.name + "의 오늘", "day": day, "cards": cards, "due_cadences": due, "cards_more": [], "recent": recent, "ongoing": ongoing,
-                  "planned": planned, "schedule": schedule, "routine_total": total, "routine_done": done, "active_tab": "today", "live_page": True,
+                  "planned": planned, "schedule": schedule, "routine_total": total, "routine_done": done, "routine_progress": round(done / total * 100, 2) if total else 0, "active_tab": "today", "live_page": True,
                   "today_count": sum(a.status == "done" and lower <= a.occurred_at < upper for a in activities)})
 
 
@@ -146,7 +146,7 @@ def module_settings(request, room_id):
     settings_rows = list(room.module_settings.all())
     rows = [{"spec": MODULES[s.key], "enabled": s.enabled, "pinned": s.pinned} for s in settings_rows]
     return render(request, "care/module_settings.html", {"title": "기능 설정", "rows": rows, "config_state": config_state(room), "chosen": [r for r in rows if r["enabled"]], "order_json": json.dumps([s.key for s in settings_rows]),
-                  "problem": problem, "active_tab": "settings", **browse_context(member)}, status=status)
+                  "problem": problem, "active_tab": "modules", **browse_context(member)}, status=status)
 
 
 @require_http_methods(["GET", "POST"])

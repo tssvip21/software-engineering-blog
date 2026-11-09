@@ -97,3 +97,15 @@ def statistics_periods(room, module, selected_start, selected_end):
         periods.append({"label": label, "url": root + "?" + urlencode({"start": start.isoformat(), "end": today.isoformat()}),
                         "selected": selected_start == start and selected_end == today})
     return periods
+
+
+def module_board_tiles(member, rows):
+    """Reuse the same honest summaries as Today, with one shared permitted-record query."""
+    from django.db.models import Q
+    allowed = set(visible_modules(member))
+    day = local_date(member.room)
+    lower, _ = bounds(member.room, day, day)
+    records = list(Activity.objects.filter(room_id=member.room_id, module__in=allowed,
+        voided=False, status="done", occurred_at__lte=timezone.now())
+        .filter(Q(occurred_at__gte=lower) | Q(module="weight")).order_by("-occurred_at", "-created_at"))
+    return {card["spec"].key: card["tile"] for card in today_tiles(member, rows, records, day)}

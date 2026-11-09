@@ -385,12 +385,12 @@
         if (order().includes(key)) return;
         const row = document.getElementById('config-template-'+key).content.firstElementChild.cloneNode(true);
         list.append(row); changed();
-        if (mobile.matches) { row.scrollIntoView({block:'center',behavior: reduced.matches ? 'instant' : 'smooth'}); $('.drag-handle', row).focus({preventScroll:true}); }
+        if (mobile.matches && !$('#module-library')?.open) { row.scrollIntoView({block:'center',behavior: reduced.matches ? 'instant' : 'smooth'}); $('.drag-handle', row).focus({preventScroll:true}); }
       }
       if (remove) {
         const row = remove.closest('.chosen-row'), next = row.nextElementSibling || row.previousElementSibling;
         row.remove(); changed();
-        (next ? $('.drag-handle',next) : $('#catalog-search'))?.focus({preventScroll:true});
+        (next ? $('.drag-handle',next) : $('[data-library-open]'))?.focus({preventScroll:true});
       }
       if (move) {
         const row = move.closest('.chosen-row'), delta = Number(move.dataset.orderStep);
@@ -409,44 +409,56 @@
       $('#catalog-empty').hidden = visible !== 0;
     });
     function reorder(row, before) {
-      const prior = new Map($$('.chosen-row', list).filter(item => item !== row).map(item => [item,item.getBoundingClientRect().top]));
+      if (row === before || row.nextElementSibling === before) return;
+      const prior = new Map($$('.chosen-row', list).filter(item => item !== row).map(item => [item,item.getBoundingClientRect()]));
       list.insertBefore(row, before);
-      if (!reduced.matches) prior.forEach((top,item) => {
-        const delta = top - item.getBoundingClientRect().top;
-        if (Math.abs(delta) > 1) { item.getAnimations().forEach(animation => animation.cancel()); item.animate([{transform:`translateY(${delta}px)`},{transform:'translateY(0)'}],{duration:140,easing:'ease-out'}); }
+      if (!reduced.matches) prior.forEach((box,item) => {
+        const next = item.getBoundingClientRect(), dx = box.left-next.left, dy = box.top-next.top;
+        if (Math.abs(dx)+Math.abs(dy) > 1) {
+          item.getAnimations().forEach(animation => animation.cancel());
+          item.animate([{transform:`translate(${dx}px,${dy}px)`},{transform:'translate(0,0)'}],{duration:140,easing:'ease-out'});
+        }
       });
     }
     function restoreOrder(keys) { keys.forEach(key => { const row = $$('.chosen-row',list).find(r => r.dataset.key === key); if (row) list.append(row); }); }
-    function movePointer(y) {
+    function movePointer(x, y) {
       if (!drag) return;
-      const {row} = drag;
-      row.style.transform = '';
-      const others = $$('.chosen-row',list).filter(item => item !== row);
-      const target = others.find(item => { const r=item.getBoundingClientRect(); return y < r.top+r.height/2; }) || null;
-      if (row.nextElementSibling !== target) reorder(row,target);
+      drag.x=x; drag.y=y;
+      // Fixed layout slots avoid a jumping target when the grid reflows under the pointer.
+      let targetIndex=drag.index, best=Infinity;
+      drag.slots.forEach((slot,index) => {
+        const top=slot.top-window.scrollY, bottom=slot.bottom-window.scrollY;
+        const dx=Math.max(slot.left-x,0,x-slot.right), dy=Math.max(top-y,0,y-bottom);
+        const distance=dx*dx+dy*dy;
+        if (distance<best) {best=distance;targetIndex=index;}
+      });
+      const {row}=drag;
+      row.style.transform='';
+      if (targetIndex!==drag.index) {
+        const others=$$('.chosen-row',list).filter(item=>item!==row);
+        reorder(row,others[targetIndex]||null);drag.index=targetIndex;catalog();
+      }
       const box=row.getBoundingClientRect();
-      row.style.transform=`translateY(${y-drag.offset-box.top}px)`;
-      drag.y=y; catalog();
+      row.style.transform=`translate(${x-drag.offsetX-box.left}px,${y-drag.offsetY-box.top}px)`;
     }
     function scrollDrag() {
       if (!drag) return;
-      const edge = 80, y = drag.y;
-      if (y < edge) window.scrollBy(0, -12);
-      else if (y > innerHeight-edge) window.scrollBy(0,12);
-      movePointer(y);
-      drag.frame=requestAnimationFrame(scrollDrag);
+      const edge=90,y=drag.y;
+      if(y<edge)window.scrollBy(0,-12);
+      else if(y>innerHeight-edge)window.scrollBy(0,12);
+      movePointer(drag.x,y);drag.frame=requestAnimationFrame(scrollDrag);
     }
     list.addEventListener('pointerdown', event => {
       const handle=event.target.closest('.drag-handle');
-      if (!handle || event.button !== 0 || keyboard || drag) return;
-      event.preventDefault(); const row=handle.closest('.chosen-row'), box=row.getBoundingClientRect();
-      drag={row,handle,pointer:event.pointerId,initial:order(),offset:event.clientY-box.top,y:event.clientY,frame:0};
-      row.classList.add('is-picked'); handle.focus({preventScroll:true});
-      document.body.classList.add('module-dragging');
-      announce('놓을 위치로 옮겨 주세요. Escape로 되돌릴 수 있어요.');
-      drag.frame=requestAnimationFrame(scrollDrag);
+      if(!handle||event.button!==0||keyboard||drag)return;
+      event.preventDefault();const row=handle.closest('.chosen-row'),box=row.getBoundingClientRect();
+      const rows=$$('.chosen-row',list);
+      const slots=rows.map(item=>{const r=item.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top+scrollY,bottom:r.bottom+scrollY};});
+      drag={row,handle,slots,index:rows.indexOf(row),pointer:event.pointerId,initial:order(),offsetX:event.clientX-box.left,offsetY:event.clientY-box.top,x:event.clientX,y:event.clientY,frame:0};
+      row.classList.add('is-picked');handle.focus({preventScroll:true});document.body.classList.add('module-dragging');
+      announce('놓을 카드 위치로 옮겨 주세요. Escape로 되돌릴 수 있어요.');drag.frame=requestAnimationFrame(scrollDrag);
     });
-    window.addEventListener('pointermove', event => { if (drag && event.pointerId===drag.pointer) { event.preventDefault(); movePointer(event.clientY); } },{passive:false});
+    window.addEventListener('pointermove',event=>{if(drag&&event.pointerId===drag.pointer){event.preventDefault();movePointer(event.clientX,event.clientY);}},{passive:false});
     function finishDrag(cancel=false) {
       if (!drag) return;
       const finished=drag; drag=null; cancelAnimationFrame(finished.frame);
@@ -469,13 +481,15 @@
         handle.setAttribute('aria-pressed','true'); announce('방향키로 순서를 바꾸고 Enter로 저장해요. Escape로 취소해요.'); return;
       }
       if(!keyboard||keyboard.row!==row) return;
-      if(['ArrowUp','ArrowDown','Home','End'].includes(event.key)) {
+      if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Home','End'].includes(event.key)) {
         event.preventDefault();
-        if(event.key==='ArrowUp'&&row.previousElementSibling) reorder(row,row.previousElementSibling);
-        if(event.key==='ArrowDown'&&row.nextElementSibling) reorder(row,row.nextElementSibling.nextElementSibling);
-        if(event.key==='Home'&&list.firstElementChild!==row) reorder(row,list.firstElementChild);
-        if(event.key==='End') reorder(row,null);
-        catalog(); handle.focus({preventScroll:true}); row.scrollIntoView({block:'nearest'});
+        const rows=$$('.chosen-row',list),index=rows.indexOf(row);
+        const firstTop=rows[0]?.getBoundingClientRect().top;
+        const columns=Math.max(1,rows.filter(item=>Math.abs(item.getBoundingClientRect().top-firstTop)<3).length);
+        const step={ArrowLeft:-1,ArrowRight:1,ArrowUp:-columns,ArrowDown:columns}[event.key]||0;
+        const target=event.key==='Home'?0:event.key==='End'?rows.length-1:Math.max(0,Math.min(rows.length-1,index+step));
+        const others=rows.filter(item=>item!==row);reorder(row,others[target]||null);
+        catalog();handle.focus({preventScroll:true});row.scrollIntoView({block:'nearest'});
         announce(`${order().indexOf(row.dataset.key)+1}번째 위치예요. Enter로 저장해요.`);
       }
       if(['Enter',' ','Escape','Tab'].includes(event.key)) {
