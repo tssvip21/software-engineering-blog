@@ -65,7 +65,7 @@ class CategoryConfigurationTests(CareCase):
         self.assertEqual(self.post(self.values(["cleaning"]), self.client_for(self.admin)).status_code, 200)
 
     def test_noop_does_not_create_revision_and_busy_does_not_succeed(self):
-        data = self.values(["hygiene", "grooming", "cleaning", "environment", "inventory", "expense"])
+        data = self.values(["hygiene", "cleaning", "environment", "inventory", "expense"])
         result = self.post(data).json()
         self.assertEqual(result["version"], data["version"])
         with patch("care.browsing.apply_category", side_effect=OperationalError("locked")):

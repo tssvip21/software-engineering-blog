@@ -21,7 +21,7 @@ def weight_range(breed, sex=""):
     ref = breed.get("reference") or {}
     weights = ref.get("weights") or {}
     selected = [weights[sex]] if sex in weights else list(weights.values())
-    if not selected or any(len(pair) != 2 or pair[0] >= pair[1] for pair in selected):
+    if ref.get("unit") not in ("lb", "kg") or not selected or any(len(pair) != 2 or pair[0] <= 0 or pair[0] >= pair[1] for pair in selected):
         return None
     factor = Decimal("0.45359237") if ref.get("unit") == "lb" else Decimal(1)
     return min(Decimal(str(p[0])) for p in selected)*factor, max(Decimal(str(p[1])) for p in selected)*factor
@@ -50,7 +50,7 @@ def picker_data():
 
 def reference_for(room, latest_weight=None):
     breed = catalogue().get(getattr(room, "breed_key", ""))
-    result = {"available": False, "breed": breed, "message": "품종을 몰라도 기록을 남기고 최근 변화를 볼 수 있어요."}
+    result = {"available": False, "breed": breed, "message": "맞는 품종 자료가 없어 외부 체중 비교는 표시하지 않아요. 우리 아이의 지난 기록은 계속 비교할 수 있어요."}
     if not breed or breed["species"] != room.species:
         return result
     ref = breed.get("reference")

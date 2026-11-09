@@ -159,15 +159,22 @@ def update_modules(member, enabled, order, version, pinned=None):
     if not isinstance(order, list) or len(order) != len(MODULES) or set(order) != set(MODULES) or not set(enabled) <= set(MODULES):
         raise ValidationError("기능 목록과 순서를 확인해 주세요.")
     rows = {m.key: m for m in member.room.module_settings.all()}
+    from .modules import RETIRED_MODULES
+    # Compatibility with earlier clients: an already active retired function may
+    # continue its existing schedule; no new room can activate it through this API.
+    if any(key in enabled and not rows[key].enabled for key in RETIRED_MODULES):
+        raise ValidationError("미용은 위생·손질에 합쳐졌어요. 위생·손질 기능을 선택해 주세요.")
     if pinned is not None and (not isinstance(pinned, list) or not set(pinned) <= set(enabled)):
         raise ValidationError("오늘 화면에 표시할 기능은 사용 중인 기능에서 골라 주세요.")
     for index, key in enumerate(order):
+        if key in RETIRED_MODULES:
+            continue  # Preserve old pins/order/availability for existing routine snapshots.
         rows[key].position, rows[key].enabled = index, key in enabled
         if pinned is not None:
             rows[key].pinned = key in pinned
     ModuleSetting.objects.bulk_update(list(rows.values()), ["position", "enabled", "pinned"])
     Room.objects.filter(pk=member.room_id).update(settings_version=F("settings_version") + 1)
-    ModuleConfigVersion.objects.create(room=member.room, settings={"enabled": list(enabled), "order": order, "pinned": [k for k in order if rows[k].pinned]})
+    ModuleConfigVersion.objects.create(room=member.room, settings={"enabled": [k for k in order if rows[k].enabled], "order": order, "pinned": [k for k in order if rows[k].pinned]})
     bump(member.room, member, "modules.updated", {"enabled_count": len(enabled)})
 
 

@@ -25,7 +25,7 @@
       function filter(){const query=(search?.value||'').trim().toLocaleLowerCase('ko');let count=0;
         browseSelections.set(scope,{category,group,query:search?.value||''});
         $$('[data-module-key],[data-catalog-key]',root).forEach(row=>{const key=row.dataset.moduleKey||row.dataset.catalogKey;row.hidden=!((category==='all'||memberships[category]?.has(key))&&(group==='all'||memberships[group]?.has(key))&&row.dataset.search.toLocaleLowerCase('ko').includes(query));if(!row.hidden)count++;});
-        $$('[data-module-section]',root).forEach(section=>{const n=$$('[data-module-key]:not([hidden])',section).length;section.hidden=n===0&&!(section.hasAttribute('data-empty-manage')&&(category==='all'||category===section.dataset.sectionCategory)&&group==='all'&&!query);const c=$('[data-section-count]',section);if(c)c.textContent=n;});
+        $$('[data-module-section]',root).forEach(section=>{const n=$$('[data-module-key]:not([hidden])',section).length;section.hidden=n===0&&!(section.hasAttribute('data-empty-manage')&&(category==='all'||category===section.dataset.sectionCategory)&&group==='all'&&!query);section.dataset.visibleCount=String(n);const c=$('[data-section-count]',section);if(c)c.textContent=n;});
         const empty=$('[data-browser-empty]',root),counter=$('[data-browse-count]',root);if(empty)empty.hidden=count!==0;if(counter)counter.textContent=count+'개 기능';
         $$('[data-module-filter]',root).forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.moduleFilter===category)));
       }

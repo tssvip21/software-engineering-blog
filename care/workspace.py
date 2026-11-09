@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.views.decorators.http import require_GET, require_http_methods
 from . import services, organization, status_view
-from .modules import MODULES
+from .modules import MODULES, SELECTABLE_MODULES, RETIRED_MODULES
 from .dashboard import latest_module_records, module_board_tiles
 
 
@@ -20,15 +20,17 @@ def module_workspace(request,room_id):
     for row in rows:
         row["latest"] = recent.get(row["spec"].key)
         row["tile"] = tiles.get(row["spec"].key)
-    enabled=[r for r in rows if r["enabled"]]
+    enabled=[r for r in rows if r["enabled"] and r["spec"].key in SELECTABLE_MODULES]
     sections=[{"key":key,"name":label,"rows":[r for r in enabled if r["category"]==key]} for key,(label,_) in organization.CATEGORIES.items()]
-    return render(request,"care/modules.html",{"title":"돌봄 기능","sections":sections,"enabled_modules":enabled,"inactive_modules":[r for r in rows if not r["enabled"]],"active_tab":"modules",**organization.browse_context(member)})
+    return render(request,"care/modules.html",{"title":"돌봄 기능","sections":sections,"enabled_modules":enabled,"inactive_modules":[r for r in rows if not r["enabled"] or r["spec"].key in RETIRED_MODULES],"active_tab":"modules",**organization.browse_context(member)})
 
 
 @require_GET
 def overview_page(request,room_id):
     room,member=services.get_room(request,room_id)
-    return render(request,"care/overview.html",{"title":"최근 변화","active_tab":"overview","live_page":True,**status_view.context_for(member)})
+    from .comparisons import recent_statistics
+    return render(request,"care/overview.html",{"title":"최근 통계","active_tab":"overview","live_page":True,
+        **status_view.context_for(member), **recent_statistics(member, request.GET.get("days", "7"))})
 
 
 @require_GET

@@ -51,7 +51,11 @@ def describe_metric(metric):
             return "기록 없음"
         low, high = min(p["value"] for p in points), max(p["value"] for p in points)
         return compact(low) + ("–" + compact(high) if low != high else "") + " " + unit
+    from .comparisons import change, valid_number
+    diff = change(valid_number(metric.get("baseline")), valid_number(metric.get("current")))
     return {"key": metric["key"], "name": name, "title": title, "detail": detail, "state": state,
+            "baseline_value": compact(metric["baseline"]) if metric.get("baseline") is not None else "—",
+            "current_value": compact(metric["current"]) if metric.get("current") is not None else "—", "unit": unit, "change": diff,
             "old_range": value_range(old), "recent_range": value_range(new), "old_days": len(old), "recent_days": len(new),
             "daily_total": metric["key"] not in ("weight", "meal_gap"),
             "values": [{"date": p["date"], "value": compact(p["value"]), "unit": unit,

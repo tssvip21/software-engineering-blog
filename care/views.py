@@ -39,6 +39,8 @@ def record_card(activity, member):
     activity.spec = MODULES[activity.module]
     activity.can_edit = services.can_edit_record(member, activity) and not activity.voided
     activity.brief = record_summary(activity.module, activity.payload)
+    if activity.module == "medication" and activity.status == "planned" and activity.payload.get("result") == "given":
+        activity.brief = activity.brief.removesuffix("투약함") + "투약 예정"
     activity.display_status = "취소됨" if activity.voided else activity.get_status_display()
     return activity
 
@@ -79,7 +81,8 @@ def today(request, room_id):
     planned = sorted([record_card(a, member) for a in activities if a.status == "planned"], key=lambda a: a.occurred_at)[:8]
     cards = []
     for setting in room.module_settings.filter(enabled=True, pinned=True):
-        if setting.key not in allowed:
+        from .modules import SELECTABLE_MODULES
+        if setting.key not in allowed or setting.key not in SELECTABLE_MODULES:
             continue
         candidates = [a for a in activities if a.module == setting.key and a.status != "planned"]
         completed_today = [a for a in candidates if a.status == "done" and lower <= a.occurred_at < upper]
@@ -91,7 +94,7 @@ def today(request, room_id):
     done = sum(r["done"] for r in schedule)
     return render(request, "care/today.html", {"title": room.name + "의 오늘", "day": day, "cards": cards, "due_cadences": due, "cards_more": [], "recent": recent, "ongoing": ongoing,
                   "planned": planned, "schedule": schedule, "routine_total": total, "routine_done": done, "routine_progress": round(done / total * 100, 2) if total else 0, "active_tab": "today", "live_page": True,
-                  "today_count": sum(a.status == "done" and lower <= a.occurred_at < upper for a in activities)})
+                  "today_count": sum(a.status == "done" and lower <= a.occurred_at < upper and a.occurred_at <= timezone.now() for a in activities)})
 
 
 @require_GET
@@ -106,8 +109,12 @@ def module_page(request, room_id, module):
     page.object_list = [record_card(a, member) for a in page.object_list]
     today_date = services.local_date(room)
     stats = get_statistics(room, module, today_date - timedelta(days=6), today_date)
-    return render(request, "care/module.html", {"title": MODULES[module].name, "spec": MODULES[module], "enabled": enabled, "page_obj": page,
-                  "stats": stats, "cadences": [row for row in cadences.schedule(member, include_paused=True) if row["cadence"].module == module], "activity_options": [(key, value[3]) for key, value in cadences.activity_options([module]).items()], "active_tab": "modules", "include_cancelled": request.GET.get("include_cancelled") == "1", "live_page": True})
+    from .modules import RETIRED_MODULES
+    from .comparisons import recent_statistics
+    comparison = recent_statistics(member) if module in ("weight", "walk") else {}
+    comparison["module_comparison_cards"] = [c for c in comparison.get("comparison_cards", []) if c["module"] == module]
+    return render(request, "care/module.html", {**comparison, "retired_module": module in RETIRED_MODULES, "title": MODULES[module].name, "spec": MODULES[module], "enabled": enabled, "page_obj": page,
+                  "stats": stats, "cadences": [row for row in cadences.schedule(member, include_paused=True) if row["cadence"].module == module], "activity_options": [(key, value[3]) for key, value in cadences.activity_options([module]).items()] if module not in RETIRED_MODULES else [], "active_tab": "modules", "include_cancelled": request.GET.get("include_cancelled") == "1", "live_page": True})
 
 
 @require_GET
@@ -144,7 +151,8 @@ def module_settings(request, room_id):
             problem = " ".join(exc.messages) if isinstance(exc, ValidationError) else "선택한 기능을 다시 확인해 주세요."
             status = 409 if isinstance(exc, services.Conflict) else 400
     settings_rows = list(room.module_settings.all())
-    rows = [{"spec": MODULES[s.key], "enabled": s.enabled, "pinned": s.pinned} for s in settings_rows]
+    from .modules import SELECTABLE_MODULES
+    rows = [{"spec": MODULES[s.key], "enabled": s.enabled, "pinned": s.pinned} for s in settings_rows if s.key in SELECTABLE_MODULES]
     return render(request, "care/module_settings.html", {"title": "기능 설정", "rows": rows, "config_state": config_state(room), "chosen": [r for r in rows if r["enabled"]], "order_json": json.dumps([s.key for s in settings_rows]),
                   "problem": problem, "active_tab": "modules", **browse_context(member)}, status=status)
 
@@ -221,7 +229,7 @@ def record_detail(request, room_id, activity_id):
         revision.after_values = payload_display(activity.module, revision.after.get("payload", {}))
         revision.before_values = payload_display(activity.module, revision.before.get("payload", {})) if revision.before else []
     run = RoutineRun.objects.filter(activity=activity).select_related("item__routine").first()
-    return render(request, "care/record_detail.html", {"title": activity.spec.name + " 기록", "activity": activity, "details": payload_display(activity.module, activity.payload),
+    return render(request, "care/record_detail.html", {"title": activity.spec.name + " 기록", "activity": activity, "details": payload_display(activity.module, activity.payload, status=activity.status),
                   "revisions": revisions, "run": run, "return_to": record_return(request, room), "edit_url": with_return(reverse("record_edit", args=[room.pk, activity.pk]) + ("?finish=1" if activity.status == "active" else ""), record_return(request, room)), "cancel_form": CancelForm(initial={"version": activity.version}), "active_tab": "records"})
 
 
@@ -328,7 +336,7 @@ def statistics(request, room_id, module):
 def overview_page(request, room_id):
     room, member = services.get_room(request, room_id)
     context = integrated_context(member)
-    context.update({"title": "최근 변화", "active_tab": "overview", "live_page": True})
+    context.update({"title": "최근 통계", "active_tab": "overview", "live_page": True})
     return render(request, "care/overview.html", context)
 
 

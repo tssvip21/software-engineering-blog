@@ -1,0 +1,1 @@
+{% if tile.secondary %}<div class="secondary-readings">{% for reading in tile.secondary %}<div><span>{{ reading.label }}</span><strong>{{ reading.value }} <small>{{ reading.unit }}</small></strong>{% if reading.note %}<small>{{ reading.note }}</small>{% endif %}</div>{% endfor %}</div>{% endif %}

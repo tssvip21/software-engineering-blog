@@ -54,6 +54,8 @@ class CadenceForm(forms.Form):
         if instance:
             enabled.add(instance.module)
         keys = [key for key in services.visible_modules(member) if key in enabled]
+        from .modules import RETIRED_MODULES
+        keys = [key for key in keys if key not in RETIRED_MODULES or (instance and key == instance.module)]
         self.options = activity_options(keys)
         initial = kwargs.setdefault("initial", {})
         initial.setdefault("first_due", services.local_date(member.room))

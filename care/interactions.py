@@ -192,9 +192,10 @@ def quick_record(request, room_id, module=None, activity_id=None):
     advanced_errors = any(field.errors for field in extra)
     selected_status = form["status"].value()
     submit = "산책 시작" if module == "walk" and selected_status == "active" else "산책 종료" if finish else "기록 저장"
-    if module == "walk" and selected_status == "done" and not activity:
-        extra = [f for f in extra if f.name != "minutes"]
-        core.append(form["minutes"])
+    if module == "walk" and (selected_status == "done" or finish):
+        names = ("minutes", "distance", "distance_unit")
+        extra = [f for f in extra if f.name not in names]
+        core.extend(form[name] for name in names if name not in core_names)
     context = {"title": MODULES[module].name + (" 종료" if finish else " 빠른 기록"), "spec": MODULES[module], "form": form,
                "core_fields": core, "extra_fields": extra, "extra_open": advanced_errors,
                "submit_label": submit, "activity": activity, "finish": finish, "cadence": selected_cadence,
@@ -220,7 +221,8 @@ def quick_undo(request, room_id, activity_id):
 
 
 def config_state(room):
-    rows = list(room.module_settings.all())
+    from .modules import SELECTABLE_MODULES
+    rows = [row for row in room.module_settings.all() if row.key in SELECTABLE_MODULES]
     latest_room = Room.objects.only("settings_version", "revision").get(pk=room.pk)
     return {"version": latest_room.settings_version, "revision": latest_room.revision, "order": [s.key for s in rows if s.enabled],
             "enabled": [s.key for s in rows if s.enabled], "pinned": [s.key for s in rows if s.enabled and s.pinned]}

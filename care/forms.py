@@ -154,6 +154,7 @@ class RecordForm(forms.Form):
         initial.setdefault("status", instance.status if instance else "done")
         if module == "shedding" and not instance:
             initial["status"] = "active"
+            initial.setdefault("kind", "feather" if room.species == "bird" else "molt" if room.species in ("reptile", "amphibian") else "fur")
         if instance:
             initial.update(instance.payload)
             initial.update({"version": instance.version, "note": instance.note, "performer": instance.performer_id, "ended_at": timezone.localtime(instance.ended_at) if instance.ended_at else None})
@@ -199,8 +200,13 @@ class RecordForm(forms.Form):
                 self.fields[key].required = False
             self.fields["occurred_at"].label = "기록 시각"
             self.fields["performer"].label = "돌본 사람"
+        if module == "medication":
+            planned = (self.data.get("status") if self.is_bound else initial.get("status")) == "planned"
+            self.fields["result"].choices = [("given", "투약 예정" if planned else "투약함"), ("skipped", "투약하지 못함")]
         if module == "reproduction":
             self.fields["kind"].initial = "growth"
+            if not instance or instance.payload.get("kind") != "egg":
+                self.fields["eggs"].widget = forms.HiddenInput()
             if not instance or instance.payload.get("kind") not in ("heat", "egg"):
                 # Legacy values remain accepted by the field for old clients, but are not offered for new entry.
                 self.fields["kind"].widget.choices = [(v, label) for v, label in self.fields["kind"].choices if v not in ("heat", "egg")]
@@ -236,6 +242,8 @@ class RecordForm(forms.Form):
             if occurred and ended and ended >= occurred:
                 duration = Decimal(str((ended.astimezone(utc_timezone.utc) - occurred.astimezone(utc_timezone.utc)).total_seconds())) / Decimal(60)
                 data["minutes"] = duration.quantize(Decimal("0.001"))
+                if duration <= 0 or duration > 1440:
+                    self.add_error("ended_at", "한 번의 산책 시간은 0분 초과, 24시간 이내로 입력해 주세요.")
             if not self.quick and (not data.get("minutes") or data["minutes"] <= 0):
                 self.add_error("minutes", "완료한 산책의 시간 또는 종료 시각을 입력해 주세요.")
         if key == "walk" and status == "active":
@@ -278,6 +286,10 @@ class RecordForm(forms.Form):
             if data.get("kind") != "egg":
                 data["eggs"] = None
         if key == "inventory":
+            if data.get("unit") == "piece":
+                for field in ("quantity", "minimum"):
+                    if data.get(field) is not None and data[field] % 1:
+                        self.add_error(field, "개수는 정수로 입력해 주세요. 나누어 쓰는 양은 무게나 부피 단위를 골라 주세요.")
             if data.get("movement") in ("in", "out") and data.get("quantity") == 0:
                 self.add_error("quantity", "들어오거나 사용한 수량을 0보다 크게 입력해 주세요.")
         if key == "expense" and data.get("currency") in ("KRW", "JPY") and data.get("amount") is not None and data["amount"] % 1:
@@ -337,7 +349,9 @@ class RoutineForm(forms.Form):
         enabled = set(room.module_settings.filter(enabled=True).values_list("key", flat=True))
         if instance:
             enabled |= set(instance.items.filter(active=True).values_list("module", flat=True))
-        allowed = enabled & set(visible_keys)
+        from .modules import RETIRED_MODULES
+        legacy = set(instance.items.values_list("module", flat=True)) if instance else set()
+        allowed = (enabled & set(visible_keys)) - (set(RETIRED_MODULES) - legacy)
         self.fields["modules"].choices = [(k, m.name) for k, m in MODULES.items() if k in allowed]
         self.fields["assignee"].queryset = room.members.filter(active=True).order_by("display_name")
     def clean(self):

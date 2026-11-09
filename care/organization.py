@@ -74,5 +74,8 @@ def save_groups(member, data):
 def browse_context(member):
     allowed=set(services.visible_modules(member))
     categories=[{"key":k,"label":label,"keys":[x for x in keys if x in allowed]} for k,(label,keys) in CATEGORIES.items()]
-    groups=[{"key":"custom-"+str(g.pk),"label":g.name,"keys":[x for x in g.keys if x in allowed]} for g in groups_for(member)]
+    from .modules import RETIRED_MODULES
+    # Preserve stored keys and history scope; additionally show the replacement on the live board.
+    groups=[{"key":"custom-"+str(g.pk),"label":g.name,"keys":list(dict.fromkeys(
+        [x for x in g.keys if x in allowed]+[RETIRED_MODULES[x] for x in g.keys if x in RETIRED_MODULES and RETIRED_MODULES[x] in allowed]))} for g in groups_for(member)]
     return {"module_categories":categories,"custom_groups":groups,"module_browse_data":{"categories":categories,"groups":groups}}

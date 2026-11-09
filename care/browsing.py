@@ -21,6 +21,8 @@ from .navigation import with_return
 
 def category_state(room, category):
     title, keys = CATEGORIES[category]
+    from .modules import SELECTABLE_MODULES
+    keys = tuple(k for k in keys if k in SELECTABLE_MODULES)
     settings = {row.key: row for row in room.module_settings.all()}
     room.refresh_from_db(fields=["settings_version"])
     return {"ok": True, "category": category, "title": title, "version": room.settings_version,
@@ -38,7 +40,8 @@ def apply_category(member, category, values):
     if not isinstance(values, dict) or type(values.get("version")) is not int or values["version"] < 1:
         raise ValidationError("선택 내용을 확인해 주세요.")
     selected = values.get("selected")
-    keys = set(CATEGORIES[category][1])
+    from .modules import SELECTABLE_MODULES
+    keys = set(CATEGORIES[category][1]) & set(SELECTABLE_MODULES)
     if not isinstance(selected, list) or any(not isinstance(k, str) or k not in keys for k in selected) or len(set(selected)) != len(selected):
         raise ValidationError("이 분류에 있는 기능만 선택할 수 있어요.")
     if room.settings_version != values["version"]:

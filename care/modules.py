@@ -80,8 +80,8 @@ MODULE_LIST = (
         choice("bcs", "체형 점수(BCS, 1–9점)", tuple((str(i), str(i) + " / 9") for i in range(1, 10)), False, "강아지·고양이의 체형을 평가한 적이 있을 때만 적어요. 체중으로 계산하는 값은 아니에요."),
         choice("bcs_by", "체형을 평가한 사람", (("guardian", "보호자 관찰"), ("vet", "수의사 평가")), False),
     )),
-    ModuleSpec("hygiene", "위생", "생활 관리", "spark", "목욕이나 양치를 했는지 기록해요.", (
-        choice("task", "관리 항목", (("bath", "목욕"), ("teeth", "양치"), ("ear", "귀 세정"), ("paw", "발 세정"), ("other", "기타"))),
+    ModuleSpec("hygiene", "위생·손질", "생활 관리", "spark", "목욕·양치부터 빗질·발톱 손질까지 한곳에 남겨요.", (
+        choice("task", "관리 항목", (("bath", "목욕"), ("teeth", "양치"), ("ear", "귀 세정"), ("paw", "발 세정"), ("brush", "빗질"), ("hair", "털 손질"), ("nail", "발톱 관리"), ("other", "기타"))),
         day("next_date", "다음 관리 예정일"), text("detail", "관리 내용", False),
     )),
     ModuleSpec("grooming", "미용", "생활 관리", "scissors", "빗질이나 털·발톱을 손질한 날을 남겨요.", (
@@ -95,7 +95,7 @@ MODULE_LIST = (
     ModuleSpec("medication", "투약", "건강 기록", "pill", "처방받은 약과 용량, 투약 여부를 남겨요.", (
         text("medicine", "약 이름"), number("dose", "처방·지시받은 용량", minimum="0.001"),
         choice("unit", "단위", (("mg", "mg"), ("ml", "ml"), ("tablet", "정"), ("drop", "방울"), ("dose", "회분"))),
-        choice("result", "투약 여부", (("given", "투약함·투약 예정"), ("skipped", "투약하지 못함"))),
+        choice("result", "투약 여부", (("given", "투약함"), ("skipped", "투약하지 못함"))),
         text("instruction", "처방·지시 내용", False, "약의 용량은 처방·지시받은 대로 적어 주세요. 테일리가 용량을 정하지는 않아요."),
     ), ("done", "planned"), True),
     ModuleSpec("observation", "상태 관찰", "건강 기록", "eye", "식욕이나 행동이 평소와 달랐는지 남겨요.", (
@@ -125,7 +125,7 @@ MODULE_LIST = (
         number("eggs", "이전 기록의 알 개수", False, maximum="100000"),
     )),
     ModuleSpec("shedding", "탈피·털갈이", "환경·생애", "feather", "탈피나 털갈이를 시작한 날과 끝난 날을 남겨요.", (
-        choice("kind", "종류", (("molt", "탈피"), ("fur", "털갈이"))), text("detail", "관찰 내용", False),
+        choice("kind", "종류", (("molt", "탈피"), ("fur", "털갈이"), ("feather", "깃털갈이"))), text("detail", "관찰 내용", False),
     ), ("active", "done")),
     ModuleSpec("inventory", "용품·재고", "생활 관리", "box", "사 온 용품과 쓴 양을 남겨 얼마나 남았는지 확인해요.", (
         text("item", "품목"), choice("movement", "변동 종류", (("in", "입고"), ("out", "사용"), ("set", "직접 센 수량으로 맞추기"))),
@@ -139,6 +139,11 @@ MODULE_LIST = (
     ), ("done",), True),
 )
 MODULES = {m.key: m for m in MODULE_LIST}
+# Historical keys stay readable and schedulable; they do not consume a new catalogue slot.
+RETIRED_MODULES = {"grooming": "hygiene"}
+SELECTABLE_MODULES = {key: spec for key, spec in MODULES.items() if key not in RETIRED_MODULES}
+MAX_MODULES = 20
+assert len(SELECTABLE_MODULES) <= MAX_MODULES
 MODULE_CHOICES = tuple((m.key, m.name) for m in MODULE_LIST)
 SENSITIVE_KEYS = tuple(m.key for m in MODULE_LIST if m.sensitive)
 DEFAULT_MODULES = {
@@ -161,11 +166,14 @@ def decimal(value):
 def compact(value):
     if value is None:
         return "미기록"
-    d = Decimal(str(value)).quantize(Decimal("0.001"))
+    original = Decimal(str(value))
+    # Unit conversion must not turn a small, genuinely measured value into zero.
+    places = max(3, min(12, 2 - original.adjusted())) if original and abs(original) < Decimal("0.001") else 3
+    d = original.quantize(Decimal(1).scaleb(-places))
     return format(d, "f").rstrip("0").rstrip(".") if d % 1 else str(int(d))
 
 
-def payload_display(module, payload):
+def payload_display(module, payload, *, status=None):
     rows = []
     for spec in MODULES[module].fields:
         value = payload.get(spec.key)
@@ -173,6 +181,8 @@ def payload_display(module, payload):
             continue
         if spec.kind == "choice":
             value = dict(spec.choices).get(str(value), value)
+        if module == "medication" and spec.key == "result" and payload.get("result") == "given" and status == "planned":
+            value = "투약 예정"
         rows.append((spec.label, str(value)))
     return rows
 

@@ -50,8 +50,9 @@ class DashboardValuesTests(CareCase):
         self.make("meal", product=str(self.product.pk), quantity="100")
         self.make("meal", product=str(self.product.pk), quantity="100", consumed="50")
         tile = self.tile("meal")
-        self.assertEqual(tile["value"], "570")
-        self.assertIn("혼합", tile["caption"])
+        self.assertEqual(tile["value"], "기준별 표시")
+        self.assertIn("합치지", tile["caption"])
+        self.assertEqual({v["value"] for v in tile["secondary"]}, {"190", "380"})
 
     def test_partial_energy_discloses_unknown_records(self):
         self.make("meal", product=str(self.product.pk), quantity="100")

@@ -367,7 +367,8 @@ class StateTests(CareCase):
         self.room.refresh_from_db()
         order = list(reversed(MODULES))
         services.update_modules(self.owner, ["meal"], order, self.room.settings_version)
-        self.assertEqual(list(self.room.module_settings.values_list("key", flat=True)), order)
+        from care.modules import SELECTABLE_MODULES
+        self.assertEqual(list(self.room.module_settings.filter(key__in=SELECTABLE_MODULES).values_list("key", flat=True)), [k for k in order if k in SELECTABLE_MODULES])
         with self.assertRaises(services.Conflict):
             services.update_modules(self.owner, ["meal"], order, self.room.settings_version)
 
@@ -434,7 +435,7 @@ class CalculationTests(CareCase):
 
     def test_negative_inventory_rejected_atomically(self):
         before = Activity.objects.count()
-        with self.assertRaises(ValidationError): self.make("inventory", movement="out", quantity="1", unit="piece")
+        with self.assertRaises(ValidationError): self.make("inventory", movement="out", quantity="1", unit="piece", minimum="")
         self.assertEqual(Activity.objects.count(), before)
 
     def test_sleep_overlap_and_midnight(self):
