@@ -289,6 +289,18 @@
       $('#chosen-count').textContent = chosen.size;
       $('#chosen-empty').hidden = chosen.size > 0;
       $$('[data-add-module]').forEach(button => { button.disabled = chosen.has(button.dataset.addModule); button.textContent = button.disabled ? '추가됨' : '추가'; });
+      const itemPicker = $('#module-to-move'), positionPicker = $('#module-target-position');
+      if (itemPicker && positionPicker) {
+        const selected = itemPicker.value, selectedPosition = positionPicker.value;
+        itemPicker.replaceChildren(); positionPicker.replaceChildren();
+        $$('.chosen-row', list).forEach((row, index) => {
+          itemPicker.add(new Option($('.chosen-label>strong', row).textContent, row.dataset.key));
+          positionPicker.add(new Option(`${index + 1}번째`, String(index)));
+        });
+        if (chosen.has(selected)) itemPicker.value = selected;
+        if ([...positionPicker.options].some(option => option.value === selectedPosition)) positionPicker.value = selectedPosition;
+        $('[data-place-module]').disabled = chosen.size < 2;
+      }
       $$('.chosen-row', list).forEach((row, i, all) => {
         const handle = $('.drag-handle', row);
         handle.setAttribute('aria-description', `${all.length}개 중 ${i+1}번째. Space로 선택하고 방향키로 옮긴 뒤 Enter로 저장해요. Escape로 되돌려요.`);
@@ -359,6 +371,15 @@
       const remove = event.target.closest('[data-remove-module]');
       const move = event.target.closest('[data-order-step]');
       if (drag || keyboard) return;
+      if (event.target.closest('[data-place-module]')) {
+        const key = $('#module-to-move').value, position = Number($('#module-target-position').value);
+        const row = $$('.chosen-row', list).find(item => item.dataset.key === key);
+        if (row && Number.isInteger(position) && position >= 0 && position < order().length) {
+          const others = $$('.chosen-row', list).filter(item => item !== row);
+          reorder(row, others[position] || null); changed();
+        }
+        return;
+      }
       if (add && !add.disabled) {
         const key = add.dataset.addModule;
         if (order().includes(key)) return;
@@ -378,7 +399,10 @@
         changed(); $('.drag-handle', row).focus({preventScroll:true});
       }
     });
-    config.addEventListener('change', event => { if (event.target.matches('[data-pin-module]')) changed(); });
+    config.addEventListener('change', event => {
+      if (event.target.matches('[data-pin-module]')) changed();
+      if (event.target.id === 'module-to-move') $('#module-target-position').value = String(order().indexOf(event.target.value));
+    });
     $('#catalog-search').addEventListener('input', event => {
       const query = event.target.value.trim().toLocaleLowerCase('ko'); let visible = 0;
       $$('.catalog-item').forEach(item => { item.hidden = !item.dataset.search.toLocaleLowerCase('ko').includes(query); visible += !item.hidden; });

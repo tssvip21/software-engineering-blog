@@ -17,6 +17,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 from . import services, cadences
+from .dashboard import today_tiles, statistics_periods
 from .presentation import integrated_context, GROUPS
 from .interactions import config_state
 from .forms import RoomForm, ProductForm, RecordForm, InvitationForm, JoinForm, CancelForm, RoutineForm, StatsFilterForm
@@ -83,6 +84,7 @@ def today(request, room_id):
         candidates = [a for a in activities if a.module == setting.key and a.status != "planned"]
         completed_today = [a for a in candidates if a.status == "done" and lower <= a.occurred_at < upper]
         cards.append({"spec": MODULES[setting.key], "count": len(completed_today), "latest": candidates[0] if candidates else None})
+    cards = today_tiles(member, cards, activities, day)
     schedule = routine_schedule(member, day)
     due = [row for row in cadences.schedule(member) if row["due"]]
     total = sum(r["total"] for r in schedule)
@@ -317,7 +319,9 @@ def statistics(request, room_id, module):
         stats = get_statistics(room, module, initial["start"], initial["end"])
     elif form.is_valid():
         stats = get_statistics(room, module, form.cleaned_data["start"], form.cleaned_data["end"])
-    return render(request, "care/statistics.html", {"title": MODULES[module].name + " 통계", "spec": MODULES[module], "form": form, "stats": stats, "active_tab": "overview"})
+    chosen = form.cleaned_data if submitted is not None and form.is_valid() else initial if submitted is None else {}
+    periods = statistics_periods(room, module, chosen.get("start"), chosen.get("end"))
+    return render(request, "care/statistics.html", {"title": MODULES[module].name + " 통계", "spec": MODULES[module], "form": form, "stats": stats, "periods": periods, "active_tab": "overview"})
 
 
 @require_GET

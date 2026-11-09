@@ -7,6 +7,7 @@ from django.shortcuts import render, redirect
 from django.views.decorators.http import require_GET, require_http_methods
 from . import services, organization, status_view
 from .modules import MODULES
+from .dashboard import latest_module_records
 
 
 @require_GET
@@ -14,6 +15,9 @@ def module_workspace(request,room_id):
     room,member=services.get_room(request,room_id)
     allowed=set(services.visible_modules(member))
     rows=[{"spec":MODULES[s.key],"enabled":s.enabled,"pinned":s.pinned,"category":organization.CATEGORY_OF[s.key]} for s in room.module_settings.all() if s.key in allowed]
+    recent = latest_module_records(member)
+    for row in rows:
+        row["latest"] = recent.get(row["spec"].key)
     enabled=[r for r in rows if r["enabled"]]
     sections=[{"key":key,"name":label,"rows":[r for r in enabled if r["category"]==key]} for key,(label,_) in organization.CATEGORIES.items()]
     return render(request,"care/modules.html",{"title":"돌봄 기능","sections":sections,"enabled_modules":enabled,"inactive_modules":[r for r in rows if not r["enabled"]],"active_tab":"modules",**organization.browse_context(member)})

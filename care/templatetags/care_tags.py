@@ -62,3 +62,16 @@ def number(value):
 @register.filter
 def record_status(value):
     return {"done": "완료", "active": "진행 중", "planned": "예정"}.get(value, value)
+
+
+@register.filter
+def module_category(value):
+    from care.organization import CATEGORY_OF
+    return CATEGORY_OF.get(value, "default")
+
+
+@register.filter
+def result_category(value):
+    return {"weight": "nutrition", "food_actual": "nutrition", "food_offered": "nutrition",
+            "food_mass": "nutrition", "meal_gap": "nutrition", "water": "nutrition",
+            "activity": "activity", "rest": "activity"}.get(value, "wellbeing")
