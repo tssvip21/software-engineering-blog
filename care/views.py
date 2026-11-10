@@ -380,7 +380,7 @@ def room_settings(request, room_id):
         except ValidationError as exc:
             add_form_error(form, exc)
             status = 409 if isinstance(exc, services.Conflict) else 400
-    return render(request, "care/settings.html", {"title": "공간 설정", "form": form, "active_tab": "settings"}, status=status)
+    return render(request, "care7/settings.html", {"title": "공간 설정", "form": form, "active_tab": "settings"}, status=status)
 
 
 def members_context(room, member, form=None, invite_url=None):

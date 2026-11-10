@@ -50,7 +50,7 @@ FOOD = (
     number("consumed", "실제로 먹은 양", False, help="준 양과 같은 단위로 적어요. 먹지 않았다면 0, 모르면 빈칸으로 남겨 주세요."),
 )
 MODULE_LIST = (
-    ModuleSpec("meal", "식사", "일상 돌봄", "bowl", "언제 어떤 먹이를 얼마나 줬는지 남겨요.", FOOD),
+    ModuleSpec("meal", "먹이·급여", "일상 돌봄", "bowl", "언제 어떤 먹이를 얼마나 줬는지 남겨요.", FOOD),
     ModuleSpec("treat", "간식", "일상 돌봄", "treat", "준 간식과 양을 남겨요. 식사 기록과 따로 볼 수 있어요.", FOOD + (text("reason", "급여 이유", False),)),
     ModuleSpec("water", "물 관리", "일상 돌봄", "drop", "물을 갈았는지, 마신 양을 쟀는지 구분해 남겨요.", (
         choice("kind", "기록 종류", (("replace", "물 교체"), ("refill", "물 보충"), ("measured", "마신 물의 양 측정"))),
@@ -58,7 +58,7 @@ MODULE_LIST = (
         choice("unit", "단위", (("ml", "ml"), ("l", "L"))),
     )),
     ModuleSpec("toilet", "배변", "일상 돌봄", "toilet", "대변·소변을 봤을 때의 상태를 남겨요.", (
-        choice("kind", "종류", (("stool", "대변"), ("urine", "소변"))),
+        choice("kind", "종류", (("stool", "대변"), ("urine", "소변"), ("observed", "구분하지 않음"))),
         choice("condition", "관찰 상태", (("usual", "평소와 같음"), ("different", "평소와 다름"), ("unknown", "확인하지 못함"))),
         text("detail", "관찰한 내용", False),
     )),
@@ -69,12 +69,12 @@ MODULE_LIST = (
     ModuleSpec("play", "놀이", "활동", "ball", "무슨 놀이를 했는지, 반응은 어땠는지 남겨요.", (
         text("kind", "놀이 종류"), number("minutes", "놀이 시간 (분)", minimum="0.001", maximum="1440"),
         choice("reaction", "반응", (("engaged", "잘 참여함"), ("neutral", "보통"), ("little", "관심 적음"), ("unknown", "모름"))),
-    )),
+    ), ("done", "active")),
     ModuleSpec("training", "훈련", "활동", "target", "연습한 내용과 시간을 남겨요. 횟수는 필요한 경우에만 적어요.", (
         text("skill", "훈련 항목"), number("minutes", "훈련 시간 (분)", minimum="0.001", maximum="1440"),
         number("attempts", "시도 횟수", False, minimum="1", maximum="100000"),
         number("successes", "성공 횟수", False, maximum="100000"),
-    )),
+    ), ("done", "active")),
     ModuleSpec("weight", "체중", "건강 기록", "scale", "측정한 체중을 남기고 이전 값과 비교해요.", (
         number("weight", "체중", minimum="0.001"), choice("unit", "단위", (("kg", "kg"), ("g", "g"), ("lb", "lb"))),
         choice("bcs", "체형 점수(BCS, 1–9점)", tuple((str(i), str(i) + " / 9") for i in range(1, 10)), False, "강아지·고양이의 체형을 평가한 적이 있을 때만 적어요. 체중으로 계산하는 값은 아니에요."),
@@ -98,7 +98,7 @@ MODULE_LIST = (
         choice("result", "투약 여부", (("given", "투약함"), ("skipped", "투약하지 못함"))),
         text("instruction", "처방·지시 내용", False, "약의 용량은 처방·지시받은 대로 적어 주세요. 테일리가 용량을 정하지는 않아요."),
     ), ("done", "planned"), True),
-    ModuleSpec("observation", "상태 관찰", "건강 기록", "eye", "식욕이나 행동이 평소와 달랐는지 남겨요.", (
+    ModuleSpec("observation", "특이사항 메모", "건강 기록", "eye", "상태나 생활에서 달라진 점을 자유롭게 남겨요.", (
         choice("category", "관찰 항목", (("appetite", "식욕"), ("energy", "활동성"), ("behavior", "행동"), ("skin", "피부·털"), ("other", "기타"))),
         choice("condition", "평소와 비교", (("usual", "평소와 같음"), ("different", "변화 있음"), ("unknown", "판단하기 어려움"))),
         text("detail", "관찰 내용"),
@@ -140,7 +140,7 @@ MODULE_LIST = (
 )
 MODULES = {m.key: m for m in MODULE_LIST}
 # Historical keys stay readable and schedulable; they do not consume a new catalogue slot.
-RETIRED_MODULES = {"grooming": "hygiene"}
+RETIRED_MODULES = {"grooming": "hygiene", "reproduction": "observation"}
 SELECTABLE_MODULES = {key: spec for key, spec in MODULES.items() if key not in RETIRED_MODULES}
 MAX_MODULES = 20
 assert len(SELECTABLE_MODULES) <= MAX_MODULES
@@ -175,6 +175,10 @@ def compact(value):
 
 def payload_display(module, payload, *, status=None):
     rows = []
+    if payload.get("routine_title"):
+        rows.append(("알림 이름", str(payload["routine_title"])))
+    if payload.get("_preset", {}).get("title"):
+        rows.append(("사용한 저장 설정", str(payload["_preset"]["title"])))
     for spec in MODULES[module].fields:
         value = payload.get(spec.key)
         if value is None or value == "":
@@ -213,10 +217,14 @@ def record_summary(module, payload):
     if module == "weight":
         return value("weight") + " " + unit() + (" · BCS " + str(p["bcs"]) + "/9" if p.get("bcs") else "")
     if module == "sleep":
+        if p.get("_entry_kind") == "schedule":
+            return str(p.get("routine_title") or "수면·휴식 알림") + " · 확인 완료 (실측 시간 아님)"
         return choice_name("kind") + " · 관찰 " + value("minutes") + "분"
     if module == "inventory":
         return f"{p.get('item', '')} · {choice_name('movement')} {value('quantity')} {unit()}"
     if module == "medication":
+        if p.get("_entry_kind") == "routine":
+            return str(p.get("routine_title") or "관리 알림") + (" · 건너뜀" if p.get("result") == "skipped" else " · 완료")
         return f"{p.get('medicine', '')} · {value('dose')} {unit()} · {choice_name('result')}"
     if module == "environment":
         return f"{choice_name('metric')} · {value('value')} {unit()} · {p.get('location', '생활공간')}"

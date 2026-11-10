@@ -3,6 +3,7 @@ from django.conf import settings
 from django.db import models
 from django.db.models import Q, F
 from django.utils import timezone
+from .modules import MODULE_CHOICES
 
 SPECIES = [("dog", "강아지"), ("cat", "고양이"), ("bird", "조류·앵무새"), ("reptile", "파충류"), ("amphibian", "양서류"), ("other", "그 밖의 동물")]
 SIZES = [("", "모름·해당 없음"), ("small", "소형"), ("medium", "중형"), ("large", "대형")]
@@ -36,6 +37,7 @@ class Room(models.Model):
         return self.name
 
 class Membership(models.Model):
+    notices_enabled = models.BooleanField(default=True)
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="members")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT)
@@ -72,6 +74,9 @@ class ModuleSetting(models.Model):
         constraints = [models.UniqueConstraint(fields=["room", "key"], name="unique_room_module")]
 
 class Product(models.Model):
+    brand = models.CharField(max_length=100, blank=True)
+    stock_item = models.CharField(max_length=100, blank=True)
+    stock_unit = models.CharField(max_length=8, blank=True, choices=(("g", "g"), ("ml", "ml"), ("piece", "개")))
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="products")
     name = models.CharField(max_length=100)
@@ -139,6 +144,8 @@ class Invitation(models.Model):
         return not self.revoked and self.expires_at > timezone.now() and self.uses < self.max_uses and self.room.archived_at is None
 
 class Routine(models.Model):
+    end_date = models.DateField(null=True, blank=True)
+    note = models.CharField(max_length=1000, blank=True)
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="routines")
     name = models.CharField(max_length=80)
@@ -153,6 +160,7 @@ class Routine(models.Model):
         ordering = ["at", "name"]
 
 class RoutineItem(models.Model):
+    preset = models.ForeignKey("RecordPreset", null=True, blank=True, on_delete=models.SET_NULL, related_name="routine_items")
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     routine = models.ForeignKey(Routine, on_delete=models.CASCADE, related_name="items")
     module = models.CharField(max_length=24)
@@ -170,6 +178,8 @@ class RoutineVersion(models.Model):
         ordering = ["-effective_on", "-id"]
 
 class RoutineRun(models.Model):
+    skipped_at = models.DateTimeField(null=True, blank=True)
+    skip_note = models.CharField(max_length=300, blank=True)
     item = models.ForeignKey(RoutineItem, on_delete=models.CASCADE, related_name="runs")
     date = models.DateField()
     activity = models.OneToOneField(Activity, null=True, blank=True, on_delete=models.SET_NULL, related_name="routine_run")
@@ -250,3 +260,54 @@ class ModuleGroup(models.Model):
     class Meta:
         ordering = ["position", "id"]
         constraints = [models.UniqueConstraint(fields=["room", "name"], name="unique_room_module_group_name")]
+
+
+class RecordPreset(models.Model):
+    """Reusable input; every created activity keeps its own immutable preset snapshot."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="record_presets")
+    module = models.CharField(max_length=32, choices=MODULE_CHOICES)
+    title = models.CharField(max_length=100)
+    product = models.ForeignKey(Product, null=True, blank=True, on_delete=models.SET_NULL, related_name="record_presets")
+    data = models.JSONField(default=dict)
+    is_default = models.BooleanField(default=False)
+    active = models.BooleanField(default=True)
+    version = models.PositiveIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-is_default", "title", "id"]
+        constraints = [models.UniqueConstraint(fields=["room", "module"], condition=models.Q(active=True, is_default=True), name="one_active_default_preset")]
+        indexes = [models.Index(fields=["room", "module", "active"])]
+
+    def __str__(self):
+        return self.title
+
+
+class ActionReceipt(models.Model):
+    """One logical request, one outcome, including retry after a lost HTTP response."""
+    id = models.BigAutoField(primary_key=True)
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="action_receipts")
+    actor = models.ForeignKey(Membership, null=True, on_delete=models.SET_NULL, related_name="action_receipts")
+    token = models.UUIDField()
+    request_hash = models.CharField(max_length=64)
+    operation = models.CharField(max_length=40)
+    activity = models.ForeignKey(Activity, null=True, blank=True, on_delete=models.SET_NULL, related_name="action_receipts")
+    result = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["room", "token"], name="one_action_per_room_token")]
+        indexes = [models.Index(fields=["room", "created_at"])]
+
+
+class NoticeDismissal(models.Model):
+    """Personal acknowledgement, never deletion or completion of the underlying schedule."""
+    member = models.ForeignKey(Membership, on_delete=models.CASCADE, related_name="notice_dismissals")
+    notice_key = models.CharField(max_length=160)
+    stage = models.CharField(max_length=40)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["member", "notice_key", "stage"], name="one_notice_ack_per_stage")]

@@ -1,0 +1,5 @@
+{% extends 'care/base.html' %}{% load care_tags %}{% block content %}<div class="page-heading"><div><p class="eyebrow"><a href="{% url 'modules' room.id %}">돌봄 기능</a></p><h1>{{ spec.name }}</h1><p class="lead">{{ spec.description }}</p></div><a class="button secondary" href="{% url 'statistics' room.id spec.key %}">기간별 통계</a></div>
+{% include 'care7/_ongoing.html' %}{% if retired_module %}<p class="notice">이전 {{ spec.name }} 기록을 보존하고 있어요. 새 기록과 합쳐진 이력은 <a href="{{ canonical_url }}">{{ canonical_name }}</a>에서 확인해 주세요.</p>{% endif %}
+{% if card and card.enabled %}<section class="section module-input7"><h2>지금 기록하기</h2>{% include 'care7/_action.html' %}</section>{% else %}<p class="empty-copy">현재 사용하지 않는 기능이에요. 이전 기록은 계속 볼 수 있어요.</p>{% endif %}
+{% if comparison %}{% include 'care7/_module_comparison.html' %}{% endif %}
+<section class="section"><h2>최근 기록{% if spec.key == 'observation' or spec.key == 'hygiene' %} · 이전 통합 유형 포함{% endif %}</h2>{% include 'care/_record_list.html' %}<a class="quiet-link" href="{% url 'records' room.id %}">전체 기록 보기 →</a></section>{% endblock %}

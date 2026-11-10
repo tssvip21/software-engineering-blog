@@ -280,9 +280,9 @@ def get_statistics(room, module, start, end, all_records=None):
             primary(len(given), "회")
         stats["primary_label"] = "실제로 투약한 횟수"
         add("투약하지 못함", len(rows) - len(given) if rows else None, "회")
-        per_medicine = Counter((a.payload["medicine"], a.payload["unit"]) for a in given)
+        per_medicine = Counter((a.payload.get("routine_title") or a.payload.get("medicine") or "이름 없는 이전 기록", a.payload.get("unit") or "") for a in given)
         for (name, unit), count in per_medicine.items():
-            stats["breakdown"].append({"label": name + " · " + UNIT_LABELS.get(unit, unit), "value": str(count), "unit": "회"})
+            stats["breakdown"].append({"label": name + (" · " + UNIT_LABELS.get(unit, unit) if unit else " · 알림 완료"), "value": str(count), "unit": "회"})
         stats["charts"].append(chart("날짜별 실제 투약 횟수", "회", Counter(day_of(a) for a in given), start, end))
         stats["notes"].append("약이나 용량 단위가 다르면 더하지 않아요. 투약 예정만 남긴 기록도 완료 횟수에서 빼요.")
     elif module == "observation":
@@ -297,6 +297,8 @@ def get_statistics(room, module, start, end, all_records=None):
     elif module == "sleep":
         intervals = defaultdict(list)
         for a in completed:
+            if a.payload.get("_entry_kind") == "schedule" or a.payload.get("minutes") is None:
+                continue
             begin = a.occurred_at.timestamp()
             finish = begin + float(decimal(a.payload["minutes"]) * 60)
             clipped = (max(begin, lower.timestamp()), min(finish, upper.timestamp(), timezone.now().timestamp()))
@@ -317,6 +319,12 @@ def get_statistics(room, module, start, end, all_records=None):
                 if pieces:
                     daily[day] = union_seconds(pieces) / 60
             stats["charts"].append(chart("관찰한 " + ("수면" if kind == "sleep" else "휴식") + " 시간", "분", daily, start, end))
+        confirmations = [a for a in rows if a.payload.get("_entry_kind") == "schedule"]
+        if confirmations:
+            add("수면·휴식 알림 확인", len(confirmations), "건", "실제 수면 시간으로 계산하지 않아요")
+            if not intervals:
+                primary(len(confirmations), "건")
+                stats["primary_label"] = "알림 확인 · 실측 시간 아님"
         stats["notes"].append("직접 확인한 시간만 모았어요. 자정을 지나면 날짜별로 나누고 겹친 시간은 한 번만 계산해요.")
     elif module == "environment":
         dimensions = defaultdict(list)
@@ -364,44 +372,40 @@ def get_statistics(room, module, start, end, all_records=None):
         add("종료 기록 평균 기간", sum(durations, ZERO) / len(durations) if durations else None, "일", "시작과 종료 시각이 모두 있는 기록만 사용")
         groups("kind")
     elif module == "inventory":
-        balances, thresholds, names = {}, {}, {}
-        daily_balances = defaultdict(dict)
-        by_day = defaultdict(list)
-        for a in completed:
-            by_day[day_of(a)].append(a)
-        for a in completed:
-            if day_of(a) >= start:
-                continue
-            k, amount, minimum = inventory_value(a.payload)
-            movement = a.payload["movement"]
-            balances[k] = amount if movement == "set" else balances.get(k, ZERO) + (amount if movement == "in" else -amount)
-            names[k] = a.payload["item"]
-            if minimum is not None:
-                thresholds[k] = minimum
-        for day in dates(start, end):
-            for a in by_day.get(day, []):
-                k, amount, minimum = inventory_value(a.payload)
-                movement = a.payload["movement"]
-                balances[k] = amount if movement == "set" else balances.get(k, ZERO) + (amount if movement == "in" else -amount)
-                names[k] = a.payload["item"]
-                if minimum is not None:
-                    thresholds[k] = minimum
-            for k, value in balances.items():
-                daily_balances[k][day] = value
+        from .inventory_ledger import records_for, ledger, period_movement, display_quantity
+        # The stock read model includes explicitly linked food consumption as well as manual movements.
+        cutoff = min(upper - timedelta(microseconds=1), timezone.now())
+        result = ledger(records_for(room, until=cutoff), until=cutoff)
         low = 0
-        for key, amount in balances.items():
-            threshold = thresholds.get(key)
-            purchase = threshold is not None and amount <= threshold
-            low += purchase
-            stats["breakdown"].append({"label": names[key] + (" · 구매 필요" if purchase else ""), "value": compact(amount), "unit": UNIT_LABELS.get(key[1], key[1]), "note": "사용자 기준 " + compact(threshold) if threshold is not None else "구매 기준 미설정"})
+        for item in result["items"]:
+            movement = period_movement(item, lower, upper)
+            amount, unit = display_quantity(item["balance"], item["unit"])
+            low += int(item["low"])
+            stats["breakdown"].append({"label": item["name"] + (" · 구매 필요" if item["low"] else ""), "value": amount, "unit": unit,
+                "note": ("사용자 기준 " + compact(item["minimum"]) if item["minimum"] is not None else "구매 기준 미설정") + (" · 사용량 미확인 기록 있음" if not item["complete"] else "")})
+            add(item["name"] + " 기간 사용량", movement["used"], unit, "직접 사용 기록과 연결된 급여 제공량을 한 번씩 합산")
+            if item["unit"] == "g":
+                add(item["name"] + " kg 잔량", item["balance"] / 1000, "kg")
+            daily = {}
+            current = ZERO
+            for event in item["events"]:
+                if event["date"] < lower:
+                    current = event["after"]
+            for day in dates(start,end):
+                for event in item["events"]:
+                    if event["date"].astimezone(tz).date() == day:
+                        current = event["after"]
+                if item["events"] and day >= item["events"][0]["date"].astimezone(tz).date():
+                    daily[day] = current
             if len(stats["charts"]) < 12:
-                stats["charts"].append(chart(names[key] + " 잔량", UNIT_LABELS.get(key[1], key[1]), daily_balances[key], start, end, "line"))
-        if balances:
+                stats["charts"].append(chart(item["name"] + " 잔량", unit, daily, start, end, "line"))
+        if result["items"]:
             stats["has_data"] = True
-            primary(len(balances), "품목")
+            primary(len(result["items"]), "품목")
             stats["primary_label"] = "잔량을 기록한 품목"
-        add("구매 필요", low if balances else None, "품목")
-        stats["notes"].append("이전부터 들어오고 사용한 양을 반영한 남은 수량이에요. 직접 센 수량으로 맞춘 뒤에는 그 이후의 변동을 계산해요. 품목과 단위는 따로 구분해요.")
+        add("구매 필요", low if result["items"] else None, "품목")
+        stats["notes"].append("명시적으로 연결한 급여는 꺼내 제공한 양으로 한 번 차감해요. 수정·취소는 같은 원기록에서 재계산하며, 이전의 연결되지 않은 급여를 소급 차감하지 않아요.")
+        stats["notes"].extend(issue["reason"] for issue in result["issues"])
     elif module == "expense":
         totals, categories, daily = defaultdict(lambda: ZERO), defaultdict(lambda: ZERO), defaultdict(lambda: defaultdict(lambda: ZERO))
         for a in rows:
@@ -462,7 +466,7 @@ def routine_schedule(member, day):
         if not versions:
             continue
         snap = versions[0].snapshot
-        if not snap["active"] or day.weekday() not in snap["weekdays"]:
+        if not snap["active"] or day.weekday() not in snap["weekdays"] or (snap.get("end_date") and day.isoformat() > snap["end_date"]):
             continue
         items = []
         for item in snap["items"]:
@@ -471,13 +475,14 @@ def routine_schedule(member, day):
                 continue
             run = runs.get(item["id"])
             activity = run.activity if run and run.activity and not run.activity.voided else None
-            paused = key not in enabled and activity is None
-            items.append({"id": item["id"], "key": key, "spec": MODULES[key], "activity": activity,
+            skipped = bool(run and run.skipped_at and not activity)
+            paused = key not in enabled and activity is None and not skipped
+            items.append({"skipped": skipped, "id": item["id"], "key": key, "spec": MODULES[key], "activity": activity,
                           "paused": paused, "done": bool(activity and activity.status == "done"),
-                          "status": "완료" if activity and activity.status == "done" else "진행 중" if activity else "기능 사용 안 함" if paused else "완료 기록 없음"})
+                          "status": "완료" if activity and activity.status == "done" else "진행 중" if activity else "건너뜀" if skipped else "기능 사용 안 함" if paused else "완료 기록 없음"})
         if not items:
             continue
-        pending_count = sum(not i["done"] and not i["paused"] for i in items)
+        pending_count = sum(not i["done"] and not i["paused"] and not i["skipped"] for i in items)
         scheduled_at = datetime.combine(day, time.fromisoformat(snap["at"]), ZoneInfo(room.timezone))
         result.append({"id": routine.pk, "name": snap["name"] if all(i["module"] in allowed for i in snap["items"]) else "공유된 루틴 활동",
                        "time": snap["at"][:5], "assignee": participants.get(snap.get("assignee_id"), "함께 담당"),

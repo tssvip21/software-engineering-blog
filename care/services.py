@@ -163,7 +163,7 @@ def update_modules(member, enabled, order, version, pinned=None):
     # Compatibility with earlier clients: an already active retired function may
     # continue its existing schedule; no new room can activate it through this API.
     if any(key in enabled and not rows[key].enabled for key in RETIRED_MODULES):
-        raise ValidationError("미용은 위생·손질에 합쳐졌어요. 위생·손질 기능을 선택해 주세요.")
+        raise ValidationError("통합된 이전 기능은 새로 켤 수 없어요. 위생·손질 또는 특이사항 메모에서 기록해 주세요.")
     if pinned is not None and (not isinstance(pinned, list) or not set(pinned) <= set(enabled)):
         raise ValidationError("오늘 화면에 표시할 기능은 사용 중인 기능에서 골라 주세요.")
     for index, key in enumerate(order):
@@ -179,11 +179,14 @@ def update_modules(member, enabled, order, version, pinned=None):
 
 
 @transaction.atomic
-def save_product(member, form, product_id=None):
+def save_product(member, form, product_id=None, *, _receipt=False):
     member = fresh_member(member)
     require_manager(member)
     if not form.is_valid():
         raise ValidationError("제품 입력값을 확인해 주세요.")
+    if product_id is None and form.cleaned_data.get("request_token") and not _receipt:
+        from .mutations7 import once
+        return once(member, form, "product.create", lambda: save_product(member, form, _receipt=True))
     if product_id:
         product = Product.objects.select_for_update().get(pk=product_id, room=member.room)
         if product.version != form.cleaned_data.get("version"):
@@ -200,7 +203,7 @@ def save_product(member, form, product_id=None):
 
 
 def product_snapshot(product):
-    return json_safe({"id": product.pk, "name": product.name, "energy": product.energy, "basis": product.energy_basis,
+    return json_safe({"id": product.pk, "name": product.name, "brand": product.brand, "energy": product.energy, "basis": product.energy_basis,
                       "grams_per_piece": product.grams_per_piece, "protein": product.protein, "protein_kind": product.protein_kind,
                       "fat": product.fat, "fat_kind": product.fat_kind, "source": product.source, "version": product.version})
 
@@ -245,15 +248,8 @@ def inventory_value(payload):
 
 
 def validate_inventory(room):
-    balances = {}
-    for activity in Activity.objects.filter(room=room, module="inventory", voided=False, status="done").order_by("occurred_at", "created_at", "id"):
-        key, amount, _ = inventory_value(activity.payload)
-        movement = activity.payload["movement"]
-        previous = balances.get(key, Decimal(0))
-        value = amount if movement == "set" else previous + amount if movement == "in" else previous - amount
-        if value < 0:
-            raise ValidationError(f"'{activity.payload['item']}'의 남은 수량이 0보다 작아져요. 사 온 수량, 직접 센 수량과 사용한 순서를 확인해 주세요.")
-        balances[key] = value
+    from .inventory_ledger import validate
+    validate(room)
 
 
 def can_edit_record(member, activity):
@@ -263,7 +259,10 @@ def can_edit_record(member, activity):
 def routine_snapshot(routine):
     return {"name": routine.name, "at": routine.at.isoformat(), "weekdays": routine.weekdays,
             "active": routine.active, "assignee_id": str(routine.assignee_id) if routine.assignee_id else None,
-            "items": [{"id": str(i.pk), "module": i.module, "position": i.position} for i in routine.items.filter(active=True)]}
+            "start_date": routine.start_date.isoformat(), "end_date": routine.end_date.isoformat() if routine.end_date else None,
+            "note": routine.note,
+            "items": [{"id": str(i.pk), "module": i.module, "position": i.position,
+                       "preset_id": str(i.preset_id) if i.preset_id else None} for i in routine.items.filter(active=True)]}
 
 
 def effective_routine(routine, day):
@@ -287,7 +286,9 @@ def require_routine_slot(member, item_id, day, module):
     if not item or item.module != module:
         raise ValidationError("이 공간에서 해당 활동이 포함된 루틴을 선택해 주세요.")
     snap = effective_routine(item.routine, day)
-    if not snap or not snap["active"] or day.weekday() not in snap["weekdays"] or not any(i["id"] == str(item.pk) for i in snap["items"]):
+    if (not snap or not snap["active"] or day < item.routine.start_date or
+            (snap.get("end_date") and day.isoformat() > snap["end_date"]) or
+            day.weekday() not in snap["weekdays"] or not any(i["id"] == str(item.pk) for i in snap["items"])):
         raise ValidationError("선택한 날짜에는 이 루틴이 없어요. 날짜를 다시 골라 주세요.")
     if not module_enabled_on(member.room, module, day):
         raise ValidationError("이 활동의 기능을 사용하지 않아 루틴도 잠시 멈췄어요.")
@@ -355,6 +356,18 @@ def save_activity(member, module, form, activity_id=None):
             snapshot = activity.nutrition.get("snapshot") if same_product and not data.get("refresh_product") else product_snapshot(product)
             payload["food_name"] = snapshot["name"] if snapshot else product.name
         nutrition = nutrition_values(payload, snapshot)
+        from .inventory_ledger import product_binding, food_effect
+        same_original_product = bool(activity and activity.payload.get("product_id") == payload.get("product_id"))
+        # No retroactive stock link: old unbound entries remain unbound on correction.
+        if same_original_product and not data.get("refresh_stock"):
+            binding = activity.payload.get("_stock")
+        else:
+            binding = product_binding(product)
+        effect = food_effect(payload, binding)
+        if effect is None:
+            payload.pop("_stock", None)
+        else:
+            payload["_stock"] = effect
     before = activity_snapshot(activity) if activity else {}
     creating = activity is None
     if creating:
@@ -366,11 +379,12 @@ def save_activity(member, module, form, activity_id=None):
     activity.status, activity.performer = data["status"], performer
     activity.note, activity.fingerprint = data.get("note", ""), fingerprint
     activity.save()
-    if module == "inventory":
+    if module == "inventory" or payload.get("_stock") or (before.get("payload") or {}).get("_stock"):
         validate_inventory(member.room)
     if slot:
         slot.activity = activity
-        slot.save(update_fields=["activity"])
+        slot.skipped_at, slot.skip_note = None, ""
+        slot.save(update_fields=["activity", "skipped_at", "skip_note"])
     reason = "기록 생성" if creating else data.get("edit_reason") or "내용 수정"
     ActivityRevision.objects.create(activity=activity, actor=member, before=before, after=activity_snapshot(activity), reason=reason)
     bump(member.room, member, "activity.created" if creating else "activity.updated", {"module": module, "activity_id": str(activity.pk)})
@@ -394,9 +408,9 @@ def cancel_activity(member, activity_id, version, reason):
         raise ValidationError("취소 이유를 입력해 주세요.")
     activity.version += 1
     activity.save(update_fields=["voided", "void_reason", "version", "updated_at"])
-    if activity.module == "inventory":
+    if activity.module == "inventory" or activity.payload.get("_stock"):
         validate_inventory(member.room)
-    RoutineRun.objects.filter(activity=activity).update(activity=None)
+    RoutineRun.objects.filter(activity=activity).update(activity=None, skipped_at=None, skip_note="")
     ActivityRevision.objects.create(activity=activity, actor=member, before=before, after=activity_snapshot(activity), reason=activity.void_reason)
     bump(member.room, member, "activity.cancelled", {"activity_id": str(activity.pk)})
     return activity
@@ -511,35 +525,41 @@ def archive_room(member, confirmation):
 
 
 @transaction.atomic
-def save_routine(member, form, routine_id=None):
+def save_routine(member, form, routine_id=None, *, _receipt=False):
     member = fresh_member(member)
     require_manager(member)
     if not form.is_valid():
         raise ValidationError("루틴 입력값을 확인해 주세요.")
     data = form.cleaned_data
+    if routine_id is None and data.get("request_token") and not _receipt:
+        from .mutations7 import once
+        return once(member, form, "routine.create", lambda: save_routine(member, form, _receipt=True))
     if routine_id:
         routine = Routine.objects.select_for_update().get(pk=routine_id, room=member.room)
         if routine.version != data.get("version"):
             raise Conflict("루틴이 바뀌었어요. 최신 내용을 확인한 뒤 다시 저장해 주세요.")
         routine.version += 1
     else:
-        routine = Routine(room=member.room, start_date=local_date(member.room))
+        routine = Routine(room=member.room, start_date=data.get("start_date") or local_date(member.room))
     for key in data["modules"]:
         require_module(member, key)
     assignee = data.get("assignee")
     if assignee and not Membership.objects.filter(pk=assignee.pk, room=member.room, active=True).exists():
         raise ValidationError("이 공간의 구성원 중 담당할 사람을 골라 주세요.")
     routine.name, routine.at = data["name"], data["at"]
+    routine.end_date, routine.note = data.get("end_date"), data.get("note", "")
     routine.weekdays, routine.active, routine.assignee = [int(x) for x in data["weekdays"]], data["active"], assignee
     routine.save()
     routine.items.update(active=False)
     for position, key in enumerate(data["modules"]):
         item = routine.items.filter(module=key).first()
+        preset = data.get("preset")
+        preset = preset if preset and preset.module == key else None
         if item:
-            item.active, item.position = True, position
-            item.save(update_fields=["active", "position"])
+            item.active, item.position, item.preset = True, position, preset
+            item.save(update_fields=["active", "position", "preset"])
         else:
-            RoutineItem.objects.create(routine=routine, module=key, position=position)
+            RoutineItem.objects.create(routine=routine, module=key, position=position, preset=preset)
     RoutineVersion.objects.create(routine=routine, effective_on=local_date(member.room), snapshot=routine_snapshot(routine))
     bump(member.room, member, "routine.updated" if routine_id else "routine.created", {"routine_id": str(routine.pk)})
     return routine
@@ -563,7 +583,8 @@ def link_activity(member, item_id, day, activity_id):
     if slot.activity_id or RoutineRun.objects.filter(activity=activity).exists():
         raise Conflict("이미 다른 기록이나 루틴과 연결돼 있어요. 기존 연결을 먼저 확인해 주세요.")
     slot.activity = activity
-    slot.save(update_fields=["activity"])
+    slot.skipped_at, slot.skip_note = None, ""
+    slot.save(update_fields=["activity", "skipped_at", "skip_note"])
     bump(member.room, member, "routine.linked", {"activity_id": str(activity.pk)})
     return slot
 

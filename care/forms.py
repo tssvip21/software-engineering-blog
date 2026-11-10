@@ -94,16 +94,22 @@ class RoomForm(forms.ModelForm):
 
 
 class ProductForm(forms.ModelForm):
+    request_token = forms.UUIDField(widget=forms.HiddenInput, required=False, initial=uuid.uuid4)
     version = forms.IntegerField(widget=forms.HiddenInput, required=False)
     class Meta:
         model = Product
-        fields = ["name", "category", "energy", "energy_basis", "grams_per_piece", "protein", "protein_kind", "fat", "fat_kind", "source", "active"]
+        fields = ["name", "brand", "category", "energy", "energy_basis", "grams_per_piece", "protein", "protein_kind", "fat", "fat_kind", "source", "stock_item", "stock_unit", "active"]
         labels = {"name": "제품명", "category": "사용할 기록", "energy": "포장지에 적힌 열량 (선택)", "energy_basis": "열량이 표시된 기준", "grams_per_piece": "개당 무게 (g, 아는 경우만)", "protein": "단백질 (g / 100 g)", "protein_kind": "단백질 표시 방식", "fat": "지방 (g / 100 g)", "fat_kind": "지방 표시 방식", "source": "정보 출처", "active": "기록할 때 이 제품을 선택할 수 있게 하기"}
         help_texts = {"source": "어디서 확인한 정보인지 적어 주세요. 예: 제품 포장지, 제조사 안내", "protein": "수분을 제외한 값(건물 기준)은 넣지 마세요. 제품 그대로 100g에 들어 있는 양을 입력해요.", "active": "사용을 해제해도 이전 기록과 당시 영양 정보는 남아요."}
         widgets = {"source": forms.TextInput(attrs={"placeholder": "예: 제품 포장지, 확인일 2026-11-03"})}
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["version"].initial = self.instance.version or 1
+        self.fields["brand"].label = "브랜드 (선택)"
+        self.fields["stock_item"].label = "연결할 재고 품목 이름 (선택)"
+        self.fields["stock_item"].help_text = "용품·재고에 등록한 이름과 맞춰 주세요. 연결하면 꺼내 준 양을 재고에서 한 번만 차감해요. 비우면 연동하지 않아요."
+        self.fields["stock_unit"].label = "해당 재고의 기준 단위"
+        self.fields["stock_unit"].help_text = "g/kg 재고는 g, ml/L 재고는 ml로 연결해요. 개수와 무게는 개당 무게가 있을 때만 환산해요."
         for key in ("energy", "protein", "fat", "grams_per_piece"):
             self.fields[key].min_value = Decimal("0.001") if key == "grams_per_piece" else Decimal("0")
             self.fields[key].widget.attrs.update({"min": str(self.fields[key].min_value), "step": "0.001"})
@@ -121,6 +127,10 @@ class ProductForm(forms.ModelForm):
                 self.add_error(key, "100 g당 성분량은 100 g을 넘을 수 없어요.")
         if any(data.get(key) is not None for key in ("energy", "protein", "fat")) and not data.get("source", "").strip():
             self.add_error("source", "영양 정보의 출처를 함께 입력해 주세요.")
+        if bool(data.get("stock_item", "").strip()) != bool(data.get("stock_unit")):
+            self.add_error("stock_item", "재고를 연결하려면 품목 이름과 기준 단위를 함께 지정해 주세요.")
+        if data.get("stock_item"):
+            data["stock_item"] = " ".join(data["stock_item"].split())
         return data
 
 
@@ -145,14 +155,16 @@ class RecordForm(forms.Form):
     routine_date = forms.DateField(widget=forms.HiddenInput, required=False)
     occurred_at = forms.DateTimeField(label="돌봄하거나 측정한 시각", widget=LocalDateTimeInput(), input_formats=["%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"])
     status = forms.ChoiceField(label="상태")
-    def __init__(self, *args, room, module, member, instance=None, quick=False, **kwargs):
-        self.quick = quick or bool(instance and instance.payload.get("_entry_mode") == "quick")
+    def __init__(self, *args, room, module, member, instance=None, quick=False, simple=False, **kwargs):
+        self.simple = simple or bool(instance and instance.payload.get("_schema") == 7)
+        self.server_metadata = {}
+        self.quick = quick or self.simple or bool(instance and instance.payload.get("_entry_mode") == "quick")
         self.room, self.spec, self.member, self.instance = room, MODULES[module], member, instance
         initial = kwargs.setdefault("initial", {})
         initial.setdefault("client_key", instance.client_key if instance else uuid.uuid4())
         initial.setdefault("occurred_at", timezone.localtime(instance.occurred_at if instance else timezone.now()))
         initial.setdefault("status", instance.status if instance else "done")
-        if module == "shedding" and not instance:
+        if module == "shedding" and not instance and not self.simple:
             initial["status"] = "active"
             initial.setdefault("kind", "feather" if room.species == "bird" else "molt" if room.species in ("reptile", "amphibian") else "fur")
         if instance:
@@ -170,7 +182,7 @@ class RecordForm(forms.Form):
         self.fields["status"].choices = [(s, state_names[s]) for s in self.spec.statuses]
         if len(self.spec.statuses) == 1:
             self.fields["status"].widget = forms.HiddenInput()
-        if module in ("walk", "shedding"):
+        if module in ("walk", "play", "training", "shedding"):
             self.fields["ended_at"] = forms.DateTimeField(label="종료 시각 (선택)", required=False, widget=LocalDateTimeInput(), help_text="아직 진행 중이면 비워 두세요.")
         if module in ("meal", "treat"):
             products = Product.objects.filter(room=room).filter(Q(category__in=(module, "both")))
@@ -181,6 +193,8 @@ class RecordForm(forms.Form):
             self.fields[spec.key] = input_field(spec)
         if module in ("meal", "treat") and instance:
             self.fields["refresh_product"] = forms.BooleanField(label="현재 제품 영양 정보로 다시 계산", required=False, help_text="선택하지 않으면 기록을 남겼을 때의 제품 정보를 그대로 사용해요.")
+        if module in ("meal", "treat") and instance and instance.payload.get("_stock"):
+            self.fields["refresh_stock"] = forms.BooleanField(label="이 기록에 현재 제품의 재고 연결 적용", required=False, help_text="선택하지 않으면 당시 연결한 품목을 유지하고 제공량 변경만 반영해요.")
         if room.species not in ("dog", "cat") and module == "weight":
             self.fields.pop("bcs", None)
             self.fields.pop("bcs_by", None)
@@ -200,6 +214,42 @@ class RecordForm(forms.Form):
                 self.fields[key].required = False
             self.fields["occurred_at"].label = "기록 시각"
             self.fields["performer"].label = "돌본 사람"
+        if self.simple:
+            if module == "water" and not instance:
+                self.initial.setdefault("kind", "replace")
+            elif module == "toilet":
+                self.initial.setdefault("kind", "observed")
+                self.initial.setdefault("condition", "unknown")
+            elif module == "play":
+                self.initial.setdefault("reaction", "unknown")
+                self.fields["reaction"].required = False
+                self.fields["reaction"].widget = forms.HiddenInput()
+            elif module == "medication":
+                self.fields["routine_title"] = forms.CharField(label="알림 이름", max_length=100, help_text="예: 영양제, 약, 사상충. 용량 등 필요한 내용은 메모로 남겨요.")
+                for key in ("medicine", "dose", "unit", "instruction"):
+                    self.fields[key].required = False
+                    self.fields[key].widget = forms.HiddenInput()
+                self.initial["unit"] = ""
+            elif module == "sleep":
+                self.fields["minutes"].required = False
+                self.fields["minutes"].label = "직접 확인한 시간 (분, 선택)"
+                self.fields["minutes"].help_text = "알림 확인만 하는 경우 비워 두세요. 계획한 수면시간이 실제 수면으로 저장되지는 않아요."
+                self.initial.setdefault("kind", "rest")
+                self.fields["routine_title"] = forms.CharField(label="알림 이름 (선택)", max_length=100, required=False)
+            elif module == "observation":
+                self.fields["detail"].required = True
+                self.fields["detail"].label = "특이사항 메모"
+                self.fields["detail"].widget = forms.Textarea(attrs={"rows": 4})
+                for key,value in (("category", "other"), ("condition", "unknown")):
+                    self.initial.setdefault(key,value)
+                    self.fields[key].required = False
+                    self.fields[key].widget = forms.HiddenInput()
+                self.fields["note"].widget = forms.HiddenInput()
+            elif module == "shedding":
+                self.initial.setdefault("kind", "feather" if room.species == "bird" else "molt" if room.species in ("reptile", "amphibian") else "fur")
+                self.initial["status"] = "done"
+                self.fields["status"].widget = forms.HiddenInput()
+                self.fields["ended_at"].widget = forms.HiddenInput()
         if module == "medication":
             planned = (self.data.get("status") if self.is_bound else initial.get("status")) == "planned"
             self.fields["result"].choices = [("given", "투약 예정" if planned else "투약함"), ("skipped", "투약하지 못함")]
@@ -238,16 +288,26 @@ class RecordForm(forms.Form):
                 self.add_error("food_name", "제품을 선택하거나 먹이 이름을 입력해 주세요.")
             if data.get("consumed") is not None and data.get("quantity") is not None and data["consumed"] > data["quantity"]:
                 self.add_error("consumed", "먹은 양이 준 양보다 많아요. 두 값을 다시 확인해 주세요.")
-        if key == "walk" and status == "done":
+        if key in ("walk", "play", "training") and status == "done":
             if occurred and ended and ended >= occurred:
                 duration = Decimal(str((ended.astimezone(utc_timezone.utc) - occurred.astimezone(utc_timezone.utc)).total_seconds())) / Decimal(60)
                 data["minutes"] = duration.quantize(Decimal("0.001"))
                 if duration <= 0 or duration > 1440:
                     self.add_error("ended_at", "한 번의 산책 시간은 0분 초과, 24시간 이내로 입력해 주세요.")
             if not self.quick and (not data.get("minutes") or data["minutes"] <= 0):
-                self.add_error("minutes", "완료한 산책의 시간 또는 종료 시각을 입력해 주세요.")
-        if key == "walk" and status == "active":
+                self.add_error("minutes", "완료한 활동의 시간 또는 종료 시각을 입력해 주세요.")
+        if key in ("walk", "play", "training") and status == "active":
             data["minutes"] = None
+        if self.simple:
+            if key == "medication":
+                data["medicine"], data["dose"], data["unit"], data["instruction"] = "", None, "", ""
+            elif key == "observation":
+                data["category"] = data.get("category") or "other"
+                data["condition"] = data.get("condition") or "unknown"
+            elif key == "shedding":
+                if status != "done":
+                    self.add_error("status", "관찰 기록은 완료 상태로 남겨 주세요. 이전 진행 기록은 기존 상세에서 종료할 수 있어요.")
+                data["ended_at"] = None
         if key == "water" and data.get("kind") == "measured" and data.get("amount") is None:
             self.add_error("amount", "마신 물의 양을 입력해 주세요.")
         if key == "sleep" and occurred and data.get("minutes"):
@@ -298,6 +358,23 @@ class RecordForm(forms.Form):
 
     def cleaned_payload(self):
         result = {"_entry_mode": "quick"} if self.quick else {}
+        if self.instance:
+            for key in ("_schema", "_entry_kind", "_preset", "_stock", "_gps", "_schedule"):
+                if key in self.instance.payload:
+                    result[key] = self.instance.payload[key]
+        if self.simple:
+            result["_schema"] = 7
+            if self.spec.key == "medication":
+                result.update(_entry_kind="routine", routine_title=self.cleaned_data.get("routine_title", ""))
+            elif self.spec.key == "sleep" and self.cleaned_data.get("minutes") is None:
+                result.update(_entry_kind="schedule", routine_title=self.cleaned_data.get("routine_title", ""))
+            elif self.spec.key == "shedding":
+                result["_entry_kind"] = "observation"
+            elif self.spec.key == "observation":
+                result["_entry_kind"] = "note"
+        for key,value in self.server_metadata.items():
+            if key in ("_schema", "_entry_kind", "_preset", "_stock", "_gps", "_schedule"):
+                result[key] = value
         marker = getattr(self, "cadence_marker", None) or (self.instance.payload.get("_cadence_id") if self.instance else None)
         if marker:
             result["_cadence_id"] = str(marker)
@@ -333,6 +410,10 @@ class CancelForm(forms.Form):
 
 
 class RoutineForm(forms.Form):
+    request_token = forms.UUIDField(widget=forms.HiddenInput, required=False, initial=uuid.uuid4)
+    start_date = forms.DateField(label="시작일", widget=DateInput(), required=False)
+    end_date = forms.DateField(label="종료일 (선택)", widget=DateInput(), required=False)
+    note = forms.CharField(label="메모 (선택)", max_length=1000, required=False, widget=forms.Textarea(attrs={"rows": 3}))
     name = forms.CharField(label="루틴 이름", max_length=80)
     at = forms.TimeField(label="예정 시간", widget=forms.TimeInput(attrs={"type": "time"}, format="%H:%M"))
     weekdays = forms.MultipleChoiceField(label="반복 요일", choices=WEEKDAYS, widget=forms.CheckboxSelectMultiple, initial=[str(i) for i in range(7)])
@@ -354,6 +435,17 @@ class RoutineForm(forms.Form):
         allowed = (enabled & set(visible_keys)) - (set(RETIRED_MODULES) - legacy)
         self.fields["modules"].choices = [(k, m.name) for k, m in MODULES.items() if k in allowed]
         self.fields["assignee"].queryset = room.members.filter(active=True).order_by("display_name")
+        from .models import RecordPreset
+        from .services import local_date
+        current_preset = instance.items.exclude(preset=None).values_list("preset_id", flat=True).first() if instance else None
+        presets = RecordPreset.objects.filter(room=room, module__in=allowed).filter(Q(active=True) | Q(pk=current_preset))
+        self.fields["preset"] = forms.ModelChoiceField(label="함께 쓸 저장 설정 (선택)", queryset=presets, required=False, empty_label="완료할 때 선택", initial=current_preset, help_text="여러 활동을 묶으면 선택한 설정과 같은 활동에만 적용해요.")
+        self.initial.setdefault("start_date", instance.start_date if instance else local_date(room))
+        self.initial.setdefault("end_date", instance.end_date if instance else None)
+        self.initial.setdefault("note", instance.note if instance else "")
+        if instance:
+            self.fields["start_date"].disabled = True
+            self.fields["start_date"].help_text = "이전 일정 이력을 보존하기 위해 시작일은 유지해요. 새 기간은 새 일정으로 만들 수 있어요."
     def clean(self):
         data = super().clean()
         values = data.get("modules", [])
@@ -368,6 +460,12 @@ class RoutineForm(forms.Form):
                 self.add_error("modules", "활동 순서를 다시 확인해 주세요.")
         if data.get("assignee") and data["assignee"].room_id != self.room.pk:
             self.add_error("assignee", "이 공간의 구성원만 지정할 수 있어요.")
+        from .services import local_date
+        data["start_date"] = data.get("start_date") or (self.instance.start_date if self.instance else local_date(self.room))
+        if data.get("end_date") and data["end_date"] < data["start_date"]:
+            self.add_error("end_date", "종료일은 시작일과 같거나 뒤여야 해요.")
+        if data.get("preset") and data["preset"].module not in values:
+            self.add_error("preset", "선택한 활동에 맞는 저장 설정을 골라 주세요.")
         return data
 
 
