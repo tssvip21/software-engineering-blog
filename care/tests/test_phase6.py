@@ -20,7 +20,7 @@ from care.demo_fixtures import record_data
 from care.forms import RecordForm, RoutineForm
 from care.interactions import config_state
 from care.models import Activity, ActivityRevision, CareCadence, ModuleGroup
-from care.modules import MODULES, SELECTABLE_MODULES, MAX_MODULES
+from care.modules import MODULES, SELECTABLE_MODULES, RETIRED_MODULES, MAX_MODULES
 from care.organization import browse_context
 from care.stats import get_statistics
 from .test_functional import CareCase
@@ -127,14 +127,15 @@ class ComparisonMathTests(SimpleTestCase):
 
 
 class ModuleLifecycleTests(CareCase):
-    def test_nineteen_selectable_twenty_historical_without_deleting_data(self):
+    def test_eighteen_selectable_twenty_historical_without_deleting_data(self):
         self.assertEqual(len(MODULES), 20)
-        self.assertEqual(len(SELECTABLE_MODULES), 19)
+        self.assertEqual(len(SELECTABLE_MODULES), 18)
         self.assertLessEqual(len(SELECTABLE_MODULES), MAX_MODULES)
         self.assertNotIn('grooming', SELECTABLE_MODULES)
         self.assertEqual(MODULES['hygiene'].name, '위생·손질')
         response = self.client.get(reverse('module_settings', args=[self.room.pk]))
-        self.assertEqual(len(response.context['rows']), 19)
+        self.assertEqual(len(response.context['rows']), 18)
+        self.assertNotIn('reproduction', SELECTABLE_MODULES)
         self.assertNotIn('grooming', config_state(self.room)['order'])
         self.assertNotContains(response, 'data-add-module="grooming"')
 
@@ -143,13 +144,14 @@ class ModuleLifecycleTests(CareCase):
         before = list(Activity.objects.values()), list(ActivityRevision.objects.values())
         setting = self.room.module_settings.get(key='grooming'); signature=(setting.enabled,setting.pinned,setting.position)
         self.room.refresh_from_db()
-        services.update_modules(self.owner, list(SELECTABLE_MODULES), list(SELECTABLE_MODULES)+['grooming'], self.room.settings_version, ['hygiene'])
+        services.update_modules(self.owner, list(SELECTABLE_MODULES), list(SELECTABLE_MODULES)+list(RETIRED_MODULES), self.room.settings_version, ['hygiene'])
         setting.refresh_from_db()
         self.assertEqual((setting.enabled,setting.pinned,setting.position),signature)
         self.assertEqual(before,(list(Activity.objects.values()),list(ActivityRevision.objects.values())))
         self.assertEqual(self.client.get(reverse('record_detail',args=[self.room.pk,old.pk])).status_code,200)
         response = self.client.get(reverse('module',args=[self.room.pk,'grooming']))
-        self.assertContains(response,'새 기록은 위생·손질')
+        self.assertContains(response,'위생·손질')
+        self.assertContains(response,'이전 미용 기록을 보존')
 
     def test_new_room_cannot_activate_retired_type(self):
         self.room.module_settings.filter(key='grooming').update(enabled=False)
@@ -211,7 +213,7 @@ class StatisticsIntegrationTests(CareCase):
         self.assertEqual(result['latest_weight']['ids'],[str(today.pk)])
         self.assertEqual(result['comparison_end'],services.local_date(self.room)-timedelta(days=1))
         response=self.client.get(reverse('overview',args=[self.room.pk]))
-        for text in ['최근 통계','먼저 볼 비교','+0.4','+5%','평균','기록한']:
+        for text in ['최근 통계','모듈별 측정값 비교','+0.4','+5%','평균','기록한']:
             self.assertContains(response,text)
         self.assertNotContains(response,'최근 변화')
 
