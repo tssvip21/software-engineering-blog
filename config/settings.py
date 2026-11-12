@@ -40,6 +40,20 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [{"BACKEND": "django.template.backends.django.DjangoTemplates", "DIRS": [BASE_DIR / "templates"], "APP_DIRS": True, "OPTIONS": {"context_processors": ["django.template.context_processors.request", "django.contrib.auth.context_processors.auth", "django.contrib.messages.context_processors.messages", "care.context.site_context"]}}]
 WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": str(DATA_DIR / ("demo.sqlite3" if DEMO_MODE else "care.sqlite3")), "OPTIONS": {"timeout": 25, "transaction_mode": "IMMEDIATE"}}}
+if os.environ.get("POSTGRES_HOST"):
+    if DEMO_MODE:
+        raise ImproperlyConfigured("시연 DB는 로컬 SQLite만 사용합니다.")
+    DATABASES = {"default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ.get("POSTGRES_DB", "taily"),
+        "USER": os.environ.get("POSTGRES_USER", "taily"),
+        "PASSWORD": os.environ["POSTGRES_PASSWORD"],
+        "HOST": os.environ["POSTGRES_HOST"],
+        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+        "CONN_MAX_AGE": 60,
+        "CONN_HEALTH_CHECKS": True,
+        "OPTIONS": {"connect_timeout": 10},
+    }}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LANGUAGE_CODE = "ko-kr"
 TIME_ZONE = "Asia/Seoul"
