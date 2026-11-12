@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from . import actions7, analytics7, cadences, organization, schedule7, services
+from . import actions7, analytics7, cadences, organization, schedule7, services, ui_forms
 from .dashboard import today_tiles
 from .forms import RecordForm, StatsFilterForm
 from .models import Activity, Membership, RecordPreset
@@ -157,11 +157,13 @@ def entry(request,room_id,module):
                 from .presets import snapshot
                 form.server_metadata['_preset']=snapshot(preset)
             record,created=services.save_activity(member,module,form)
+            if ui_forms.in_dialog(request):
+                return ui_forms.saved(request,'기록을 저장했어요.' if created else '이미 저장된 기록이에요.',reverse('record_detail',args=[room.pk,record.pk]),id=str(record.pk),created=created)
             messages.success(request,'기록을 저장했어요.' if created else '이미 저장된 기록이에요. 중복으로 추가하지 않았어요.')
             return redirect('record_detail',room_id=room.pk,activity_id=record.pk)
         except ValidationError as exc:form.add_error(None,' '.join(exc.messages));status=409 if isinstance(exc,services.Conflict) else 422
         except OperationalError:form.add_error(None,'지금은 저장할 수 없어요. 입력을 유지했으니 같은 화면에서 다시 시도해 주세요.');status=503
-    return render(request,'care7/entry.html',{'title':MODULES[module].name+' 기록','active_tab':'modules','spec':MODULES[module],
+    return ui_forms.render_input(request,'care7/entry.html',{'title':MODULES[module].name+' 기록','active_tab':'modules','spec':MODULES[module],
         'form':form,'preset':preset,'is_timer':module in actions7.TIMERS,'back_url':reverse('modules',args=[room.pk])},status=status)
 
 
@@ -183,11 +185,13 @@ def preset_edit(request,room_id,module,preset_id=None):
     status=200
     if request.method=='POST' and form.is_valid():
         try:
-            save_preset(member,module,form,instance)
+            preset=save_preset(member,module,form,instance)
+            if ui_forms.in_dialog(request):
+                return ui_forms.saved(request,'저장 설정을 반영했어요.',reverse('presets7',args=[room.pk,module]),id=str(preset.pk))
             messages.success(request,'저장 설정을 반영했어요. 이전 기록의 당시 설정은 바뀌지 않아요.')
             return redirect('presets7',room_id=room.pk,module=module)
         except ValidationError as exc:form.add_error(None,' '.join(exc.messages));status=409 if isinstance(exc,services.Conflict) else 422
-    return render(request,'care7/entry.html',{'title':MODULES[module].name+' 저장 설정 '+('수정' if instance else '등록'),'form':form,
+    return ui_forms.render_input(request,'care7/entry.html',{'title':MODULES[module].name+' 저장 설정 '+('수정' if instance else '등록'),'form':form,
         'spec':MODULES[module],'active_tab':'modules','back_url':reverse('presets7',args=[room.pk,module]),'submit_label':'설정 저장'},status=status)
 
 
@@ -237,8 +241,13 @@ def member_panel(request,room_id,member_id):
                         fresh.display_name=name;fresh.notices_enabled=enabled;fresh.save(update_fields=['display_name','notices_enabled'])
                         services.bump(room,fresh,'member.preferences.updated')
                 target.refresh_from_db();success='내 이름과 오늘 화면의 안내 표시를 저장했어요.'
-            elif action_ in ('promote','demote','remove'):
-                services.change_member(actor,target.pk,action_)
+            elif action_ in ('promote','demote','remove','role'):
+                if action_=='role':
+                    services.require_owner(actor)
+                    role=request.POST.get('role')
+                    if role not in ('admin','guest'):raise ValidationError('변경할 역할을 선택해 주세요.')
+                    action_='promote' if role=='admin' else 'demote'
+                services.change_member(actor,target.pk,action_,revoke_links=request.POST.get('revoke_links')=='1')
                 success='구성원 설정을 반영했어요.';target.refresh_from_db()
             elif action_=='leave':
                 if target.pk!=actor.pk:raise PermissionDenied()

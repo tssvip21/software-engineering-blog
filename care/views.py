@@ -16,7 +16,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
-from . import services, cadences
+from . import services, cadences, ui_forms
 from .dashboard import today_tiles, statistics_periods
 from .presentation import integrated_context, GROUPS
 from .interactions import config_state
@@ -48,7 +48,9 @@ def record_card(activity, member):
 @require_GET
 def home(request):
     memberships = list(services.my_memberships(request).order_by("room__name"))
-    return render(request, "care/home.html", {"memberships": memberships, "has_identity": bool(memberships or request.user.is_authenticated)})
+    from .demo_navigation import split
+    memberships, auxiliary = split(request, memberships)
+    return render(request, "care/home.html", {"memberships": memberships, "demo_auxiliary_count":len(auxiliary), "has_identity": bool(memberships or request.user.is_authenticated)})
 
 
 @require_http_methods(["GET", "POST"])
@@ -201,6 +203,8 @@ def record_form_view(request, room_id, module, activity=None):
     if request.method == "POST" and form.is_valid():
         try:
             record, changed = services.save_activity(member, module, form, activity.pk if activity else None)
+            if ui_forms.in_dialog(request):
+                return ui_forms.saved(request,"기록을 저장했어요." if changed else "이미 저장된 기록이에요.",reverse("record_detail",args=[room.pk,record.pk]),id=str(record.pk),changed=changed)
             messages.success(request, "기록을 저장했어요." if changed else "이미 저장한 기록이에요. 같은 기록을 다시 만들지 않았어요.")
             return redirect(with_return(reverse("record_detail", args=[room.pk, record.pk]), record_return(request, room)))
         except ValidationError as exc:
@@ -209,7 +213,7 @@ def record_form_view(request, room_id, module, activity=None):
         except OperationalError:
             form.add_error(None, "지금은 기록을 저장할 수 없어요. 입력은 유지했으니 잠시 후 다시 저장해 주세요.")
             status = 503
-    return render(request, "care/record_form.html", {"title": MODULES[module].name + (" 기록 수정" if activity else " 기록"), "form": form,
+    return ui_forms.render_input(request, "care/record_form.html", {"title": MODULES[module].name + (" 기록 수정" if activity else " 기록"), "form": form,
                   "spec": MODULES[module], "activity": activity, "active_tab": "modules", "return_to": record_return(request, room), "back_url": with_return(reverse("record_detail", args=[room.pk, activity.pk]), record_return(request, room)) if activity else reverse("module", args=[room.pk, module])}, status=status)
 
 
@@ -519,16 +523,22 @@ def routine_edit(request, room_id, routine_id=None):
     services.require_manager(member)
     instance = get_object_or_404(Routine, pk=routine_id, room=room) if routine_id else None
     form = RoutineForm(request.POST or None, room=room, visible_keys=services.visible_modules(member), instance=instance)
+    if ui_forms.in_dialog(request) and instance is None:
+        form.fields["request_token"].required=True
+    # Present the actual task first, rather than starting a long form with dates.
+    form.order_fields(["name","at","weekdays","modules","preset","start_date","end_date","assignee","note","active","version","module_order","request_token"])
     status = 200
     if request.method == "POST" and form.is_valid():
         try:
-            services.save_routine(member, form, routine_id)
+            routine=services.save_routine(member, form, routine_id)
+            if ui_forms.in_dialog(request):
+                return ui_forms.saved(request,"루틴을 저장했어요.",reverse("routines",args=[room.pk]),id=str(routine.pk))
             messages.success(request, "루틴을 저장했어요. 바꾼 내용은 오늘부터 적용돼요.")
             return redirect("routines", room_id=room.pk)
         except ValidationError as exc:
             add_form_error(form, exc)
             status = 409 if isinstance(exc, services.Conflict) else 400
-    return render(request, "care/form.html", {"title": "루틴 수정" if instance else "새 루틴", "intro": "같은 시간에 확인할 활동을 묶어 주세요. 돌봄 기록을 남기면 완료로 표시해요.",
+    return ui_forms.render_input(request, "care/form.html", {"title": "루틴 수정" if instance else "새 루틴", "intro": "같은 시간에 확인할 활동을 묶어 주세요. 돌봄 기록을 남기면 완료로 표시해요.",
                   "form": form, "submit_label": "루틴 저장", "back_url": reverse("routines", args=[room.pk]), "active_tab": "routines", "routine_form": True}, status=status)
 
 

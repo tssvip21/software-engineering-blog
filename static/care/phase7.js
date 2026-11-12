@@ -47,8 +47,12 @@
     });
   }
   function captureBrowse() {
+    const details=[...document.querySelectorAll('#main details')];
     return {search: document.querySelector('#workspace-search')?.value,
-      filter: document.querySelector('[data-module-browser="workspace"] [data-module-filter][aria-pressed="true"]')?.dataset.moduleFilter};
+      filter: document.querySelector('[data-module-browser="workspace"] [data-module-filter][aria-pressed="true"]')?.dataset.moduleFilter,
+      custom:document.querySelector('[data-custom-filter]')?.value,
+      scroll:window.scrollY,
+      opened:details.map((d,i)=>d.open?i:null).filter(i=>i!==null)};
   }
   function replaceMain(html, previous = captureBrowse()) {
     const parsed = new DOMParser().parseFromString(html, 'text/html');
@@ -59,13 +63,22 @@
     document.dispatchEvent(new Event('taily:refresh'));
     if (previous.filter) document.querySelector('[data-module-browser="workspace"] [data-module-filter="' + CSS.escape(previous.filter) + '"]')?.click();
     if (previous.search !== undefined) { const search = document.querySelector('#workspace-search'); if (search) { search.value = previous.search; search.dispatchEvent(new Event('input', {bubbles:true})); } }
+    if(previous.custom!==undefined){const group=document.querySelector('[data-custom-filter]');if(group){group.value=previous.custom;group.dispatchEvent(new Event('change',{bubbles:true}));}}
+    if(previous.opened){const details=[...document.querySelectorAll('#main details')];previous.opened.forEach(i=>{if(details[i])details[i].open=true;});}
+    if(previous.scroll!==undefined)requestAnimationFrame(()=>window.scrollTo({top:previous.scroll,behavior:'instant'}));
     tick();
   }
   async function refreshSurface() {
     const response = await fetch(location.href, {credentials:'same-origin',cache:'no-store'});
     if (!response.ok) throw new Error('기록은 저장됐지만 화면 갱신에 실패했어요. 새로고침하거나 원기록을 확인해 주세요.');
-    replaceMain(await response.text());
+    const html=await response.text();
+    replaceMain(html);
+    const updated=new DOMParser().parseFromString(html,'text/html');
+    const sidebar=updated.querySelector('.sidebar-members'),current=document.querySelector('.sidebar-members');
+    if(sidebar&&current)current.replaceWith(sidebar);
   }
+  // Shared UI contract used by in-place forms; does not expose storage or permissions.
+  window.TailyUI=Object.freeze({refresh:refreshSurface,announce});
   async function runAction(button) {
     if (!endpoint) return;
     const key = actionKey(button); if (busy.has(key)) return;
@@ -83,7 +96,7 @@
       }
       pending.set(key, request); persist(key, request);
     }
-    busy.add(key); markButtons(key, true); feedback(button, '저장 중이에요. 다시 눌러도 중복 저장하지 않아요.');
+    busy.add(key); markButtons(key, true); feedback(button, '저장 중…');
     let result;
     try {
       result = await post(endpoint, request);
@@ -186,7 +199,7 @@
     if(event.shiftKey&&(active===first||!memberDialog.contains(active))){event.preventDefault();last.focus();}
     else if(!event.shiftKey&&(active===last||!memberDialog.contains(active))){event.preventDefault();first.focus();}
   });
-  memberDialog?.addEventListener('close',()=>{delete memberDialog.dataset.dirty;body.classList.remove('has-member-panel7');memberTrigger?.focus();});
+  memberDialog?.addEventListener('close',()=>{delete memberDialog.dataset.dirty;body.classList.remove('has-member-panel7');if(memberTrigger?.isConnected)memberTrigger.focus({preventScroll:true});else{const next=[...document.querySelectorAll('[data-member-open7]')].find(a=>a.href===memberDialog.dataset.url);next?.focus({preventScroll:true});}});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)gps.forEach((s,id)=>{if(s.watch!==null){s.hidden=true;s.gaps++;s.last=null;persist('gps:'+id,{metres:s.metres,samples:s.samples,gaps:s.gaps,hidden:true});}});});
   document.addEventListener('input',e=>{if(e.target.matches('[data-distance7]')){const s=gps.get(e.target.closest('[data-timer-id]')?.dataset.timerId);if(s)s.manuallyEdited=true;}});
   document.addEventListener('click',async e=>{
@@ -205,7 +218,7 @@
       e.preventDefault();if(memberForm.dataset.saving==='1')return;memberForm.dataset.saving='1';const submitter=e.submitter;
       const data=new FormData(memberForm);if(submitter?.name)data.set(submitter.name,submitter.value);
       const buttons=[...memberForm.querySelectorAll('button')];buttons.forEach(b=>b.disabled=true);
-      try{const response=await fetch(memberForm.action,{method:'POST',credentials:'same-origin',body:data,headers:{'X-CSRFToken':csrf(),'X-Taily-Panel':'1'}});if(response.status>=500||response.status===403)throw new Error('설정을 저장하지 못했어요. 현재 입력은 유지돼요.');const html=await response.text();memberDialog.querySelector('[data-member-content7]').innerHTML=html;if(response.ok){memberDialog.dataset.initial=memberFormState()||'';delete memberDialog.dataset.dirty;announce('구성원 설정을 반영했어요.');}}
+      try{const response=await fetch(memberForm.action,{method:'POST',credentials:'same-origin',body:data,headers:{'X-CSRFToken':csrf(),'X-Taily-Panel':'1'}});if(response.status>=500||response.status===403)throw new Error('설정을 저장하지 못했어요. 현재 입력은 유지돼요.');const html=await response.text();memberDialog.querySelector('[data-member-content7]').innerHTML=html;if(response.ok){memberDialog.dataset.initial=memberFormState()||'';delete memberDialog.dataset.dirty;announce('구성원 설정을 반영했어요.');await refreshSurface();const heading=memberDialog.querySelector('#member-panel-title7');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}}}
       catch(err){announce(err.message,{error:true});buttons.forEach(b=>b.disabled=false);delete memberForm.dataset.saving;}
       return;
     }

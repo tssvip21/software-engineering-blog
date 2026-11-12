@@ -1,8 +1,9 @@
 from django.conf import settings
 from django.urls import path
-from . import auth, views, interactions, workspace, browsing, flow7
+from . import auth, views, interactions, workspace, browsing, flow7, demo_navigation
 
 urlpatterns = [
+    path("demo/inspection-rooms/", demo_navigation.auxiliary, name="demo_auxiliary"),
     path("rooms/<uuid:room_id>/actions/", flow7.action, name="action7"),
     path("rooms/<uuid:room_id>/statistics/evidence/", flow7.evidence, name="evidence7"),
     path("rooms/<uuid:room_id>/notices/dismiss/", flow7.dismiss_notice, name="notice_dismiss7"),
