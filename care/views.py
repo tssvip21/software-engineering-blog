@@ -36,6 +36,8 @@ def add_form_error(form, exc):
 
 
 def record_card(activity, member):
+    from .supplies import require_record_access
+    require_record_access(member, activity)
     activity.spec = MODULES[activity.module]
     activity.can_edit = services.can_edit_record(member, activity) and not activity.voided
     activity.brief = record_summary(activity.module, activity.payload)
@@ -58,7 +60,9 @@ def room_new(request):
     if not request.user.is_authenticated:
         messages.info(request, "반려동물을 등록하려면 구글 계정으로 로그인해 주세요.")
         return redirect("home")
-    form = RoomForm(request.POST or None)
+    from .settings8 import PetProfileForm
+    form = PetProfileForm(request.POST or None)
+    form.fields["request_token"].required=False
     if request.method == "POST" and form.is_valid():
         try:
             if not services.rate_limit(request, "room-create", 10, 3600):
@@ -68,7 +72,7 @@ def room_new(request):
             return redirect("today", room_id=room.pk)
         except ValidationError as exc:
             add_form_error(form, exc)
-    return render(request, "care/form.html", {"form": form, "title": "반려동물 등록", "eyebrow": "새 돌봄 공간", "intro": "이름과 동물 종류를 알려 주세요. 나머지는 나중에 적어도 돼요.", "submit_label": "돌봄 공간 만들기", "back_url": reverse("home")})
+    return render(request, "care8/new_pet.html", {"form": form, "title": "반려동물 등록", "pet_form": True, "form_action":request.get_full_path(), "submit_label": "돌봄 공간 만들기", "back_url": reverse("home")})
 
 
 @require_GET

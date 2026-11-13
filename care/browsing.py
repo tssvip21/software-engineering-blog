@@ -81,7 +81,8 @@ def records(request, room_id):
     from .views import record_card
     room, member = services.get_room(request, room_id)
     allowed = set(services.visible_modules(member))
-    qs = Activity.objects.filter(room=room, module__in=allowed).select_related("author", "performer")
+    from .supplies import visible_records
+    qs = visible_records(member, Activity.objects.filter(room=room, module__in=allowed).select_related("author", "performer"))
     category = request.GET.get("category", "")
     if category and category not in CATEGORIES:
         raise Http404()

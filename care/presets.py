@@ -34,12 +34,12 @@ class PresetForm(forms.Form):
         spec=RecordForm(room=member.room,module=module,member=member,simple=True)
         fields={'meal':('product','food_name','quantity','unit'), 'treat':('product','food_name','quantity','unit','reason'),
                 'water':('kind','container','amount','unit'), 'play':('kind',),'training':('skill',),
-                'hygiene':('task',),'cleaning':('target','task'),'medication':(),
+                'hygiene':('product','task','used_quantity','used_unit'),'cleaning':('product','target','task','used_quantity','used_unit'),'medication':('product','used_quantity','used_unit'),
                 'veterinary':('kind','clinic','detail'),'sleep':('kind',)}[module]
         for key in fields:
             self.fields[key]=deepcopy(spec.fields[key])
             self.fields[key].initial=initial.get(key,spec.initial.get(key))
-            if key=='product' and instance and instance.product_id:
+            if key=='product' and module in ('meal','treat') and instance and instance.product_id:
                 from .models import Product
                 self.fields[key].queryset=Product.objects.filter(room=member.room,category__in=(module,'both')).filter(Q(active=True)|Q(pk=instance.product_id))
         if module in ('meal','treat'):
@@ -82,7 +82,9 @@ def save_preset(member,module,form,instance=None,*,_receipt=False):
     preset.data=services.json_safe({k:v for k,v in data.items() if k not in excluded})
     if module=='medication':preset.data.update(routine_title=preset.title,result='given')
     if module=='sleep':preset.data.update(routine_title=preset.title)
-    if product:preset.data.update(food_name=product.name,product=str(product.pk))
+    if product:
+        preset.data['product']=str(product.pk)
+        if module in ('meal','treat'):preset.data['food_name']=product.name
     if preset.is_default:
         RecordPreset.objects.filter(room=member.room,module=module,is_default=True).exclude(pk=preset.pk).update(is_default=False)
     preset.full_clean();preset.save()

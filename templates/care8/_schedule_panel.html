@@ -1,0 +1,10 @@
+{% load care_tags %}
+<aside class="schedule-rail" aria-label="오늘 일정과 안내">
+<details id="workspace-schedule" class="workspace-schedule" data-schedule-panel open>
+<summary><span class="schedule-label">{% icon 'clock' %}<strong>오늘 일정</strong></span><span class="schedule-badge">{{ schedule_done }}/{{ schedule_total }} 완료</span><span class="schedule-chevron" aria-hidden="true">⌄</span></summary>
+<div class="schedule-panel-content">
+<div class="panel-heading"><span class="meta">{{ schedule_day|date:'n월 j일' }} · {% if schedule_remaining %}{{ schedule_remaining }}개 남음{% else %}남은 루틴 없음{% endif %}</span><a class="quiet-link" href="{% url 'routines' room.id %}">전체 관리 →</a></div>
+{% include 'care7/_schedule.html' %}
+{% include 'care7/_notices.html' %}
+{% if member.can_manage %}<a class="button secondary schedule-add" href="{% url 'routine_new' room.id %}">{% icon 'plus' %}루틴 추가</a>{% endif %}
+</div></details></aside>

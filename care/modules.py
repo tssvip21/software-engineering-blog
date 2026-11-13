@@ -175,6 +175,11 @@ def compact(value):
 
 def payload_display(module, payload, *, status=None):
     rows = []
+    supply = payload.get("_supply") or {}
+    if supply.get("name"):
+        rows.append(("사용한 물품", str(supply["name"])))
+    if payload.get("used_quantity") is not None:
+        rows.append(("실제 사용량", compact(payload["used_quantity"]) + " " + UNIT_LABELS.get(payload.get("used_unit"), payload.get("used_unit", ""))))
     if payload.get("routine_title"):
         rows.append(("알림 이름", str(payload["routine_title"])))
     if payload.get("_preset", {}).get("title"):

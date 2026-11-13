@@ -76,6 +76,12 @@
     const updated=new DOMParser().parseFromString(html,'text/html');
     const sidebar=updated.querySelector('.sidebar-members'),current=document.querySelector('.sidebar-members');
     if(sidebar&&current)current.replaceWith(sidebar);
+    for(const selector of ['.workspace-name','.topbar-role','.room-switch>.meta']){
+      const source=updated.querySelector(selector),target=document.querySelector(selector);
+      if(source&&target)target.textContent=source.textContent;
+    }
+    const newRooms=updated.querySelector('#room-switch'),oldRooms=document.querySelector('#room-switch');
+    if(newRooms&&oldRooms){oldRooms.replaceChildren(...[...newRooms.children].map(x=>x.cloneNode(true)));oldRooms.value=newRooms.value;}
   }
   // Shared UI contract used by in-place forms; does not expose storage or permissions.
   window.TailyUI=Object.freeze({refresh:refreshSurface,announce});

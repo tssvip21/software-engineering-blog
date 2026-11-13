@@ -261,6 +261,9 @@ class RecordForm(forms.Form):
                 # Legacy values remain accepted by the field for old clients, but are not offered for new entry.
                 self.fields["kind"].widget.choices = [(v, label) for v, label in self.fields["kind"].choices if v not in ("heat", "egg")]
 
+        from .supplies import install_record_fields
+        install_record_fields(self)
+
     def clean(self):
         data = super().clean()
         status = data.get("status")
@@ -354,12 +357,13 @@ class RecordForm(forms.Form):
                 self.add_error("quantity", "들어오거나 사용한 수량을 0보다 크게 입력해 주세요.")
         if key == "expense" and data.get("currency") in ("KRW", "JPY") and data.get("amount") is not None and data["amount"] % 1:
             self.add_error("amount", "원·엔 금액은 정수로 입력해 주세요.")
-        return data
+        from .supplies import clean_record
+        return clean_record(self, data)
 
     def cleaned_payload(self):
         result = {"_entry_mode": "quick"} if self.quick else {}
         if self.instance:
-            for key in ("_schema", "_entry_kind", "_preset", "_stock", "_gps", "_schedule"):
+            for key in ("_schema", "_entry_kind", "_preset", "_stock", "_gps", "_schedule", "_supply"):
                 if key in self.instance.payload:
                     result[key] = self.instance.payload[key]
         if self.simple:
@@ -390,7 +394,8 @@ class RecordForm(forms.Form):
             result["product_id"] = str(product.pk) if product else None
             if product:
                 result["food_name"] = product.name
-        return result
+        from .supplies import record_payload
+        return record_payload(self, result)
 
 
 class InvitationForm(forms.Form):

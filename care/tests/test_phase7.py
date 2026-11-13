@@ -413,7 +413,9 @@ class ScheduleAndScopeTests(Phase7Case):
 
     def test_settings_no_longer_duplicates_module_configuration(self):
         response=self.client.get(reverse('room_settings',args=[self.room.pk]))
-        self.assertNotContains(response,'사용할 기능·표시 순서');self.assertContains(response,'사료·간식 정보')
+        self.assertNotContains(response,'사용할 기능·표시 순서');self.assertContains(response,'반려동물 상태')
+        self.assertNotContains(response,'사료·간식 정보')
+        self.assertEqual(self.client.get(reverse('supplies8',args=[self.room.pk])).status_code,200)
         self.assertEqual(self.client.get(reverse('module_settings',args=[self.room.pk])).status_code,200)
 
     def test_action_api_invalid_json_and_forbidden_scope(self):

@@ -21,6 +21,7 @@ from .modules import MODULES, SELECTABLE_MODULES, RETIRED_MODULES, record_summar
 from .presets import PRESET_MODULES, PresetForm, save_preset
 from .stats import bounds, get_statistics
 from .views import record_card
+from .workspace8 import schedule_context
 
 
 @require_POST
@@ -49,6 +50,8 @@ def board_data(member):
     grouped=defaultdict(list)
     for p in presets:grouped[p.module].append(p)
     records=list(Activity.objects.filter(room=room,module__in=allowed,voided=False,occurred_at__lte=now).select_related('author','performer').order_by('-occurred_at','-created_at','-id'))
+    from .supplies import filter_rows
+    records=filter_rows(member,records)
     basic=[{'spec':MODULES[s.key],'enabled':s.key in canonical_enabled,'pinned':s.pinned,'category':organization.CATEGORY_OF[s.key]}
            for s in settings if s.key in allowed and s.key in SELECTABLE_MODULES]
     cards=today_tiles(member,basic,records,today)
@@ -76,7 +79,7 @@ def modules(request,room_id):
     allowed=set(services.visible_modules(member))
     history=[{'spec':MODULES[s.key]} for s in room.module_settings.all() if s.key in allowed and (not s.enabled or s.key in RETIRED_MODULES)]
     return render(request,'care7/modules.html',{'title':'돌봄 기능','active_tab':'modules','sections':sections,'enabled_modules':enabled,
-        'inactive_modules':history,'ongoing':[record_card(a,member) for a in records if a.status=='active'],'live_page':True,**organization.browse_context(member)})
+        'inactive_modules':history,'ongoing':[record_card(a,member) for a in records if a.status=='active'],'live_page':True,**organization.browse_context(member),**schedule_context(member)})
 
 
 @require_GET
@@ -88,7 +91,7 @@ def today(request,room_id):
     return render(request,'care7/today.html',{'title':room.name+'의 오늘','active_tab':'today','day':day,'cards':chosen,
         'ongoing':ongoing,'schedule_entries':schedule,'notices':schedule7.notices(member),
         'recent':[record_card(a,member) for a in records[:6]],'today_count':sum(a.status=='done' and services.local_date(room)==a.occurred_at.astimezone(timezone.get_current_timezone()).date() for a in records),
-        'routine_total':sum(not r['paused'] for r in schedule),'routine_done':sum(r['done'] for r in schedule),'routine_progress':round(sum(r['done'] for r in schedule)/sum(not r['paused'] for r in schedule)*100,2) if any(not r['paused'] for r in schedule) else 0,'live_page':True})
+        'routine_total':sum(not r['paused'] for r in schedule),'routine_done':sum(r['done'] for r in schedule),'routine_progress':round(sum(r['done'] for r in schedule)/sum(not r['paused'] for r in schedule)*100,2) if any(not r['paused'] for r in schedule) else 0,'live_page':True,**schedule_context(member,schedule)})
 
 
 @require_GET
@@ -107,11 +110,13 @@ def module_page(request,room_id,module):
     current=next((c for c in report['module_cards'] if c['key']==canonical),None)
     from django.core.paginator import Paginator
     query=Activity.objects.filter(room=room,module__in=[k for k in services.visible_modules(member) if schedule7.logical_module(k)==canonical]).select_related('author','performer').order_by('-occurred_at','-created_at','-id')
+    from .supplies import visible_records
+    query=visible_records(member,query)
     if request.GET.get('include_cancelled')!='1':query=query.filter(voided=False)
     page=Paginator(query,20).get_page(request.GET.get('page'))
     page.object_list=[record_card(a,member) for a in page.object_list]
     matching=page.object_list
-    end=services.local_date(room);stats=get_statistics(room,module,end-timedelta(days=6),end)
+    end=services.local_date(room);stats=get_statistics(room,module,end-timedelta(days=6),end,member=member)
     return render(request,'care7/module.html',{'title':MODULES[module].name,'spec':MODULES[module],'active_tab':'modules',
         'card':card,'comparison':current,'report':report,'ongoing':[record_card(a,member) for a in records if a.status=='active' and schedule7.logical_module(a.module)==canonical],'records':matching,'page_obj':page,'include_cancelled':request.GET.get('include_cancelled')=='1','stats':stats,'retired_module':module in RETIRED_MODULES,
         'canonical_name':MODULES[canonical].name,'canonical_url':reverse('module',args=[room.pk,canonical]),'live_page':True})
@@ -124,7 +129,7 @@ def statistics(request,room_id,module):
     initial={'start':end-timedelta(days=6),'end':end}
     submitted={'start':request.GET.get('start'),'end':request.GET.get('end')} if 'start' in request.GET or 'end' in request.GET else None
     form=StatsFilterForm(submitted,initial=initial);chosen=initial if submitted is None else form.cleaned_data if form.is_valid() else {}
-    stats=get_statistics(room,module,chosen['start'],chosen['end']) if chosen else None
+    stats=get_statistics(room,module,chosen['start'],chosen['end'],member=member) if chosen else None
     days=(chosen['end']-chosen['start']).days+1 if chosen else 7
     report=analytics7.build_report(member,days,end=chosen.get('end')) if chosen and days in (7,30,90) and chosen['end']<today_date else None
     card=next((c for c in report['module_cards'] if c['key']==schedule7.logical_module(module)),None) if report else None
@@ -147,6 +152,11 @@ def entry(request,room_id,module):
         preset=get_object_or_404(RecordPreset,pk=request.GET['preset'],room=room,module=module,active=True)
         initial.update(preset.data)
         if preset.product_id:initial['product']=str(preset.product_id)
+    if request.method=='GET' and request.GET.get('product'):
+        from .supplies import visible_products
+        product=get_object_or_404(visible_products(member),pk=request.GET['product'],active=True)
+        initial['product']=str(product.pk)
+        if module=='medication':initial['routine_title']=product.name
     form=RecordForm(request.POST or None,room=room,module=module,member=member,simple=True,initial=initial)
     if module in actions7.TIMERS:
         form.fields['status'].choices=[('done','완료'),('active','진행 중')]

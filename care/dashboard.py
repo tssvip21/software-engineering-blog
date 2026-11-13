@@ -33,7 +33,7 @@ def today_tiles(member, cards, records, day=None):
         all_rows = grouped[key]
         rows = [a for a in all_rows if a.status == 'done' and lower <= a.occurred_at < upper]
         tile = {'value':'—','unit':'','caption':'오늘 완료한 기록이 없어요','empty':True,'secondary':[]}
-        stats = get_statistics(member.room,key,day,day,all_records=all_rows)
+        stats = get_statistics(member.room,key,day,day,all_records=all_rows,member=member)
         if stats['has_data']:
             tile.update(value=stats['primary'],unit='건' if stats['primary_unit']=='회' and key not in ('medication',) else stats['primary_unit'],caption='오늘 · '+stats['primary_label'],empty=False)
         if key == 'weight' and stats.get('measurement_date'):

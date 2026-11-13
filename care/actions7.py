@@ -125,7 +125,7 @@ def perform(member,request):
             ActionReceipt.objects.create(room=member.room,actor=member,token=token,request_hash=fingerprint,operation=operation,activity=ongoing,result=result)
             return result
     data=input_for(member,module,preset,at=at)
-    editable={f.key for f in MODULES[module].fields}|{'note','product','routine_title','occurred_at','performer'}
+    editable={f.key for f in MODULES[module].fields}|{'note','product','routine_title','occurred_at','performer','used_quantity','used_unit'}
     if set(fields)-editable:raise ValidationError('허용되지 않은 기록 입력 항목이 있어요.')
     data.update(fields)
     data['client_key']=str(token)

@@ -293,7 +293,7 @@ def counted_modules(room,rows,enabled,start,end,days):
 
 def inventory_report(room,rows,start,end,days):
     end_at=bounds(room,end,end)[1]-timedelta(microseconds=1)
-    report=ledger([a for a in rows if a.module in ('inventory','meal','treat')],until=end_at)
+    report=ledger([a for a in rows if a.module in ('inventory','meal','treat','medication','hygiene','cleaning')],until=end_at)
     lower,upper=bounds(room,start,end);previous_lower=bounds(room,start-timedelta(days=days),start-timedelta(days=1))[0]
     output=[]
     for item in report['items']:
@@ -431,7 +431,8 @@ def build_report(member,days=7,*,end=None,records=None):
     enabled&=set(SELECTABLE_MODULES)
     if records is None:
         records=list(Activity.objects.filter(room=room,module__in=allowed,voided=False,status='done',occurred_at__lte=now).select_related('author').order_by('occurred_at','created_at','id'))
-    rows=eligible(records,room.pk,allowed,now)
+    from .supplies import filter_rows
+    rows=filter_rows(member,eligible(records,room.pk,allowed,now))
     metrics,grouped=build_measurements(room,rows,enabled,start,end,days,now)
     module_cards=[]
     priority=['weight','walk','meal','treat','water','play','training','sleep','environment']

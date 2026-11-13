@@ -71,7 +71,8 @@ def food_effect(payload, binding):
 
 def records_for(room, *, until=None):
     from .models import Activity
-    return Activity.objects.filter(room=room, module__in=("inventory", "meal", "treat"),
+    from .supplies import STOCK_MODULES
+    return Activity.objects.filter(room=room, module__in=STOCK_MODULES,
                                    status="done", voided=False, occurred_at__lte=until or timezone.now()).order_by("occurred_at", "created_at", "id")
 
 
@@ -96,7 +97,7 @@ def events_from(records, *, until=None, strict=False):
             event = {"name": str(p["item"]), "unit": base, "amount": quantity * factors[unit],
                      "minimum": minimum * factors[unit] if minimum is not None else None,
                      "movement": p["movement"], "linked": False, "unknown": False}
-        elif row.module in ("meal", "treat") and p.get("_stock"):
+        elif row.module in ("meal", "treat", "medication", "hygiene", "cleaning") and p.get("_stock"):
             stock = p["_stock"]
             if not isinstance(stock, dict) or stock.get("unit") not in ("g", "ml", "piece") or not normalized_item(stock.get("item")):
                 issues.append({"id": str(row.pk), "reason": "급여 기록의 재고 연결 확인 필요"})

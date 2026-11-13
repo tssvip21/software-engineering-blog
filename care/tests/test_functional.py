@@ -48,6 +48,13 @@ class CareCase(TestCase):
 
     def setUp(self):
         timezone.activate(ZoneInfo("Asia/Seoul"))
+        # Tests which say "today" must not drift into yesterday when run before 02:00.
+        # Explicit boundary tests override this fixed clock and exercise local midnight separately.
+        moment = timezone.localtime().replace(hour=12, minute=0, second=0, microsecond=0)
+        clock_started = clock.monotonic()
+        fixed_clock = patch("django.utils.timezone.now", side_effect=lambda: moment + timedelta(seconds=clock.monotonic()-clock_started))
+        fixed_clock.start()
+        self.addCleanup(fixed_clock.stop)
         self.client.force_login(self.owner_user)
         self.room.refresh_from_db()
         self.owner.refresh_from_db()

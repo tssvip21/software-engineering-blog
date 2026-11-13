@@ -6,7 +6,7 @@
   const dialog = document.querySelector('#input-dialog');
   if (!dialog) return;
   const content = dialog.querySelector('[data-input-content]');
-  const editablePath = /^\/rooms\/[0-9a-f-]+\/(?:modules\/[a-z_]+\/(?:entry|new)\/|modules\/[a-z_]+\/presets\/(?:new|[0-9a-f-]+)\/|routines\/(?:new\/|[0-9a-f-]+\/edit\/)|records\/[0-9a-f-]+\/edit\/)$/i;
+  const editablePath = /^\/rooms\/[0-9a-f-]+\/(?:settings\/|preferences\/|products\/(?:new|[0-9a-f-]+)\/|modules\/[a-z_]+\/(?:entry|new)\/|modules\/[a-z_]+\/presets\/(?:new|[0-9a-f-]+)\/|routines\/(?:new\/|[0-9a-f-]+\/edit\/)|records\/[0-9a-f-]+\/edit\/)$/i;
   let origin = null, originHref = '', initial = '', dirty = false, saving = false, controller = null;
   let loadGeneration = 0, currentURL = '', frozenBody = null, uncertain = false, lastField = null;
   function form() { return content.querySelector('[data-input-form]'); }
@@ -50,6 +50,7 @@
   function install(html, first=false) {
     content.innerHTML=html;
     if (!form()) throw new Error('입력 양식을 불러오지 못했어요.');
+    content.dispatchEvent(new CustomEvent('taily:input-ready',{bubbles:true}));
     if(first){initial=state();dirty=false;frozenBody=null;uncertain=false;}
     const heading=content.querySelector('#input-dialog-title');
     if(first)heading?.focus({preventScroll:true});
@@ -60,6 +61,7 @@
     origin=anchor;originHref=anchor.href;currentURL=anchor.href;initial='';dirty=false;saving=false;uncertain=false;frozenBody=null;
     const generation=++loadGeneration;
     content.innerHTML='<div data-input-loading><h2 id="input-dialog-title" tabindex="-1">입력창</h2><p role="status">불러오는 중…</p></div>';
+    dialog.style.removeProperty('--dialog-top');dialog.style.removeProperty('--available-dialog-height');
     dialog.showModal();dialog.querySelector('[data-input-close]').disabled=false;content.querySelector('h2').focus();
     const loadController=new AbortController();controller=loadController;
     const timeout=setTimeout(()=>loadController.abort(),15000);

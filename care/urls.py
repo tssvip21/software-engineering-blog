@@ -1,8 +1,11 @@
 from django.conf import settings
 from django.urls import path
-from . import auth, views, interactions, workspace, browsing, flow7, demo_navigation
+from . import auth, views, interactions, workspace, browsing, flow7, workspace8, demo_navigation
 
 urlpatterns = [
+    path("rooms/<uuid:room_id>/space-management/", workspace8.space_management, name="space_management8"),
+    path("rooms/<uuid:room_id>/preferences/", workspace8.preferences, name="preferences8"),
+    path("rooms/<uuid:room_id>/supplies/", workspace8.supply_list, name="supplies8"),
     path("demo/inspection-rooms/", demo_navigation.auxiliary, name="demo_auxiliary"),
     path("rooms/<uuid:room_id>/actions/", flow7.action, name="action7"),
     path("rooms/<uuid:room_id>/statistics/evidence/", flow7.evidence, name="evidence7"),
@@ -45,10 +48,10 @@ urlpatterns = [
     path("rooms/<uuid:room_id>/records/<uuid:activity_id>/edit/", views.record_edit, name="record_edit"),
     path("rooms/<uuid:room_id>/records/<uuid:activity_id>/cancel/", views.record_cancel, name="record_cancel"),
     path("rooms/<uuid:room_id>/overview/", flow7.overview, name="overview"),
-    path("rooms/<uuid:room_id>/products/", views.products, name="products"),
-    path("rooms/<uuid:room_id>/products/new/", views.product_edit, name="product_new"),
-    path("rooms/<uuid:room_id>/products/<uuid:product_id>/", views.product_edit, name="product_edit"),
-    path("rooms/<uuid:room_id>/settings/", views.room_settings, name="room_settings"),
+    path("rooms/<uuid:room_id>/products/", workspace8.supply_list, name="products"),
+    path("rooms/<uuid:room_id>/products/new/", workspace8.supply_edit, name="product_new"),
+    path("rooms/<uuid:room_id>/products/<uuid:product_id>/", workspace8.supply_edit, name="product_edit"),
+    path("rooms/<uuid:room_id>/settings/", workspace8.pet_profile, name="room_settings"),
     path("rooms/<uuid:room_id>/delete/", views.room_delete, name="room_delete"),
     path("rooms/<uuid:room_id>/archive/", views.room_archive, name="room_archive"),
     path("rooms/<uuid:room_id>/leave/", views.room_leave, name="room_leave"),

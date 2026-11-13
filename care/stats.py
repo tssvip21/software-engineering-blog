@@ -80,7 +80,7 @@ def union_seconds(intervals):
     return sum((Decimal(str(end - start)) for start, end in merged), ZERO)
 
 
-def get_statistics(room, module, start, end, all_records=None):
+def get_statistics(room, module, start, end, all_records=None, *, member=None):
     tz = ZoneInfo(room.timezone)
     lower, upper = bounds(room, start, end)
     if all_records is None:
@@ -89,6 +89,9 @@ def get_statistics(room, module, start, end, all_records=None):
         all_records = [a for a in all_records if a.module == module and not a.voided and a.occurred_at < upper]
         all_records.sort(key=lambda a: (a.occurred_at, a.created_at, str(a.pk)))
     all_records = [a for a in all_records if a.room_id == room.pk and (a.status == "planned" or a.occurred_at <= timezone.now())]
+    if member is not None:
+        from .supplies import filter_rows
+        all_records = filter_rows(member, all_records)
     completed = [a for a in all_records if a.status == "done" and (not a.ended_at or a.ended_at <= timezone.now())]
     rows = [a for a in completed if lower <= a.occurred_at < upper]
     day_of = lambda a: a.occurred_at.astimezone(tz).date()
@@ -375,7 +378,11 @@ def get_statistics(room, module, start, end, all_records=None):
         from .inventory_ledger import records_for, ledger, period_movement, display_quantity
         # The stock read model includes explicitly linked food consumption as well as manual movements.
         cutoff = min(upper - timedelta(microseconds=1), timezone.now())
-        result = ledger(records_for(room, until=cutoff), until=cutoff)
+        stock_rows = records_for(room, until=cutoff)
+        if member is not None:
+            from .supplies import filter_rows
+            stock_rows = filter_rows(member, list(stock_rows))
+        result = ledger(stock_rows, until=cutoff)
         low = 0
         for item in result["items"]:
             movement = period_movement(item, lower, upper)

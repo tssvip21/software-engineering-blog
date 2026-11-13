@@ -253,6 +253,8 @@ def validate_inventory(room):
 
 
 def can_edit_record(member, activity):
+    from .supplies import record_visible
+    if not record_visible(member, activity):return False
     return member.active and activity.room_id == member.room_id and activity.module in visible_modules(member) and (member.can_manage or activity.author_id == member.pk)
 
 
@@ -368,6 +370,8 @@ def save_activity(member, module, form, activity_id=None):
             payload.pop("_stock", None)
         else:
             payload["_stock"] = effect
+    from .supplies import apply_usage
+    payload = apply_usage(member, module, data, payload, activity)
     before = activity_snapshot(activity) if activity else {}
     creating = activity is None
     if creating:
