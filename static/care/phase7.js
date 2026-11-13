@@ -47,11 +47,13 @@
     });
   }
   function captureBrowse() {
-    const details=[...document.querySelectorAll('#main details')];
+    const details=[...document.querySelectorAll('#main details')].filter(d=>!d.closest('[data-schedule-panel]'));
     return {search: document.querySelector('#workspace-search')?.value,
       filter: document.querySelector('[data-module-browser="workspace"] [data-module-filter][aria-pressed="true"]')?.dataset.moduleFilter,
       custom:document.querySelector('[data-custom-filter]')?.value,
       scroll:window.scrollY,
+      agendaOpened:[...document.querySelectorAll('[data-schedule-disclosure][open]')].map(d=>d.dataset.scheduleDisclosure),
+      agendaScroll:document.querySelector('.schedule-panel-content')?.scrollTop,
       opened:details.map((d,i)=>d.open?i:null).filter(i=>i!==null)};
   }
   function replaceMain(html, previous = captureBrowse()) {
@@ -64,7 +66,9 @@
     if (previous.filter) document.querySelector('[data-module-browser="workspace"] [data-module-filter="' + CSS.escape(previous.filter) + '"]')?.click();
     if (previous.search !== undefined) { const search = document.querySelector('#workspace-search'); if (search) { search.value = previous.search; search.dispatchEvent(new Event('input', {bubbles:true})); } }
     if(previous.custom!==undefined){const group=document.querySelector('[data-custom-filter]');if(group){group.value=previous.custom;group.dispatchEvent(new Event('change',{bubbles:true}));}}
-    if(previous.opened){const details=[...document.querySelectorAll('#main details')];previous.opened.forEach(i=>{if(details[i])details[i].open=true;});}
+    if(previous.opened){const details=[...document.querySelectorAll('#main details')].filter(d=>!d.closest('[data-schedule-panel]'));previous.opened.forEach(i=>{if(details[i])details[i].open=true;});}
+    if(previous.agendaOpened){document.querySelectorAll('[data-schedule-disclosure]').forEach(d=>{d.open=previous.agendaOpened.includes(d.dataset.scheduleDisclosure);});}
+    if(previous.agendaScroll!==undefined){const panel=document.querySelector('.schedule-panel-content');if(panel)panel.scrollTop=previous.agendaScroll;}
     if(previous.scroll!==undefined)requestAnimationFrame(()=>window.scrollTo({top:previous.scroll,behavior:'instant'}));
     tick();
   }

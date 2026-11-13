@@ -3,17 +3,53 @@
   'use strict';
   const wide = matchMedia('(min-width: 1200px)');
   const choices = new Map();
+  let scheduleFrame=0;
+  function fitScheduleNow() {
+    const rail=document.querySelector('.schedule-rail');
+    const box=rail?.querySelector('[data-schedule-panel]');
+    if(!box)return;
+    if(!wide.matches){
+      box.classList.remove('is-fixed');
+      for(const key of ['top','left','width','height','heading'])box.style.removeProperty('--schedule-'+key);
+      rail.style.removeProperty('min-height');
+      return;
+    }
+    const workspace=rail.closest('.care-workspace').getBoundingClientRect();
+    const bounds=rail.getBoundingClientRect();
+    const header=document.querySelector('.workspace-topbar')?.getBoundingClientRect();
+    const top=Math.max(workspace.top,(header?.bottom||0)+16);
+    box.style.setProperty('--schedule-top',top+'px');
+    box.style.setProperty('--schedule-left',bounds.left+'px');
+    box.style.setProperty('--schedule-width',bounds.width+'px');
+    box.style.setProperty('--schedule-height',Math.max(80,innerHeight-top-16)+'px');
+    box.classList.add('is-fixed');
+    const heading=box.querySelector('summary').getBoundingClientRect().height;
+    box.style.setProperty('--schedule-heading',heading+'px');
+    rail.style.minHeight=(heading+2)+'px';
+  }
+  function fitSchedule() {
+    cancelAnimationFrame(scheduleFrame);
+    scheduleFrame=requestAnimationFrame(fitScheduleNow);
+  }
+  const scheduleObserver=new ResizeObserver(fitSchedule);
+  window.addEventListener('scroll',fitSchedule,{passive:true});
+  window.addEventListener('resize',fitSchedule);
   function panel() {
     const node=document.querySelector('[data-schedule-panel]');
     if(!node || node.dataset.initialized)return;
     node.dataset.initialized='1';
+    scheduleObserver.disconnect();
+    scheduleObserver.observe(node.closest('.care-workspace'));
+    const header=document.querySelector('.workspace-topbar');if(header)scheduleObserver.observe(header);
+    fitSchedule();
     const remembered=choices.get(location.pathname+':'+wide.matches);
     node.open=remembered===undefined ? wide.matches : remembered;
-    node.addEventListener('toggle',()=>choices.set(location.pathname+':'+wide.matches,node.open));
+    node.addEventListener('toggle',()=>{choices.set(location.pathname+':'+wide.matches,node.open);fitSchedule();});
   }
   wide.addEventListener('change',()=>{
     const node=document.querySelector('[data-schedule-panel]');if(!node)return;
     node.open=choices.get(location.pathname+':'+wide.matches) ?? wide.matches;
+    fitSchedule();
   });
   function petForm(form) {
     if(form.dataset.petReady)return;form.dataset.petReady='1';

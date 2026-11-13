@@ -15,7 +15,9 @@ def schedule_context(member,entries=None):
     entries=schedule7.opportunities(member,day,day) if entries is None else entries
     rows=sorted(entries,key=lambda x:(x['done'] or x['skipped'],x['at'],x['name']))
     active=[x for x in rows if not x['paused']]
-    return {'schedule_entries':rows,'notices':schedule7.notices(member),'schedule_day':day,
+    return {'schedule_entries':rows,'schedule_pending':[x for x in rows if not x['done']],
+            'schedule_completed':[x for x in rows if x['done']],
+            'notices':schedule7.notices(member),'schedule_day':day,
             'schedule_done':sum(x['done'] for x in active),'schedule_total':len(active),
             'schedule_remaining':sum(not x['done'] and not x['skipped'] for x in active)}
 
