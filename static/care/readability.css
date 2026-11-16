@@ -36,6 +36,8 @@ body .room-switch select{font-size:var(--read-support);min-height:46px}
 body .room-switch>.meta,body .person-name,body .sidebar-members .meta,body .sidebar-bottom .quiet-link,body .sidebar-bottom .text-button{font-size:var(--read-support);line-height:1.55;color:#4c5b52}
 body .sidebar-members li{gap:8px;min-height:44px}
 body .sidebar-members .quiet-link{min-height:40px;display:inline-flex;align-items:center;font-size:var(--read-support)}
+body .sidebar-members .sidebar-members-link{gap:6px;white-space:nowrap;flex-wrap:nowrap}
+body .sidebar-members-link .icon{flex:none}
 body .workspace-name{font-size:1rem;font-weight:600}
 body .topbar-role{font-size:var(--read-small)}
 /* The main work area uses compact cards; fixed-height empty bodies are not introduced. */
