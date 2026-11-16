@@ -5,7 +5,7 @@ from markdown_it import MarkdownIt
 root = Path(__file__).resolve().parent
 markdown = MarkdownIt("commonmark", {"html": False}).enable("table")
 posts = [
-    ("03-first-deployment", "2026. 11. 16. · 첫 배포 03", "HTTPS 배포와 구글 로그인에서 막힌 과정, 7~9차 개선 패치노트와 남은 확인 사항을 정리했습니다."),
+    ("03-first-deployment", "2026. 11. 16. · 첫 배포 03", "HTTPS 배포와 구글 로그인에서 막힌 과정, 개선 패치노트와 남은 확인 사항을 정리했습니다."),
     ("02-data-design", "2026. 11. 09. · 데이터 설계 02", "테이블과 관계를 ERD로 정리하고, 구현하며 고친 부분과 남은 문제를 기록했습니다."),
     ("01-topic-proposal", "2026. 11. 02. · 기획 01", "어떤 불편에서 시작했는지, 누가 사용하는지, 이번 학기에 어디까지 구현할지 정리했습니다."),
 ]
