@@ -109,11 +109,17 @@
       if(select.dataset.supplyModule==='inventory'){
         const item=form.querySelector('[name="item"]'),quantity=form.querySelector('[name="quantity"]'),unit=form.querySelector('[name="unit"]');
         if(item&&(changed||!item.value))item.value=product.stock_item;
+        const pack=product.package,version=form.querySelector('[name="package_version"]');
+        if(version&&changed)version.value=pack?.version||'';
+        const option=unit?.querySelector('option[value="package"]');
+        if(option){option.textContent=pack ? pack.label+' (등록한 포장 용량)' : '포장 개수 (용량 등록 필요)';option.disabled=!pack;}
+
         if(unit&&quantity&&!quantity.value&&product.stock_unit)unit.value=product.stock_unit;
       } else {
         const title=form.querySelector('[name="routine_title"]'),amount=form.querySelector('[name="used_quantity"]'),unit=form.querySelector('[name="used_unit"]');
         if(title&&(!title.value||title.value===lastName))title.value=product.name;
         if(unit&&amount&&!amount.value&&product.stock_unit)unit.value=product.stock_unit;
+        const countOption=unit?.querySelector('option[value="piece"]');if(countOption)countOption.textContent=product.package?.unit==='piece'?'개':product.package?.label||'개';
       }
       lastName=product.name;
     }

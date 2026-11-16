@@ -106,6 +106,8 @@ def events_from(records, *, until=None, strict=False):
             event = {"name": str(stock["item"]), "unit": stock["unit"], "amount": value,
                      "minimum": None, "movement": "out", "linked": True, "unknown": value is None}
         if event is not None:
+            from .packaging import receipt_text
+            event['package_text']=receipt_text(p.get('_package'))
             event.update(id=str(row.pk), module=row.module, date=row.occurred_at,
                          key=(normalized_item(event["name"]), event["unit"]))
             output.append(event)

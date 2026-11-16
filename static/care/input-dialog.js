@@ -68,7 +68,7 @@
     try {
       const response=await fetch(currentURL,{credentials:'same-origin',cache:'no-store',headers:{'X-Taily-Dialog':'1'},signal:loadController.signal});
       if(generation!==loadGeneration)return;
-      if(!response.ok || response.headers.get('X-Taily-Fragment')!=='input-form')throw new Error(response.status===403?'입력 권한이 없거나 세션이 바뀌었어요.':'입력창을 불러오지 못했어요. 다시 시도해 주세요.');
+      if((!response.ok && response.status!==409) || response.headers.get('X-Taily-Fragment')!=='input-form')throw new Error(response.status===403?'입력 권한이 없거나 세션이 바뀌었어요.':'입력창을 불러오지 못했어요. 다시 시도해 주세요.');
       const html=await response.text();
       if(generation!==loadGeneration)return;
       install(html,true);

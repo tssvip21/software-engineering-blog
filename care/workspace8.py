@@ -74,7 +74,8 @@ def supply_list(request,room_id):
     for item in items:
         module={'meal':'meal','treat':'treat','both':'meal','supp':'medication','medicine':'medication','hygiene':'hygiene','supply':'cleaning'}[item.category]
         stock=stock_map.get((supplies.inventory_ledger.normalized_item(item.stock_item),item.stock_unit)) if item.stock_item else None
-        rows.append({'item':item,'stock':stock,'record_module':module,
+        from .packaging import stock_context
+        rows.append({'item':item,'stock':stock,'stock_context':stock_context(item,stock),'record_module':module,
             'record_url':reverse('entry7',args=[room.pk,module])+'?product='+str(item.pk) if module in enabled and item.active else None,
             'stock_url':reverse('entry7',args=[room.pk,'inventory'])+'?product='+str(item.pk) if item.stock_item and 'inventory' in enabled else None,
             'edit_url':reverse('product_edit',args=[room.pk,item.pk]) if member.can_manage else None})

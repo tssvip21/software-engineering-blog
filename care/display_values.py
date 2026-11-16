@@ -226,6 +226,9 @@ def display_payload(module,payload,*,status=None):
         from .modules import _legacy_payload_display
         return _legacy_payload_display(module,payload,status=status)
     rows=[]
+    if module=='inventory' and payload.get('_package'):
+        from .packaging import receipt_text,description
+        rows.extend([('포장 수량',receipt_text(payload['_package'])),('포장 정보',description(payload['_package']))])
     supply=payload.get('_supply') or {}
     if supply.get('name'):rows.append(('사용한 물품',str(supply['name'])))
     if payload.get('used_quantity') is not None:rows.append(('실제 사용량',field_measure(module,'used_quantity',payload['used_quantity'],payload).text))
@@ -276,7 +279,10 @@ def summary(module,payload):
     if module=='walk':return ' · '.join(([fact('minutes')] if p.get('minutes') is not None else ['시간 미입력'])+([fact('distance')] if p.get('distance') is not None else []))
     if module in ('play','training'):return str(p.get('kind' if module=='play' else 'skill') or MODULES[module].name)+' · '+(fact('minutes') if p.get('minutes') is not None else '시간 미입력')
     if module=='sleep' and p.get('_entry_kind')!='schedule':return choice('kind')+' · 관찰 '+fact('minutes')
-    if module=='inventory':return f"{p.get('item','')} · {choice('movement')} {fact('quantity')}"
+    if module=='inventory':
+        from .packaging import receipt_text
+        pack=receipt_text(p.get('_package'))
+        return f"{p.get('item','')} · {choice('movement')} "+(pack+' · 합계 ' if pack else '')+fact('quantity')
     if module=='expense':return f"{p.get('item','')} · {fact('amount')}"
     if module=='environment':return f"{choice('metric')} · {fact('value')} · {p.get('location','생활공간')}"
     if module=='medication' and p.get('_entry_kind')!='routine':return f"{p.get('medicine','')} · {fact('dose')} · {choice('result')}"

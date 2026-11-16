@@ -69,7 +69,7 @@ def require_record_access(member,record):
 class SupplyForm(ProductForm):
     track_stock=forms.BooleanField(label='이 물품의 재고 관리',required=False,help_text='실제 사용량을 남길 때만 차감해요. 등록만으로 재고나 사용 기록을 만들지 않아요.')
     class Meta(ProductForm.Meta):
-        fields=['name','brand','category','notes',*ProductForm.Meta.fields[3:]]
+        fields=['name','brand','category','notes','package_label','package_amount','package_unit',*ProductForm.Meta.fields[3:]]
         labels={**ProductForm.Meta.labels,'name':'물품 이름','category':'물품 종류','notes':'물품 메모 (선택)','active':'기록에서 선택할 수 있게 하기'}
         widgets={**ProductForm.Meta.widgets,'notes':forms.Textarea(attrs={'rows':2})}
 
@@ -86,9 +86,18 @@ class SupplyForm(ProductForm):
         self.fields['stock_item'].widget.attrs.update({'list':'stock-name-options','placeholder':'물품 이름과 동일'})
         self.fields['stock_unit'].label='재고 기준 단위'
         self.fields['stock_unit'].help_text='무게는 g, 부피는 ml, 개수는 개로 관리해요. 입력할 때 kg·L도 사용할 수 있어요.'
+        self.fields['package_label'].label='개수 이름 (선택)'
+        self.fields['package_label'].help_text='통·봉지·장처럼 실제로 세는 이름을 골라요.'
+        self.fields['package_amount'].label='하나에 든 양 (선택)'
+        self.fields['package_amount'].help_text='포장에 적힌 전체 용량이에요. 간식 한 조각의 무게와 구분해요.'
+        self.fields['package_amount'].widget.attrs.update(min='0.001',step='0.001')
+        self.fields['package_unit'].label='포장 용량 단위'
+        self.fields['stock_unit'].label='남은 재고를 관리할 기준'
+        self.fields['stock_unit'].choices=[('','선택'),('g','내용물 무게 (g)'),('ml','내용물 부피 (ml)'),('piece','물품 개수')]
+        self.fields['stock_unit'].help_text='조금씩 덜어 쓰면 무게·부피, 통째로 쓰면 개수로 관리해요. 입고할 때는 등록한 포장 개수로도 적을 수 있어요.'
         self.fields['source'].required=False
         self.stock_names=sorted({a.payload.get('item','') for a in visible_records(member,Activity.objects.filter(room=member.room,module='inventory',voided=False)) if a.payload.get('item')})
-        self.order_fields(['name','brand','category','notes','track_stock','stock_item','stock_unit','energy','energy_basis','grams_per_piece','protein','protein_kind','fat','fat_kind','source','active','version','request_token'])
+        self.order_fields(['name','brand','category','notes','package_label','package_amount','package_unit','track_stock','stock_item','stock_unit','energy','energy_basis','grams_per_piece','protein','protein_kind','fat','fat_kind','source','active','version','request_token'])
 
     def clean(self):
         # Avoid demanding nutrition facts for non-food items, including forged hidden values.
@@ -116,10 +125,24 @@ class SupplyForm(ProductForm):
                 if data.get(key) is not None and data[key]>100:self.add_error(key,'100g당 성분량은 100g을 넘을 수 없어요.')
             if any(data.get(k) is not None for k in ('energy','protein','fat')) and not str(data.get('source','')).strip():
                 self.add_error('source','영양정보를 확인한 출처를 적어 주세요.')
+        amount=data.get('package_amount');unit=data.get('package_unit');label=data.get('package_label')
+        if amount is not None and amount<=0:self.add_error('package_amount','포장 용량은 0보다 크게 입력해 주세요.')
+        if bool(amount is not None)!=bool(unit):self.add_error('package_amount','포장 용량과 단위를 함께 입력해 주세요.')
+        if amount is not None and not label:self.add_error('package_label','포장을 세는 이름도 골라 주세요.')
+        if unit=='piece' and amount is not None and amount%1:self.add_error('package_amount','포장 안의 개수는 정수로 적어 주세요.')
+        if category in FOOD and data.get('stock_unit')=='piece' and label not in ('',None,'개') and unit in ('g','kg','ml','l'):
+            self.add_error('stock_unit','사료·간식 포장은 내용물 무게·부피로 관리해 주세요. 급여할 한 조각과 포장 한 개를 구분해요.')
+        if data.get('track_stock') and amount is not None:
+            allowed={'g':('g','kg'),'ml':('ml','l'),'piece':('g','kg','ml','l','piece')}.get(data.get('stock_unit'),())
+            if unit not in allowed:self.add_error('package_unit','남은 재고와 같은 종류의 용량을 선택해 주세요.')
         if data.get('track_stock'):
             data['stock_item']=' '.join((data.get('stock_item') or data.get('name','')).split())
             if not data.get('stock_unit'):self.add_error('stock_unit','재고의 기준 단위를 선택해 주세요.')
         else:data['stock_item']='';data['stock_unit']=''
+        if self.instance.pk and data.get('track_stock'):
+            old=Product.objects.filter(pk=self.instance.pk).first()
+            if old and old.stock_item and old.stock_unit!=data.get('stock_unit') and inventory_ledger.records_for(self.member.room).filter(module='inventory',payload__item=old.stock_item).exists():
+                self.add_error('stock_unit','기존 재고 기록의 단위는 유지해요. 다른 기준으로 관리하려면 새 물품과 재고를 등록해 주세요.')
         if data.get('stock_item'):
             normal=inventory_ledger.normalized_item(data['stock_item'])
             for other in Product.objects.filter(room=self.member.room).exclude(pk=self.instance.pk).exclude(stock_item=''):
@@ -150,7 +173,8 @@ def install_record_fields(form):
     q=q.filter(Q(active=True)|Q(pk=original))
     form.fields['product']=forms.ModelChoiceField(label='등록한 물품 (선택)',queryset=q.order_by('name'),required=False,empty_label='직접 입력',help_text='같은 물품 정보를 다시 입력하지 않아도 돼요.')
     form.fields['product'].widget.attrs['data-supply-module']=key
-    form.fields['product'].widget.attrs['data-supply-options']=json.dumps([{'id':str(p.pk),'name':p.name,'stock_item':p.stock_item,'stock_unit':p.stock_unit} for p in q],ensure_ascii=False)
+    from . import packaging
+    form.fields['product'].widget.attrs['data-supply-options']=json.dumps([{'id':str(p.pk),'name':p.name,'stock_item':p.stock_item,'stock_unit':p.stock_unit,'package':packaging.info(p)} for p in q],ensure_ascii=False)
     if original and 'product' not in form.initial:form.initial['product']=original
     selected=form.data.get('product') if form.is_bound else form.initial.get('product')
     product=q.filter(pk=selected).first() if selected and _uuid(selected) else None
@@ -162,10 +186,34 @@ def install_record_fields(form):
     if product and not form.is_bound:
         if key=='inventory':form.initial.update(item=product.stock_item,unit=product.stock_unit)
         elif key=='medication':form.initial.setdefault('routine_title',product.name)
+    if key=='inventory':
+        form.fields['unit'].choices=list(form.fields['unit'].choices)+[('package','포장 개수 (등록한 용량 기준)')]
+        form.fields['package_version']=forms.IntegerField(required=False,widget=forms.HiddenInput)
+        pack=packaging.info(product)
+        previous=form.instance
+        if previous is None and form.is_bound and _uuid(form.data.get('client_key')):
+            previous=Activity.objects.filter(room=form.room,author=form.member,module='inventory',client_key=form.data['client_key']).first()
+        oldpack=previous.payload.get('_package') if previous else None
+        if oldpack and product and oldpack['product_id']==str(product.pk):
+            pack=oldpack
+            if not form.is_bound:
+                form.initial.update(quantity=oldpack['count'],unit='package',minimum=oldpack.get('minimum_count'))
+        if oldpack and pack is oldpack:
+            form.package_previous_payload=previous.payload
+            choices=json.loads(form.fields['product'].widget.attrs['data-supply-options'])
+            for choice in choices:
+                if choice['id']==pack['product_id']:choice['package']=pack
+            form.fields['product'].widget.attrs['data-supply-options']=json.dumps(choices,ensure_ascii=False)
+        form.initial['package_version']=pack['version'] if pack else None
+        form.fields['quantity'].help_text='포장 개수를 선택하면 등록한 용량으로 환산해 한 번만 재고에 반영해요. 개봉한 잔량은 무게·부피로 직접 적어 주세요.'
+        form.fields['minimum'].help_text='위에서 고른 단위 기준이에요. 포장 개수라면 포장 수 기준으로 환산해요.'
+        form.package_snapshot=pack
     if key in USES:
         form.fields['used_quantity']=forms.DecimalField(label='실제 사용량 (선택)',max_digits=12,decimal_places=3,min_value=Decimal('0.001'),required=False,help_text='재고에서 실제로 꺼내 쓴 양이에요.')
         form.fields['used_unit']=forms.ChoiceField(label='사용량 단위',choices=USE_UNITS,required=False)
         form.initial.setdefault('used_unit',product.stock_unit if product and product.stock_unit else 'piece')
+        if product and product.stock_unit=='piece' and product.package_label and product.package_unit!='piece':
+            form.fields['used_unit'].choices=[(k,product.package_label if k=='piece' else label) for k,label in USE_UNITS]
         if form.instance and form.instance.payload.get('_stock'):
             form.fields['refresh_stock']=forms.BooleanField(label='현재 물품의 재고 연결로 변경',required=False)
     # Put the product selector near the beginning, followed by the actual care fields.
@@ -188,9 +236,27 @@ def clean_record(form,data):
             if not product.stock_item:form.add_error('product','먼저 물품의 재고 관리를 켜 주세요.')
             else:
                 data['item']=product.stock_item
+                if data.get('unit')=='package':
+                    from .packaging import base_amount
+                    pack=form.package_snapshot
+                    factor=base_amount(pack)
+                    if not factor:
+                        form.add_error('unit','물품 수정에서 포장 이름과 용량을 먼저 등록해 주세요.')
+                    elif data.get('package_version')!=pack['version']:
+                        form.add_error('unit','포장 정보가 바뀌었어요. 물품을 다시 선택해 용량을 확인해 주세요.')
+                    elif data.get('quantity') is not None:
+                        for field in ('quantity','minimum'):
+                            if data.get(field) is not None and data[field]%1:form.add_error(field,'포장 개수는 정수로 입력해 주세요. 남은 내용물은 무게·부피로 적어 주세요.')
+                        if data.get('quantity') is not None:
+                            if getattr(form,'package_previous_payload',None):data['item']=form.package_previous_payload['item']
+                            form.package_receipt={**pack,'count':str(data['quantity']),'minimum_count':str(data['minimum']) if data.get('minimum') is not None else None}
+                            data['quantity']*=factor
+                            if data.get('minimum') is not None:data['minimum']*=factor
+                            data['unit']=pack['stock_unit']
                 allowed={'g':('g','kg','oz'),'ml':('ml','l'),'piece':('piece',)}.get(product.stock_unit,())
                 if data.get('unit') not in allowed:form.add_error('unit','연결된 재고와 같은 종류의 단위를 선택해 주세요.')
     if key=='inventory':
+        if data.get('unit')=='package' and not product:form.add_error('product','포장 용량을 등록한 물품을 선택해 주세요.')
         names={inventory_ledger.normalized_item(s) for s in hidden_stock_names(form.member)}
         if inventory_ledger.normalized_item(data.get('item')) in names:raise PermissionDenied()
     if key in USES:
@@ -207,10 +273,13 @@ def record_payload(form,payload):
     data=form.cleaned_data;product=data.get('product')
     payload['product_id']=str(product.pk) if product else None
     if key=='inventory':
+        if getattr(form,'package_receipt',None):payload['_package']=form.package_receipt
         private_names={inventory_ledger.normalized_item(x) for x in Product.objects.filter(room=form.room,category__in=PRIVATE).exclude(stock_item='').values_list('stock_item',flat=True)}
         private=inventory_ledger.normalized_item(data.get('item')) in private_names
         if private or (form.instance and form.instance.payload.get('_supply_private')):payload['_supply_private']=True
         if product:payload['_supply']={'id':str(product.pk),'name':product.name,'brand':product.brand,'category':product.category,'version':product.version}
+        if getattr(form,'package_receipt',None) and getattr(form,'package_previous_payload',None):
+            payload['_supply']=form.package_previous_payload.get('_supply',payload.get('_supply'))
     if key in USES:
         amount=data.get('used_quantity');payload['used_quantity']=str(amount) if amount is not None else None
         payload['used_unit']=data.get('used_unit') or None
@@ -247,10 +316,14 @@ def stock_view(member):
     result['items']=[x for x in result['items'] if x['key'][0] not in hidden]
     result['issues']=[x for x in result['issues'] if visible_records(member,Activity.objects.filter(pk=x['id'])).exists()]
     visible=set(services.visible_modules(member))
+    products=list(visible_products(member).exclude(stock_item=''))
     for item in result['items']:
         from .display_values import measure
         shown=measure(item['balance'],item['unit'])
         item['display_value'],item['display_unit']=shown.value,shown.unit
+        from .packaging import stock_context
+        matches=[p for p in products if (inventory_ledger.normalized_item(p.stock_item),p.stock_unit)==item['key']]
+        item['context']=stock_context(matches[0] if len(matches)==1 else None,item)
         item['url']=reverse('records',args=[member.room_id])+'?'+urlencode({'module':'inventory','q':item['name']})
         item['recent_events']=[dict(e,url=reverse('record_detail',args=[member.room_id,e['id']])) for e in reversed(item['events']) if e['module'] in visible][:8]
     return result

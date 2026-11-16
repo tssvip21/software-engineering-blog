@@ -331,6 +331,13 @@ def save_activity(member, module, form, activity_id=None):
             if duplicate.author_id == member.pk and duplicate.module == module and hmac.compare_digest(duplicate.fingerprint, fingerprint):
                 return duplicate, False
             raise Conflict("앞서 저장한 요청과 내용이 달라요. 새 입력창을 열어 기록해 주세요.")
+    if module=='inventory' and payload.get('_package'):
+        pack=payload['_package']
+        historical=activity and activity.payload.get('_package') and activity.payload['_package']['product_id']==pack['product_id']
+        if not historical:
+            product=Product.objects.select_for_update().get(pk=pack['product_id'],room=member.room)
+            if product.version!=pack['version']:
+                raise Conflict('포장 정보가 바뀌었어요. 입력창을 다시 열어 용량을 확인해 주세요.')
     slot = None
     if not activity and data.get("routine_item"):
         if data["status"] == "planned":

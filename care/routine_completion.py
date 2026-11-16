@@ -135,7 +135,17 @@ def complete(request,room_id,item_id):
         day=date.fromisoformat(request.GET.get('date',''))
         token=uuid.UUID(request.POST.get('client_key') or request.GET.get('token') or str(uuid.uuid4()))
     except (ValueError,TypeError,AttributeError):raise Http404('일정 날짜 또는 요청 번호가 올바르지 않아요.')
-    item,snap,preset=request_context(member,item_id,day)
+    try:
+        item,snap,preset=request_context(member,item_id,day)
+    except ValidationError as exc:
+        item=get_object_or_404(RoutineItem.objects.select_related('routine'),pk=item_id,routine__room=room)
+        services.require_module(member,item.module)
+        snap=services.effective_routine(item.routine,day) or services.routine_snapshot(item.routine)
+        form=completion_form(member,item,snap,None,day,token,request.POST if request.method=='POST' else None)
+        if not form.is_bound:form.cleaned_data={}
+        form.add_error(None,' '.join(exc.messages)+' 입력 내용은 유지했어요. 오늘 일정에서 다시 확인해 주세요.')
+        return ui_forms.render_input(request,'care8/settings_page.html',{'title':'일정을 다시 확인해 주세요','room':room,
+            'form':form,'read_only':True,'back_url':reverse('today',args=[room.pk]),'active_tab':'routines'},status=409)
     form=completion_form(member,item,snap,preset,day,token,request.POST if request.method=='POST' else None)
     status=200
     if request.method=='POST':
