@@ -75,6 +75,7 @@ def require_owner(member):
         raise PermissionDenied("방장만 할 수 있는 작업이에요.")
 
 
+@transaction.atomic
 def fresh_member(member):
     room = Room.objects.select_for_update().filter(pk=member.room_id, archived_at__isnull=True).first()
     if room is None:

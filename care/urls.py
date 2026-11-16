@@ -1,8 +1,9 @@
 from django.conf import settings
 from django.urls import path
-from . import auth, views, interactions, workspace, browsing, flow7, workspace8, demo_navigation
+from . import auth, views, interactions, workspace, browsing, flow7, workspace8, demo_navigation, routine_completion
 
 urlpatterns = [
+    path("rooms/<uuid:room_id>/routines/items/<uuid:item_id>/complete/", routine_completion.complete, name="routine_complete9"),
     path("rooms/<uuid:room_id>/space-management/", workspace8.space_management, name="space_management8"),
     path("rooms/<uuid:room_id>/preferences/", workspace8.preferences, name="preferences8"),
     path("rooms/<uuid:room_id>/supplies/", workspace8.supply_list, name="supplies8"),

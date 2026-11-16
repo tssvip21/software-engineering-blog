@@ -75,3 +75,26 @@ def result_category(value):
     return {"weight": "nutrition", "food_actual": "nutrition", "food_offered": "nutrition",
             "food_mass": "nutrition", "meal_gap": "nutrition", "water": "nutrition",
             "activity": "activity", "rest": "activity"}.get(value, "wellbeing")
+
+
+
+@register.simple_tag
+def displayed(value,unit='',kind=''):
+    from care.display_values import measure
+    return measure(value,unit,kind=kind)
+
+
+@register.filter
+def readable_number(value):
+    from care.display_values import number
+    return number(value)
+
+
+@register.filter
+def history_time(value,zone='Asia/Seoul'):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    try:
+        parsed=datetime.fromisoformat(str(value))
+        return parsed.astimezone(ZoneInfo(zone)).strftime('%Y.%m.%d %H:%M') if parsed.tzinfo else str(value)
+    except (TypeError,ValueError,KeyError):return value

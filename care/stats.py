@@ -32,7 +32,7 @@ def metric(label, value, unit="", note=""):
         shown = compact(value)
     else:
         shown = value if value is not None else "미기록"
-    return {"label": label, "value": shown, "unit": unit if value is not None else "", "note": note}
+    return {"label": label, "value": shown, "unit": unit if value is not None else "", "note": note, "_raw_value": value}
 
 
 def chart(title, unit, mapping, start, end, kind="bar"):
@@ -57,7 +57,7 @@ def chart(title, unit, mapping, start, end, kind="bar"):
         y = Decimal(14) + height - (value - minimum) / (maximum - minimum) * height
         baseline = Decimal(14) + height - (ZERO - minimum) / (maximum - minimum) * height
         baseline = max(Decimal(14), min(Decimal(190), baseline))
-        point_rows.append({"date": day, "label": day.strftime("%m.%d"), "value": compact(value), "x": compact(x), "y": compact(y),
+        point_rows.append({"date": day, "label": day.strftime("%m.%d"), "value": compact(value), "_raw_value": value, "x": compact(x), "y": compact(y),
                            "bar_x": compact(x - min(Decimal(12), width / len(days) * Decimal("0.32"))),
                            "bar_y": compact(min(y, baseline)), "bar_height": compact(max(Decimal("0.5"), abs(baseline - y))),
                            "bar_width": compact(min(Decimal(24), width / len(days) * Decimal("0.64")))})
@@ -65,7 +65,7 @@ def chart(title, unit, mapping, start, end, kind="bar"):
     if segment:
         segments.append(" ".join(segment))
     return {"title": title, "unit": unit, "kind": kind, "points": point_rows, "segments": segments,
-            "min": compact(minimum), "max": compact(maximum), "has_data": bool(present), "start": start, "end": end}
+            "min": compact(minimum), "max": compact(maximum), "_raw_min": minimum, "_raw_max": maximum, "has_data": bool(present), "start": start, "end": end}
 
 
 def union_seconds(intervals):
@@ -101,6 +101,7 @@ def get_statistics(room, module, start, end, all_records=None, *, member=None):
              "reference_note": "기록한 내용과 완료 이력을 보여드려요. 외부 평균과 비교하는 항목은 아니에요."}
     add = lambda label, value, unit="", note="": stats["metrics"].append(metric(label, value, unit, note))
     def primary(value, unit=""):
+        stats["_primary_value"] = value
         stats["primary"] = compact(value) if isinstance(value, (Decimal, int, float)) else str(value)
         stats["primary_unit"] = unit
     def groups(field, title=None):
@@ -234,7 +235,7 @@ def get_statistics(room, module, start, end, all_records=None, *, member=None):
             for skill, records in by_skill.items():
                 tried = sum((decimal(a.payload["attempts"]) for a in records), ZERO)
                 succeeded = sum((decimal(a.payload["successes"]) for a in records), ZERO)
-                stats["breakdown"].append({"label":skill + " · 시도 대비 성공", "value":compact(succeeded) + " / " + compact(tried), "unit":"회", "note":compact(succeeded / tried * 100) + "%" if tried else "시도 미기록"})
+                stats["breakdown"].append({"label":skill + " · 시도 대비 성공", "value":compact(succeeded) + " / " + compact(tried), "unit":"회", "_ratio": succeeded / tried * 100 if tried else None, "note":compact(succeeded / tried * 100) + "%" if tried else "시도 미기록"})
             stats["notes"].append("훈련 항목이 다르면 난이도도 달라요. 전체 성공률을 능력 점수로 해석하지 않고 항목별 시도와 함께 봐요.")
     elif module == "weight":
         if completed:
@@ -343,7 +344,7 @@ def get_statistics(room, module, start, end, all_records=None, *, member=None):
             name = str(label_choice(module, "metric", kind)) + " · " + location
             values = [v for _, v in readings]
             mean = sum(values, ZERO) / len(values)
-            stats["breakdown"].append({"label": name, "value": f"최근 {compact(values[-1])} · 평균 {compact(mean)} · 최소 {compact(min(values))} · 최대 {compact(max(values))}", "unit": UNIT_LABELS.get(unit, unit)})
+            stats["breakdown"].append({"label": name, "value": f"최근 {compact(values[-1])} · 평균 {compact(mean)} · 최소 {compact(min(values))} · 최대 {compact(max(values))}", "_parts": [("최근",values[-1]),("평균",mean),("최소",min(values)),("최대",max(values))], "unit": UNIT_LABELS.get(unit, unit)})
             daily = {}
             for a, value in readings:
                 daily[day_of(a)] = value
@@ -388,7 +389,7 @@ def get_statistics(room, module, start, end, all_records=None, *, member=None):
             movement = period_movement(item, lower, upper)
             amount, unit = display_quantity(item["balance"], item["unit"])
             low += int(item["low"])
-            stats["breakdown"].append({"label": item["name"] + (" · 구매 필요" if item["low"] else ""), "value": amount, "unit": unit,
+            stats["breakdown"].append({"label": item["name"] + (" · 구매 필요" if item["low"] else ""), "value": amount, "_raw_value": item["balance"], "_minimum_value":item["minimum"], "_complete":item["complete"], "unit": unit,
                 "note": ("사용자 기준 " + compact(item["minimum"]) if item["minimum"] is not None else "구매 기준 미설정") + (" · 사용량 미확인 기록 있음" if not item["complete"] else "")})
             add(item["name"] + " 기간 사용량", movement["used"], unit, "직접 사용 기록과 연결된 급여 제공량을 한 번씩 합산")
             if item["unit"] == "g":
@@ -430,12 +431,13 @@ def get_statistics(room, module, start, end, all_records=None, *, member=None):
         elif len(totals) > 1:
             primary(len(totals), "개 통화")
         for (category, currency), amount in categories.items():
-            stats["breakdown"].append({"label": str(label_choice(module, "category", category)), "value": compact(amount), "unit": currency})
+            stats["breakdown"].append({"label": str(label_choice(module, "category", category)), "value": compact(amount), "_raw_value": amount, "unit": currency})
         stats["notes"].append("통화별로 따로 합산해요. 환율을 가정해 다른 통화로 바꾸지 않아요.")
     if not stats["charts"]:
         stats["charts"].append(chart("날짜별 완료 기록", "건", count_daily, start, end))
     stats["notes"].append("완료한 기록만 모았어요. 취소했거나 예정·진행 중인 기록은 제외해요. 빈 날짜는 기록이 없다는 뜻이지 활동을 하지 않았다는 뜻은 아니에요.")
-    return stats
+    from .display_values import decorate_stats
+    return decorate_stats(stats)
 
 
 def overview(member, end_date=None):

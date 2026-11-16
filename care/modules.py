@@ -173,7 +173,7 @@ def compact(value):
     return format(d, "f").rstrip("0").rstrip(".") if d % 1 else str(int(d))
 
 
-def payload_display(module, payload, *, status=None):
+def _legacy_payload_display(module, payload, *, status=None):
     rows = []
     supply = payload.get("_supply") or {}
     if supply.get("name"):
@@ -196,7 +196,7 @@ def payload_display(module, payload, *, status=None):
     return rows
 
 
-def record_summary(module, payload):
+def _legacy_record_summary(module, payload):
     """Short activity descriptions retain quantities and units."""
     p = payload
     def value(key):
@@ -238,3 +238,14 @@ def record_summary(module, payload):
     if module == "reproduction":
         return choice_name("kind") + (" · " + value("eggs") + "개" if p.get("eggs") is not None else "") + (" · " + p["detail"] if p.get("detail") else "")
     return " · ".join(str(v) for _, v in payload_display(module, payload)[:3])
+
+
+
+def payload_display(module,payload,*,status=None):
+    from .display_values import display_payload
+    return display_payload(module,payload,status=status)
+
+
+def record_summary(module,payload):
+    from .display_values import summary
+    return summary(module,payload)

@@ -6,7 +6,7 @@
   const dialog = document.querySelector('#input-dialog');
   if (!dialog) return;
   const content = dialog.querySelector('[data-input-content]');
-  const editablePath = /^\/rooms\/[0-9a-f-]+\/(?:settings\/|preferences\/|products\/(?:new|[0-9a-f-]+)\/|modules\/[a-z_]+\/(?:entry|new)\/|modules\/[a-z_]+\/presets\/(?:new|[0-9a-f-]+)\/|routines\/(?:new\/|[0-9a-f-]+\/edit\/)|records\/[0-9a-f-]+\/edit\/)$/i;
+  const editablePath = /^\/rooms\/[0-9a-f-]+\/(?:settings\/|preferences\/|products\/(?:new|[0-9a-f-]+)\/|modules\/[a-z_]+\/(?:entry|new)\/|modules\/[a-z_]+\/presets\/(?:new|[0-9a-f-]+)\/|routines\/(?:new\/|[0-9a-f-]+\/edit\/|items\/[0-9a-f-]+\/complete\/)|records\/[0-9a-f-]+\/edit\/)$/i;
   let origin = null, originHref = '', initial = '', dirty = false, saving = false, controller = null;
   let loadGeneration = 0, currentURL = '', frozenBody = null, uncertain = false, lastField = null;
   function form() { return content.querySelector('[data-input-form]'); }
@@ -56,9 +56,9 @@
     if(first)heading?.focus({preventScroll:true});
     else {const invalid=content.querySelector('.has-error input,.has-error select,.has-error textarea,.form-errors');(invalid||heading)?.focus({preventScroll:false});}
   }
-  async function open(anchor) {
+  async function open(anchor, urlOverride=null) {
     if (dialog.open) return;
-    origin=anchor;originHref=anchor.href;currentURL=anchor.href;initial='';dirty=false;saving=false;uncertain=false;frozenBody=null;
+    origin=anchor;originHref=anchor.href||'';currentURL=urlOverride||anchor.href;initial='';dirty=false;saving=false;uncertain=false;frozenBody=null;
     const generation=++loadGeneration;
     content.innerHTML='<div data-input-loading><h2 id="input-dialog-title" tabindex="-1">입력창</h2><p role="status">불러오는 중…</p></div>';
     dialog.style.removeProperty('--dialog-top');dialog.style.removeProperty('--available-dialog-height');
@@ -98,7 +98,7 @@
         if(!response.ok||!result.ok)throw new Error(result.message||'저장 결과를 확인하지 못했어요.');
         saving=false;lock(false,true);dirty=false;uncertain=false;frozenBody=null;close();
         window.TailyUI?.announce(result.message,{url:result.url});
-        try {await window.TailyUI?.refresh();focusBack();}
+        try {await window.TailyUI?.refresh();if(result.routine_key)window.TailyUI?.completedRoutine(result);else focusBack();}
         catch(error){window.TailyUI?.announce('저장됐지만 화면 갱신에 실패했어요. 기록 보기에서 확인해 주세요.',{url:result.url,error:true});}
         return;
       }
@@ -137,7 +137,7 @@
     if(event.target.closest('[data-input-close],[data-input-cancel]')){requestClose();return;}
     if(event.target.closest('[data-input-discard-confirm]')){close();return;}
     if(event.target.closest('[data-input-continue]')){content.querySelector('[data-input-discard]').hidden=true;(lastField?.isConnected?lastField:content.querySelector('h2'))?.focus();return;}
-    if(event.target.closest('[data-input-retry]')){const a=origin;close();open(a);return;}
+    if(event.target.closest('[data-input-retry]')){const a=origin,url=currentURL;close();open(a,url);return;}
     const move=event.target.closest('[data-dialog-move]');
     if(move){const row=move.closest('.choice-order-row'),other=move.dataset.dialogMove==='up'?row.previousElementSibling:row.nextElementSibling;if(other){if(move.dataset.dialogMove==='up')row.parentNode.insertBefore(row,other);else row.parentNode.insertBefore(other,row);setOrder(form());dirty=true;move.focus();}}
   });
@@ -150,5 +150,6 @@
     if(event.shiftKey&&(document.activeElement===first||!dialog.contains(document.activeElement))){event.preventDefault();last.focus();}
     else if(!event.shiftKey&&(document.activeElement===last||!dialog.contains(document.activeElement))){event.preventDefault();first.focus();}
   });
+  window.TailyInput=Object.freeze({open:(url,trigger)=>{const target=new URL(url,location.href);if(target.origin!==location.origin||!editablePath.test(target.pathname))return false;open(trigger,target.href);return true;}});
   window.addEventListener('beforeunload',event=>{if(dialog.open&&(dirty||saving||uncertain)){event.preventDefault();event.returnValue='';}});
 })();

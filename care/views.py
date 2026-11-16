@@ -232,6 +232,8 @@ def record_detail(request, room_id, activity_id):
     activity = get_object_or_404(Activity.objects.select_related("author", "performer"), pk=activity_id, room=room)
     services.require_module(member, activity.module)
     record_card(activity, member)
+    from .display_values import rounded_originals
+    activity.exact_numeric_values = rounded_originals(activity.module,activity.payload)
     revisions = list(activity.revisions.select_related("actor").all())
     for revision in revisions:
         revision.after_values = payload_display(activity.module, revision.after.get("payload", {}))

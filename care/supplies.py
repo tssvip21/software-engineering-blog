@@ -248,7 +248,9 @@ def stock_view(member):
     result['issues']=[x for x in result['issues'] if visible_records(member,Activity.objects.filter(pk=x['id'])).exists()]
     visible=set(services.visible_modules(member))
     for item in result['items']:
-        item['display_value'],item['display_unit']=inventory_ledger.display_quantity(item['balance'],item['unit'],prefer_large=item['unit'] in ('g','ml'))
+        from .display_values import measure
+        shown=measure(item['balance'],item['unit'])
+        item['display_value'],item['display_unit']=shown.value,shown.unit
         item['url']=reverse('records',args=[member.room_id])+'?'+urlencode({'module':'inventory','q':item['name']})
         item['recent_events']=[dict(e,url=reverse('record_detail',args=[member.room_id,e['id']])) for e in reversed(item['events']) if e['module'] in visible][:8]
     return result

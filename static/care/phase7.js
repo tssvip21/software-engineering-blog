@@ -29,7 +29,7 @@
         body: asForm ? data : JSON.stringify(data)});
       let payload;
       try { payload = await response.json(); } catch (_) { throw new Error('서버 응답을 확인하지 못했어요. 같은 요청으로 다시 확인해 주세요.'); }
-      if (!response.ok || !payload.ok) { const e = new Error(payload.message || '저장하지 못했어요. 입력을 유지했으니 다시 확인해 주세요.'); e.status = response.status; throw e; }
+      if (!response.ok || !payload.ok) { const e = new Error(payload.message || '저장하지 못했어요. 입력을 유지했으니 다시 확인해 주세요.'); e.status = response.status; e.data=payload; throw e; }
       return payload;
     } finally { clearTimeout(timer); }
   }
@@ -88,7 +88,16 @@
     if(newRooms&&oldRooms){oldRooms.replaceChildren(...[...newRooms.children].map(x=>x.cloneNode(true)));oldRooms.value=newRooms.value;}
   }
   // Shared UI contract used by in-place forms; does not expose storage or permissions.
-  window.TailyUI=Object.freeze({refresh:refreshSurface,announce});
+  function completedRoutine(result) {
+    if(!result.routine_key)return;
+    const group=document.querySelector('[data-schedule-disclosure="completed"]');
+    if(group)group.open=true;
+    const row=[...document.querySelectorAll('[data-schedule-key]')].find(el=>el.dataset.scheduleKey===result.routine_key);
+    if(row){row.classList.add('just-completed');row.setAttribute('tabindex','-1');row.focus({preventScroll:true});
+      const panel=row.closest('.schedule-panel-content');if(panel){const r=row.getBoundingClientRect(),p=panel.getBoundingClientRect();if(r.bottom>p.bottom||r.top<p.top)panel.scrollTop+=r.top-p.top-12;}}
+    announce((result.routine_title||'일정')+' 완료 · 완료한 루틴에서 확인할 수 있어요.',{url:result.url,undo:result.undo_allowed?result.undo_url:null,version:result.version});
+  }
+  window.TailyUI=Object.freeze({refresh:refreshSurface,announce,completedRoutine});
   async function runAction(button) {
     if (!endpoint) return;
     const key = actionKey(button); if (busy.has(key)) return;
@@ -113,8 +122,16 @@
       pending.delete(key);persist(key,null);
       if (request.operation === 'finish') { const state = gps.get(request.activity_id); if (state?.watch !== null && state?.watch !== undefined) navigator.geolocation?.clearWatch(state.watch); gps.delete(request.activity_id); persist('gps:'+request.activity_id,null); }
       announce(result.message,{url:result.url,undo:result.undo_allowed ? result.undo_url : null,version:result.version});
-      try { await refreshSurface(); const next=[...document.querySelectorAll('[data-action7]')].find(b=>actionKey(b)===key); if(next)next.focus({preventScroll:true}); else {const h=document.querySelector('#main h1');if(h){h.tabIndex=-1;h.focus({preventScroll:true});}} } catch (e) { announce(e.message,{url:result.url,error:true}); }
+      try { await refreshSurface(); if(result.routine_key){completedRoutine(result);return;} const next=[...document.querySelectorAll('[data-action7]')].find(b=>actionKey(b)===key); if(next)next.focus({preventScroll:true}); else {const h=document.querySelector('#main h1');if(h){h.tabIndex=-1;h.focus({preventScroll:true});}} } catch (e) { announce(e.message,{url:result.url,error:true}); }
     } catch (e) {
+      if(e.data?.requires_input&&e.data.form_url){
+        pending.delete(key);persist(key,null);
+        feedback(button,e.message);
+        if(window.TailyInput?.open(e.data.form_url,button))return;
+        const message=button.closest('.schedule-item7')?.querySelector('[data-action-feedback7]');
+        if(message){const link=document.createElement('a');link.href=e.data.form_url;link.textContent='필요한 내용 입력';link.className='button secondary';message.append(' ',link);}
+        return;
+      }
       // A response-lost retry retains exactly the same token and body.
       feedback(button,e.name==='AbortError' ? '응답이 늦어요. 같은 버튼으로 결과를 다시 확인해 주세요.' : e.message,true);
       announce(e.name==='AbortError' ? '응답이 늦어요. 다시 시도할 때 같은 요청 번호를 사용해요.' : e.message,{error:true});

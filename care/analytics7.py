@@ -357,7 +357,7 @@ def latest_weight_context(room,rows,enabled,start,end):
             if not selected:continue
             extract=(lambda a:mass_amount(a)) if module in ('meal','treat') else (lambda a:value(a.payload.get('minutes')))
             numbers=[extract(a) for a in selected];known=[v for v in numbers if v is not None]
-            facts.append({'module':module,'name':MODULES[module].name,'value':text(sum(known,ZERO)) if known else '—','unit':'g 제공' if module in ('meal','treat') else '분',
+            facts.append({'module':module,'name':MODULES[module].name,'value':text(sum(known,ZERO)) if known else '—','_raw_value':sum(known,ZERO) if known else None,'unit':'g 제공' if module in ('meal','treat') else '분',
                           'records':len(selected),'missing':len(numbers)-len(known)})
         output['weight_interval']={'start':previous.occurred_at,'end':latest.occurred_at,'facts':facts,
             'notes':context_notes(room,interval,previous.occurred_at.astimezone(ZoneInfo(room.timezone)).date(),latest_day),
@@ -379,7 +379,7 @@ def relationships(metrics,enabled,notes,inventory,weight):
     lookup={m['key']:m for m in metrics};result=[]
     def choose(keys):return next((lookup[k] for k in keys if k in lookup and lookup[k]['change']['available']),None)
     def ready(m):return m and m['change']['available'] and min(m['before']['observed_days'],m['recent']['observed_days'])>=3
-    def fact(m):return {'name':m['name'],'before':m['before']['text'],'recent':m['recent']['text'],'unit':m['unit'],'url':m['evidence_url'],'coverage':f"이전 {m['before']['observed_days']}일 · 최근 {m['recent']['observed_days']}일"}
+    def fact(m):return {'name':m['name'],'before':m['before']['text'],'recent':m['recent']['text'],'before_value':m['before']['value'],'recent_value':m['recent']['value'],'unit':m['unit'],'url':m['evidence_url'],'coverage':f"이전 {m['before']['observed_days']}일 · 최근 {m['recent']['observed_days']}일"}
     weight_metric=lookup.get('weight')
     food=choose(['meal_consumed_kcal','meal_provided_kcal','meal_provided_g']);treat=choose(['treat_consumed_kcal','treat_provided_kcal','treat_provided_g'])
     if 'weight' in enabled and ('meal' in enabled or 'treat' in enabled):
@@ -462,4 +462,5 @@ def build_report(member,days=7,*,end=None,records=None):
             'record_count':sum(start<=row_date(a,ZoneInfo(room.timezone))<=end for a in rows),
             'today_observations':[{'date':a.occurred_at,'text':str(a.payload.get('detail') or a.note or '직접 남긴 변화 관찰'),'url':reverse('record_detail',args=[room.pk,a.pk])} for a in reversed(rows) if a.module in ('observation','toilet') and a.payload.get('condition')=='different' and row_date(a,ZoneInfo(room.timezone))==today][:5],
             'profile_url':reverse('room_settings',args=[room.pk]),'can_edit_profile':member.can_manage,**weight}
-    return result
+    from .display_values import decorate_report
+    return decorate_report(result)

@@ -153,16 +153,16 @@ body.has-member-panel7 .mobile-dock{visibility:hidden;pointer-events:none}
 .member-identity7{display:flex;align-items:center;gap:14px;padding:0 34px 20px 0;border-bottom:1px solid var(--stat-line)}
 .member-avatar7{width:46px;height:46px;display:grid;place-items:center;border-radius:14px;background:#eef0eb;color:#35463a;font-size:1.125rem;flex-shrink:0}
 .member-identity7 h2{font-size:1.25rem;margin:0 0 6px;line-height:1.5}.member-identity7 h2 small{font-size:.75rem;color:var(--stat-muted)}
-.member-badges7{display:flex;align-items:center;gap:10px;font-size:.75rem!important;margin:0!important;color:var(--stat-muted)}
+.member-badges7{display:flex;align-items:center;gap:10px;font-size:.75rem;margin:0!important;color:var(--stat-muted)}
 .role-badge7{background:#eef1ed;padding:3px 8px;border-radius:6px;color:#35463a;font-weight:550}
 .member-section7{display:grid;gap:10px;padding:20px 0}.member-section7 h3{font-size:.875rem;margin:0}
-.member-role-description7{margin:0;color:var(--stat-muted);font-size:.8125rem!important}
+.member-role-description7{margin:0;color:var(--stat-muted);font-size:.8125rem}
 .member-role-controls7{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;margin-top:4px}
 .member-role-controls7>label{font-size:.8125rem}.member-role-controls7>select{font-size:.875rem}
 .member-actions7{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0 0;border-top:1px solid var(--stat-line);flex-wrap:wrap}
 .member-danger7{margin-top:20px;border-top:1px solid var(--stat-line);padding-top:8px}.member-danger7 summary{min-height:40px;padding:10px 0;font-size:.8125rem;color:#85433b}
-.member-danger7 p{font-size:.8125rem!important;color:var(--stat-muted)}.member-danger7 .button{width:fit-content;margin-top:8px}
-.member-status7{padding:10px 12px;border-radius:8px;background:#f0f4ed;font-size:.8125rem!important;margin:12px 0!important}
+.member-danger7 p{font-size:.8125rem;color:var(--stat-muted)}.member-danger7 .button{width:fit-content;margin-top:8px}
+.member-status7{padding:10px 12px;border-radius:8px;background:#f0f4ed;font-size:.8125rem;margin:12px 0!important}
 .member-status7.is-error{background:#fff2ed;color:#902d24}.member-panel-trigger{min-width:36px!important;font-size:20px;text-decoration:none!important}
 .member-dialog7>.icon-button{position:absolute;right:16px;top:16px;float:none}
 .member-list-name7{color:var(--stat-ink);text-decoration:none}

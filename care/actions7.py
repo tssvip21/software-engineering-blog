@@ -63,7 +63,10 @@ def perform(member,request):
     if old:
         if old.actor_id!=member.pk or not hmac.compare_digest(old.request_hash,fingerprint):
             raise services.Conflict('같은 요청 번호로 다른 내용이 전달됐어요. 현재 기록을 확인한 뒤 새로 기록해 주세요.')
-        if old.activity_id:services.require_module(member,old.activity.module)
+        if old.activity_id:
+            services.require_module(member,old.activity.module)
+            if old.activity.voided and operation=='routine_done':
+                raise services.Conflict('앞서 저장한 완료 기록이 취소됐어요. 일정을 다시 확인해 주세요.')
         elif old.result.get('module'):services.require_module(member,old.result['module'])
         return {**old.result,'replayed':True,'changed':False,'message':'이미 처리한 요청이에요. 중복으로 저장하지 않았어요.'}
     module=request.get('module')
@@ -145,7 +148,10 @@ def perform(member,request):
         raise ValidationError('처음에는 저장 설정을 만들거나 필요한 내용을 입력해 주세요.')
     form=RecordForm(data,room=member.room,module=module,member=member,instance=record,simple=True)
     if not form.is_valid():
-        messages=[str(message) for values in form.errors.values() for message in values]
+        from .routine_completion import NeedsInput, errors_with_labels
+        if item and operation=='routine_done':
+            raise NeedsInput(member,item,day,token,form)
+        messages=[f"{row['label']}: {' '.join(row['messages'])}" for row in errors_with_labels(form)]
         raise ValidationError(messages)
     if preset:form.server_metadata['_preset']=snapshot(preset)
     if item:form.server_metadata['_schedule']={'item_id':str(item.pk),'date':day.isoformat(),'name':snap['name']}
@@ -154,5 +160,9 @@ def perform(member,request):
         form.server_metadata['_gps']=gps_metadata(request['gps'])
     record,created=services.save_activity(member,module,form,record.pk if record else None)
     result=response_for(member,record,created=created and operation!='finish')
+    if item:
+        from .routine_completion import safe_title
+        result.update(routine_key=str(item.pk)+':'+day.isoformat(),routine_title=safe_title(member,snap))
+        result['message']=safe_title(member,snap)+' 완료 기록을 저장했어요.'
     ActionReceipt.objects.create(room=member.room,actor=member,token=token,request_hash=fingerprint,operation=operation,activity=record,result=result)
     return result

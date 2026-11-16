@@ -27,12 +27,15 @@ from .workspace8 import schedule_context
 @require_POST
 def action(request,room_id):
     room,member=services.get_room(request,room_id)
+    from .routine_completion import NeedsInput
     try:
         data=json.loads(request.body)
         result=actions7.perform(member,data)
         return JsonResponse(result)
     except (json.JSONDecodeError,UnicodeDecodeError):
         return JsonResponse({'ok':False,'message':'요청 내용을 읽을 수 없어요. 입력을 확인해 주세요.'},status=400)
+    except NeedsInput as exc:
+        return JsonResponse({'ok':False,'requires_input':True,'message':' '.join(exc.messages),'fields':exc.fields,'form_url':exc.form_url},status=422)
     except services.Conflict as exc:
         return JsonResponse({'ok':False,'message':' '.join(exc.messages)},status=409)
     except ValidationError as exc:
@@ -60,14 +63,16 @@ def board_data(member):
         same=[a for a in records if schedule7.logical_module(a.module)==key and a.status=='done']
         if key in ('hygiene','observation'):
             current=[a for a in same if a.occurred_at.astimezone(timezone.get_current_timezone()).date()==today]
-            if current:card['tile'].update(value=str(len(current)),unit='건',caption='오늘 남긴 기록 · 이전 통합 유형 포함',empty=False)
+            if current:card['tile'].update(value=str(len(current)),_raw_value=len(current),unit='건',caption='오늘 남긴 기록 · 이전 통합 유형 포함',empty=False)
         card['latest']={'text':record_summary(same[0].module,same[0].payload),'at':same[0].occurred_at} if same else None
         if key in ('toilet','shedding','hygiene','cleaning') and card['tile']['empty']:
-            card['tile'].update(value='0',unit='건',caption='오늘 남긴 관찰·완료 기록 · 실제 발생 여부와 구분',empty=False)
+            card['tile'].update(value='0',_raw_value=0,unit='건',caption='오늘 남긴 관찰·완료 기록 · 실제 발생 여부와 구분',empty=False)
         card['is_timer']=key in actions7.TIMERS;card['has_presets']=key in PRESET_MODULES
         card['instant']=bool(card['default_preset']) or key in actions7.QUICK_WITHOUT_PRESET or card['is_timer']
         card['action_label']='시작' if card['is_timer'] else '물 교체' if key=='water' and not card['default_preset'] else '관찰 +1' if key in ('toilet','shedding') else '기록'
         card['quick_url']=reverse('entry7',args=[room.pk,key]);card['preset_url']=reverse('presets7',args=[room.pk,key]) if card['has_presets'] else None
+    from .display_values import decorate_tile
+    for card in cards:decorate_tile(card['tile'],card['spec'].key)
     return cards,records
 
 
