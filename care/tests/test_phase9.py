@@ -377,3 +377,35 @@ class RoutineLocalDateTimeTests(CareCase):
         field=form['occurred_at'];value=field.field.widget.format_value(field.value())
         self.assertRegex(value,r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$')
         self.assertNotIn('+',value)
+
+
+class RoutineReceiptTargetTests(CareCase):
+    def saved_request(self, module):
+        routine=self.routine((module,));item=routine.items.get(active=True)
+        day=services.local_date(self.room);snap=services.effective_routine(routine,day);token=uuid.uuid4()
+        probe=routine_completion.completion_form(self.owner,item,snap,None,day,token)
+        data={name:probe[name].value() for name in probe.fields}
+        form=routine_completion.completion_form(self.owner,item,snap,None,day,token,data=data)
+        self.assertTrue(form.is_valid(),form.errors)
+        result=routine_completion.save_completion(self.owner,item.pk,day,form)
+        return item,day,data,result
+
+    def test_receipt_cannot_be_replayed_under_another_routine(self):
+        original,day,data,result=self.saved_request('water')
+        other=self.routine(('water',));item=other.items.get(active=True)
+        form=routine_completion.completion_form(self.owner,item,services.effective_routine(other,day),None,day,data['client_key'],data=data)
+        with self.assertRaises((PermissionDenied,ValidationError)):
+            routine_completion.save_completion(self.owner,item.pk,day,form)
+        self.assertEqual(Activity.objects.count(),1)
+        self.assertFalse(RoutineRun.objects.filter(item=item,activity__isnull=False).exists())
+
+    def test_private_receipt_cannot_be_replayed_through_public_item_after_role_change(self):
+        original,day,data,result=self.saved_request('medication')
+        other=self.routine(('water',));item=other.items.get(active=True)
+        type(self.owner).objects.filter(pk=self.owner.pk).update(role='guest')
+        self.owner.refresh_from_db()
+        form=routine_completion.completion_form(self.owner,item,services.effective_routine(other,day),None,day,data['client_key'],data=data)
+        with self.assertRaises((PermissionDenied,ValidationError)):
+            routine_completion.save_completion(self.owner,item.pk,day,form)
+        self.assertEqual(ActionReceipt.objects.filter(operation='routine.form').count(),1)
+        self.assertEqual(Activity.objects.count(),1)

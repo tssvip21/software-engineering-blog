@@ -87,6 +87,9 @@ def save_completion(member,item_id,day,form):
     member=services.fresh_member(member)
     item=get_object_or_404(RoutineItem.objects.select_related('routine'),pk=item_id,routine__room=member.room)
     services.require_module(member,item.module)
+    # A receipt belongs to the original routine/date, not just the actor and request body.
+    if str(form.data.get('routine_item',''))!=str(item.pk) or str(form.data.get('routine_date',''))!=day.isoformat():
+        raise ValidationError('완료 요청의 루틴과 날짜가 달라요. 원래 일정에서 다시 확인해 주세요.')
     try:token=uuid.UUID(str(form.data.get('client_key','')))
     except (ValueError,TypeError,AttributeError):raise ValidationError('요청 번호를 확인할 수 없어요. 입력창을 다시 열어 주세요.')
     fingerprint=form_fingerprint(form)
@@ -94,6 +97,10 @@ def save_completion(member,item_id,day,form):
     if receipt:
         if receipt.actor_id!=member.pk or receipt.operation!='routine.form' or not hmac.compare_digest(receipt.request_hash,fingerprint):
             raise services.Conflict('이미 사용한 요청 번호의 내용과 달라요. 원래 기록을 확인해 주세요.')
+        if receipt.activity_id:
+            services.require_module(member,receipt.activity.module)
+            if receipt.activity.module!=item.module or receipt.activity.room_id!=member.room_id:
+                raise services.Conflict('이 완료 요청은 다른 기록에 연결돼 있어요.')
         if receipt.activity_id and receipt.activity.voided:
             raise services.Conflict('앞서 남긴 완료 기록이 취소됐어요. 입력창을 다시 열어 주세요.')
         return {**receipt.result,'created':False,'changed':False,'replayed':True}
