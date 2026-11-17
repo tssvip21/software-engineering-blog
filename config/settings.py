@@ -8,7 +8,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env", override=False)
 DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
 DEMO_MODE = os.environ.get("CARE_DEMO_MODE", "0") == "1"
-if DEMO_MODE and not DEBUG:
+PUBLIC_DEMO = os.environ.get("CARE_PUBLIC_DEMO", "0") == "1"
+PUBLIC_DEMO_ENTRY = os.environ.get("CARE_PUBLIC_DEMO_ENTRY", "0") == "1" and not PUBLIC_DEMO
+if PUBLIC_DEMO and (DEBUG or not DEMO_MODE or os.environ.get("POSTGRES_HOST") or not os.environ.get("CARE_DATA_DIR")):
+    raise ImproperlyConfigured("공개 시연은 DEBUG=0 분리형 SQLite에서만 가능합니다.")
+if DEMO_MODE and not DEBUG and not PUBLIC_DEMO:
     raise ImproperlyConfigured("시연 환경은 로컬 개발 설정에서만 실행할 수 있습니다.")
 DATA_DIR = Path(os.environ.get("CARE_DATA_DIR", str(BASE_DIR / "data")))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -85,3 +89,11 @@ LOGGING = {"version": 1, "disable_existing_loggers": False, "filters": {"redact"
 
 SESSION_COOKIE_NAME = "care_demo_session" if DEMO_MODE else "care_session"
 CSRF_COOKIE_NAME = "care_demo_csrf" if DEMO_MODE else "care_csrf"
+if PUBLIC_DEMO:
+    if not APP_ORIGIN.startswith("https://"):
+        raise ImproperlyConfigured("공개 시연은 HTTPS에서만 사용합니다.")
+    FORCE_SCRIPT_NAME = "/try"
+    SESSION_COOKIE_NAME = "taily_public_demo_session"
+    CSRF_COOKIE_NAME = "taily_public_demo_csrf"
+    SESSION_COOKIE_PATH = "/try/"
+    CSRF_COOKIE_PATH = "/try/"

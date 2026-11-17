@@ -3,10 +3,10 @@ import tarfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-FILES = ("Dockerfile", ".dockerignore", "compose.yaml", "manage.py",
+FILES = ("Dockerfile", ".dockerignore", "compose.yaml", "compose.demo.yaml", "manage.py",
          "requirements.lock", "requirements-deploy.txt")
 DIRECTORIES = ("config", "care", "templates", "static")
-DEPLOY_FILES = ("Caddyfile", "entrypoint.sh", "serve.py", "healthcheck.py",
+DEPLOY_FILES = ("Caddyfile", "entrypoint.sh", "entrypoint-demo.sh", "serve.py", "healthcheck.py",
                 "bootstrap-vm.sh", "backup-postgres.sh", "taily-backup.service",
                 "taily-backup.timer", "verify-backup.sh")
 

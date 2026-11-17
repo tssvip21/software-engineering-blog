@@ -57,6 +57,8 @@ def home(request):
 
 @require_http_methods(["GET", "POST"])
 def room_new(request):
+    if settings.PUBLIC_DEMO:
+        raise PermissionDenied("공개 시연에서는 기존 세 공간만 이용할 수 있습니다.")
     if not request.user.is_authenticated:
         messages.info(request, "반려동물을 등록하려면 구글 계정으로 로그인해 주세요.")
         return redirect("home")
@@ -488,6 +490,8 @@ def member_change(request, room_id, member_id):
 
 @require_POST
 def room_leave(request, room_id):
+    if settings.PUBLIC_DEMO:
+        raise PermissionDenied("공개 시연 구성원은 나갈 수 없습니다.")
     room, member = services.get_room(request, room_id)
     try:
         services.leave_room(member)

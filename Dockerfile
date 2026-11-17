@@ -9,7 +9,7 @@ COPY config/ config/
 COPY care/ care/
 COPY templates/ templates/
 COPY static/ static/
-COPY deploy/entrypoint.sh deploy/serve.py deploy/healthcheck.py deploy/
+COPY deploy/entrypoint.sh deploy/entrypoint-demo.sh deploy/serve.py deploy/healthcheck.py deploy/
 RUN mkdir -p /app/data /app/staticfiles && chown -R taily:taily /app
 USER taily
 EXPOSE 8000

@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.urls import path
-from . import auth, views, interactions, workspace, browsing, flow7, workspace8, demo_navigation, routine_completion
+from . import auth, views, interactions, workspace, browsing, flow7, workspace8, demo_navigation, routine_completion, public_demo
 
 urlpatterns = [
     path("rooms/<uuid:room_id>/routines/items/<uuid:item_id>/complete/", routine_completion.complete, name="routine_complete9"),
@@ -67,3 +67,5 @@ urlpatterns = [
 ]
 if settings.DEMO_MODE and settings.DEBUG:
     urlpatterns += [path("demo/login/", auth.demo_login, name="demo_login")]
+if settings.PUBLIC_DEMO:
+    urlpatterns += [path("enter/", public_demo.enter, name="public_demo_enter")]

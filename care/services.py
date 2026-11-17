@@ -135,6 +135,8 @@ def create_room(user, form):
 
 @transaction.atomic
 def update_room(member, form):
+    if settings.PUBLIC_DEMO:
+        raise ValidationError('공개 시연에서는 세 공간의 이름과 종류를 변경할 수 없어요.')
     member = fresh_member(member)
     require_manager(member)
     room = Room.objects.get(pk=member.room_id)
