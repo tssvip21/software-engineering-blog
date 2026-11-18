@@ -175,3 +175,31 @@ def day_strip(records, pending, completed, day):
         c["label"] = f"{h}시" + (" · " + ", ".join(bits) if bits else "") + (" · 지금" if state == "now" else "")
         out.append(c)
     return out
+
+
+@register.simple_tag
+def day_marks(records, pending, completed, day):
+    """06~24시 막대 위 점 위치(15분 단위 0~71칸)와 지금 위치."""
+    from django.utils import timezone
+    now = timezone.localtime()
+    def slot(dt):
+        dt = timezone.localtime(dt) if getattr(dt, "tzinfo", None) else dt
+        if dt.hour < 6:
+            return None
+        return min(71, (dt.hour - 6) * 4 + dt.minute // 15)
+    marks = []
+    for a in records or []:
+        at = getattr(a, "occurred_at", None)
+        if at and timezone.localtime(at).date() == day:
+            s = slot(at)
+            if s is not None:
+                name = getattr(getattr(a, "spec", None), "name", "기록")
+                marks.append({"slot": s, "kind": "record", "label": f"{timezone.localtime(at):%H:%M} {name}"})
+    for kind, rows in (("todo", pending or []), ("done", completed or [])):
+        for row in rows:
+            at = row.get("at") if isinstance(row, dict) else getattr(row, "at", None)
+            s = slot(at) if at else None
+            if s is not None:
+                marks.append({"slot": s, "kind": kind, "label": f"{timezone.localtime(at):%H:%M} {row.get('name', '') if isinstance(row, dict) else ''}"})
+    now_slot = slot(now) if now.date() == day else None
+    return {"marks": marks, "now": now_slot, "now_text": f"{now:%H:%M}"}
