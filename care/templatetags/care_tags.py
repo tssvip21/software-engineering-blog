@@ -101,3 +101,77 @@ def history_time(value,zone='Asia/Seoul'):
         parsed=datetime.fromisoformat(str(value))
         return parsed.astimezone(ZoneInfo(zone)).strftime('%Y.%m.%d %H:%M') if parsed.tzinfo else str(value)
     except (TypeError,ValueError,KeyError):return value
+
+
+# ── 오늘 화면 머리용: 화면 표시만 만든다(저장·권한·계산 규칙은 건드리지 않음) ──
+@register.filter
+def pet_profile(room, day=None):
+    """'비숑 프리제 · 4살'처럼 품종과 나이를 한 줄로."""
+    from datetime import date
+    from care.breeds import catalogue
+    parts = []
+    breed = catalogue().get(room.breed_key or "") if getattr(room, "breed_key", "") else None
+    if breed:
+        parts.append(breed["ko"])
+    elif getattr(room, "subspecies", ""):
+        parts.append(room.subspecies)
+    else:
+        parts.append(room.get_species_display())
+    born = getattr(room, "birth_date", None)
+    if born:
+        today = day or date.today()
+        years = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+        if years >= 1:
+            parts.append(f"{years}살")
+        else:
+            months = (today.year - born.year) * 12 + today.month - born.month - (today.day < born.day)
+            parts.append(f"{max(months, 0)}개월")
+    return " · ".join(parts)
+
+
+@register.simple_tag
+def day_strip(records, pending, completed, day):
+    """06시부터 24시까지 한 시간 한 칸. 상태: now, record, done, todo, future, empty."""
+    from django.utils import timezone
+    now = timezone.localtime()
+    is_today = now.date() == day
+    cells = {h: {"hour": h, "record": 0, "done": 0, "todo": 0} for h in range(6, 24)}
+    for a in records or []:
+        at = getattr(a, "occurred_at", None) or (a.get("occurred_at") if isinstance(a, dict) else None)
+        if not at:
+            continue
+        local = timezone.localtime(at)
+        if local.date() == day and local.hour in cells:
+            cells[local.hour]["record"] += 1
+    for key, rows in (("todo", pending or []), ("done", completed or [])):
+        for row in rows:
+            at = row.get("at") if isinstance(row, dict) else getattr(row, "at", None)
+            hour = timezone.localtime(at).hour if hasattr(at, "tzinfo") and getattr(at, "tzinfo", None) else getattr(at, "hour", None)
+            if hour in cells:
+                cells[hour][key] += 1
+    out = []
+    for h in range(6, 24):
+        c = cells[h]
+        if is_today and h == now.hour:
+            state = "now"
+        elif c["record"]:
+            state = "record"
+        elif c["done"]:
+            state = "done"
+        elif c["todo"]:
+            state = "todo"
+        elif is_today and h > now.hour:
+            state = "future"
+        else:
+            state = "empty"
+        bits = []
+        if c["record"]:
+            bits.append(f"기록 {c['record']}건")
+        if c["done"]:
+            bits.append(f"끝낸 일 {c['done']}")
+        if c["todo"]:
+            bits.append(f"남은 일 {c['todo']}")
+        c["state"] = state
+        c["label"] = f"{h}시" + (" · " + ", ".join(bits) if bits else "") + (" · 지금" if state == "now" else "")
+        out.append(c)
+    return out

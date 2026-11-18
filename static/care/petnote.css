@@ -33,7 +33,7 @@
 }
 /* ── 기본 ─────────────────────────────────────────── */
 /* 화면 크기에 맞춰 전체 비율을 바꾼다: 크기 값은 rem이라 기준 글자 크기를 따라 함께 줄고 는다.
-   노트북(1280~1440px) 약 14~14.5px, 큰 모니터(1920px 이상) 16px. 좁은 화면(모바일)은 16px 그대로. */
+   노트북(1280~90rem) 약 14~0.9062rem, 큰 모니터(120rem 이상) 1rem. 좁은 화면(모바일)은 1rem 그대로. */
 @media (min-width:1024px){html{font-size:clamp(14px,calc(10px + .3125vw),16px)}}
 *,*::before,*::after{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;scroll-padding-top:calc(var(--sticky-top) + 0.5rem)}
@@ -875,3 +875,97 @@ body.public-shell{background:var(--page)}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{transition:none!important;animation:none!important}
 }
+
+/* ── 오늘: B 구성 (흰 바탕 · 굵은 선 구역 · 회색 타일 · 한 줄 기록) ── */
+:root{--page:#FFFFFF;--side:#F6F7F9;--tile:#F5F6F8;--tile-hover:#EDF0F3;--strip-todo:#F3D9C7}
+.nav-list a[aria-current="page"]{position:relative;background:transparent;color:var(--ink);font-weight:800}
+.nav-list a[aria-current="page"]::before{content:"";position:absolute;left:0;top:0.5625rem;bottom:0.5625rem;width:0.1875rem;border-radius:2px;background:var(--select-icon)}
+.nav-list a:hover{background:transparent}
+.today-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:0.75rem 1.5rem;margin-bottom:1.375rem}
+.today-head .eyebrow{font-family:var(--sans);font-size:0.8438rem;font-weight:600}
+.today-head h1{font-size:2rem;line-height:1.2;font-weight:800;letter-spacing:-.045em}
+.today-summary{font-size:0.875rem;color:var(--ink-2)}
+.today-summary b{font-family:var(--num);font-weight:800;color:var(--ink)}
+.day-strip{display:grid;grid-template-columns:repeat(18,minmax(0,1fr));gap:0.1875rem}
+.day-cell{height:1.75rem;border-radius:0.25rem;background:var(--fill);box-sizing:border-box}
+.day-cell.is-record{background:var(--nutrition)}
+.day-cell.is-done{background:var(--select-icon)}
+.day-cell.is-todo{background:var(--strip-todo)}
+.day-cell.is-now{background:var(--surface);border:2px solid var(--ink)}
+.day-cell.is-future{background:var(--fill-2);border:1px dashed var(--line-strong)}
+.day-strip-hours{display:flex;justify-content:space-between;margin:0.5rem 0 2.5rem;font-family:var(--num);font-size:0.7188rem;color:var(--ink-4)}
+.care-workspace.today-board{display:block}
+.today-section{margin-top:2.75rem;padding-top:1rem;border-top:2px solid var(--ink)}
+.workspace-primary>.today-section:first-child{margin-top:0}
+.today-section .section-heading{margin-bottom:1rem}
+.today-section .section-heading h2{font-size:1.1875rem;font-weight:800;letter-spacing:-.035em}
+.today-section .section-heading h2 small{margin-left:0.375rem;font-family:var(--sans);font-size:0.8125rem;font-weight:600;color:var(--ink-3)}
+.today-board .quick-grid{gap:0.625rem}
+.today-board .quick-card{display:flex;flex-direction:column;gap:0.25rem;padding:1.125rem;border:0;border-radius:1rem;background:var(--tile)}
+.today-board .quick-card:hover{background:var(--tile-hover);border:0}
+.today-board .quick-card-title{flex-direction:column;align-items:flex-start;gap:0.875rem;margin:0;padding-right:0}
+.today-board .quick-card-title h3{font-size:0.9688rem;font-weight:700}
+.today-board .module-symbol{width:auto;height:auto;border-radius:0;background:none}
+.today-board .module-symbol .icon{width:1.375rem;height:1.375rem}
+.today-board .quick-card>.tile-value{position:absolute;top:1.125rem;right:1.125rem;height:auto}
+.today-board .tile-value strong{font-size:1.25rem}
+.tile-last{position:absolute;top:1.25rem;right:1.125rem;font-size:0.7812rem;color:var(--ink-4)}
+.tile-last time{font-weight:650}
+.tile-sub{font-size:0.8125rem;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.today-board .secondary-readings{display:none}
+.today-board .flow-actions{gap:0.625rem;padding-top:0.75rem}
+.today-board .preset-picker summary,.today-board .preset-default{font-size:0.8125rem;color:var(--ink-3)}
+.today-board .flow-primary7{display:flex;flex-direction:row;align-items:stretch;gap:0.375rem}
+.today-board .flow-primary7 .button.primary{flex:1;height:2.375rem;padding:0 0.75rem;border-radius:0.625rem;background:var(--surface);color:var(--ink);font-weight:700}
+.today-board .flow-primary7 .button.primary:hover{background:var(--surface);box-shadow:inset 0 0 0 1px var(--line-strong)}
+.today-board .flow-primary7 .button.primary .icon{width:0.9375rem;height:0.9375rem}
+.today-board .flow-primary7 .quiet-link{flex:none;width:2.375rem;height:2.375rem;border-radius:0.625rem;font-size:0;color:transparent;background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234D5360' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.6 5.4l4 4L9 19H5v-4ZM12.6 7.4l4 4'/%3E%3C/svg%3E") center/1rem no-repeat}
+.today-board .flow-primary7 .quiet-link:hover{box-shadow:inset 0 0 0 1px var(--line-strong)}
+.today-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:3rem;margin-top:2.75rem}
+.today-columns>.today-section{margin-top:0}
+.today-todo .compact-schedule-row{padding:0.625rem 0;border-radius:0;border-bottom:1px solid var(--line-soft)}
+.today-todo .compact-schedule-row:hover{background:transparent}
+.today-notices{margin-top:0.875rem}
+.today-notices>summary{font-size:0.8125rem;font-weight:650;color:var(--ink-3)}
+.today-notices article{display:grid;grid-template-columns:minmax(0,1fr) 1.75rem;align-items:start;gap:0.25rem;padding:0.5rem 0;border-bottom:1px solid var(--line-soft)}
+.today-notices article a{display:grid}
+.today-notices article strong{font-size:0.875rem;font-weight:600}
+.today-notices article small{font-size:0.75rem;color:var(--ink-3)}
+.today-notices article>p{grid-column:1/-1}
+/* 기록 목록: 한 줄 */
+.history-list{padding:0;border:0;border-radius:0;background:none;overflow:visible}
+.history-date{padding:0.875rem 0 0.25rem;background:none;font-size:0.7812rem;color:var(--ink-4)}
+.history-entry{grid-template-columns:3.25rem minmax(0,1fr);gap:0 0.875rem;padding:0.6875rem 0;border:0;border-bottom:1px solid var(--line-soft);border-radius:0}
+.history-entry+.history-entry,.history-entry+.history-date{border-top:0}
+.history-entry:hover{background:var(--fill-2)}
+.history-icon,.history-entry>.icon{display:none}
+.history-entry>time{padding-top:0;align-self:baseline}
+.history-content{display:flex;align-items:baseline;gap:0.5rem;min-width:0}
+.history-heading{display:contents}
+.history-heading strong{order:1;flex:none;font-size:0.9375rem;font-weight:650}
+.history-heading .status-tag{order:2;flex:none}
+.history-content>p:not(.history-note){order:3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.9062rem;color:var(--ink-2)}
+.history-content>p:not(.history-note)::before{content:"· ";color:var(--ink-4)}
+.history-content .history-note{display:none}
+.history-heading .meta{order:4;flex:none;margin-left:auto;font-size:0.8125rem;color:var(--ink-4)}
+@media (max-width:1100px){
+  .today-columns{grid-template-columns:minmax(0,1fr);gap:0}
+  .today-columns>.today-section+.today-section{margin-top:2.75rem}
+}
+@media (max-width:640px){
+  .today-head h1{font-size:1.625rem}
+  .day-cell{height:1.375rem}
+  .today-board .quick-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:0.5rem}
+  .today-board .quick-card{padding:0.875rem}
+  .today-board .quick-card>.tile-value{position:absolute;top:0.875rem;right:0.875rem}
+  .tile-last{top:1rem;right:0.875rem}
+  .today-board .quick-card-title{padding-right:0}
+  .today-board .quick-card>.flow-actions{display:grid;grid-template-columns:none;padding:0.625rem 0 0}
+  .today-board .quick-card>.flow-actions>.flow-primary7{grid-column:auto;grid-row:auto;flex-direction:row}
+  .today-board .quick-card>.flow-actions>.preset-picker,.today-board .quick-card>.flow-actions>.preset-default{grid-column:auto;grid-row:auto}
+  .today-board .flow-primary7 .button{width:auto}
+}
+.today-todo .schedule-item7.compact-schedule-row{display:grid;grid-template-columns:minmax(0,1fr) 1.75rem;align-items:center;gap:.625rem;padding:.625rem 0;border:0;border-bottom:1px solid var(--line-soft);border-radius:0;background:none}
+.today-todo .schedule-item7>details{min-width:0}
+.today-todo .schedule-detail>summary{grid-template-columns:3rem minmax(0,1fr)}
+.today-board .quick-card{align-items:stretch;text-align:left}
