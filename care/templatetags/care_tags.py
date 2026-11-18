@@ -179,14 +179,12 @@ def day_strip(records, pending, completed, day):
 
 @register.simple_tag
 def day_marks(records, pending, completed, day):
-    """06~24시 막대 위 점 위치(15분 단위 0~71칸)와 지금 위치."""
+    """0~24시 막대 위 점 위치(15분 단위 0~95칸)와 지금 위치."""
     from django.utils import timezone
     now = timezone.localtime()
     def slot(dt):
         dt = timezone.localtime(dt) if getattr(dt, "tzinfo", None) else dt
-        if dt.hour < 6:
-            return None
-        return min(71, (dt.hour - 6) * 4 + dt.minute // 15)
+        return min(95, dt.hour * 4 + dt.minute // 15)
     marks = []
     for a in records or []:
         at = getattr(a, "occurred_at", None)

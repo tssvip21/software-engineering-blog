@@ -971,13 +971,13 @@ body.public-shell{background:var(--page)}
 .today-board .quick-card{align-items:stretch;text-align:left}
 
 /* 오늘 막대: 이어진 막대 위에 실제 시각 위치로 점을 찍는다(15분 단위 72칸) */
-.day-bar{position:relative;height:.625rem;border-radius:99px;background:var(--fill)}
+.day-bar{position:relative;height:.875rem;border-radius:99px;background:var(--fill)}
 .day-bar-fill{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:var(--select)}
-.day-mark{position:absolute;top:-.125rem;width:.875rem;height:.875rem;margin-left:-.4375rem;border-radius:50%;box-sizing:border-box;border:2px solid var(--surface)}
+.day-mark{position:absolute;top:-.1875rem;width:1.25rem;height:1.25rem;margin-left:-.625rem;border-radius:50%;box-sizing:border-box;border:2px solid var(--surface)}
 .day-mark.is-record{background:var(--nutrition)}
 .day-mark.is-done{background:var(--select-icon)}
 .day-mark.is-todo{background:var(--surface);border-color:var(--line-strong)}
-.day-now{position:absolute;top:-.5rem;bottom:-.5rem;width:2px;margin-left:-1px;background:var(--ink)}
+.day-now{position:absolute;top:-.5rem;bottom:-.5rem;width:3px;border-radius:2px;margin-left:-1px;background:var(--ink)}
 .day-bar-hours{display:flex;justify-content:space-between;margin-top:.5rem;font-family:var(--num);font-size:.7188rem;color:var(--ink-4)}
 .day-bar-legend{display:flex;flex-wrap:wrap;gap:.5rem 1rem;margin:.625rem 0 2.5rem;font-size:.75rem;color:var(--ink-3)}
 .day-bar-legend span{display:inline-flex;align-items:center;gap:.375rem}
@@ -986,147 +986,203 @@ body.public-shell{background:var(--page)}
 .day-bar-legend .is-done::before{background:var(--select-icon)}
 .day-bar-legend .is-todo::before{border:1.5px solid var(--line-strong)}
 .day-bar-legend .is-now::before{width:2px;height:.75rem;border-radius:0;background:var(--ink)}
-.day-bar .at-0{left:0.694%}
-.day-bar .at-1{left:2.083%}
-.day-bar .at-2{left:3.472%}
-.day-bar .at-3{left:4.861%}
-.day-bar .at-4{left:6.250%}
-.day-bar .at-5{left:7.639%}
-.day-bar .at-6{left:9.028%}
-.day-bar .at-7{left:10.417%}
-.day-bar .at-8{left:11.806%}
-.day-bar .at-9{left:13.194%}
-.day-bar .at-10{left:14.583%}
-.day-bar .at-11{left:15.972%}
-.day-bar .at-12{left:17.361%}
-.day-bar .at-13{left:18.750%}
-.day-bar .at-14{left:20.139%}
-.day-bar .at-15{left:21.528%}
-.day-bar .at-16{left:22.917%}
-.day-bar .at-17{left:24.306%}
-.day-bar .at-18{left:25.694%}
-.day-bar .at-19{left:27.083%}
-.day-bar .at-20{left:28.472%}
-.day-bar .at-21{left:29.861%}
-.day-bar .at-22{left:31.250%}
-.day-bar .at-23{left:32.639%}
-.day-bar .at-24{left:34.028%}
-.day-bar .at-25{left:35.417%}
-.day-bar .at-26{left:36.806%}
-.day-bar .at-27{left:38.194%}
-.day-bar .at-28{left:39.583%}
-.day-bar .at-29{left:40.972%}
-.day-bar .at-30{left:42.361%}
-.day-bar .at-31{left:43.750%}
-.day-bar .at-32{left:45.139%}
-.day-bar .at-33{left:46.528%}
-.day-bar .at-34{left:47.917%}
-.day-bar .at-35{left:49.306%}
-.day-bar .at-36{left:50.694%}
-.day-bar .at-37{left:52.083%}
-.day-bar .at-38{left:53.472%}
-.day-bar .at-39{left:54.861%}
-.day-bar .at-40{left:56.250%}
-.day-bar .at-41{left:57.639%}
-.day-bar .at-42{left:59.028%}
-.day-bar .at-43{left:60.417%}
-.day-bar .at-44{left:61.806%}
-.day-bar .at-45{left:63.194%}
-.day-bar .at-46{left:64.583%}
-.day-bar .at-47{left:65.972%}
-.day-bar .at-48{left:67.361%}
-.day-bar .at-49{left:68.750%}
-.day-bar .at-50{left:70.139%}
-.day-bar .at-51{left:71.528%}
-.day-bar .at-52{left:72.917%}
-.day-bar .at-53{left:74.306%}
-.day-bar .at-54{left:75.694%}
-.day-bar .at-55{left:77.083%}
-.day-bar .at-56{left:78.472%}
-.day-bar .at-57{left:79.861%}
-.day-bar .at-58{left:81.250%}
-.day-bar .at-59{left:82.639%}
-.day-bar .at-60{left:84.028%}
-.day-bar .at-61{left:85.417%}
-.day-bar .at-62{left:86.806%}
-.day-bar .at-63{left:88.194%}
-.day-bar .at-64{left:89.583%}
-.day-bar .at-65{left:90.972%}
-.day-bar .at-66{left:92.361%}
-.day-bar .at-67{left:93.750%}
-.day-bar .at-68{left:95.139%}
-.day-bar .at-69{left:96.528%}
-.day-bar .at-70{left:97.917%}
-.day-bar .at-71{left:99.306%}
-.day-bar-fill.to-0{width:0.694%}
-.day-bar-fill.to-1{width:2.083%}
-.day-bar-fill.to-2{width:3.472%}
-.day-bar-fill.to-3{width:4.861%}
-.day-bar-fill.to-4{width:6.250%}
-.day-bar-fill.to-5{width:7.639%}
-.day-bar-fill.to-6{width:9.028%}
-.day-bar-fill.to-7{width:10.417%}
-.day-bar-fill.to-8{width:11.806%}
-.day-bar-fill.to-9{width:13.194%}
-.day-bar-fill.to-10{width:14.583%}
-.day-bar-fill.to-11{width:15.972%}
-.day-bar-fill.to-12{width:17.361%}
-.day-bar-fill.to-13{width:18.750%}
-.day-bar-fill.to-14{width:20.139%}
-.day-bar-fill.to-15{width:21.528%}
-.day-bar-fill.to-16{width:22.917%}
-.day-bar-fill.to-17{width:24.306%}
-.day-bar-fill.to-18{width:25.694%}
-.day-bar-fill.to-19{width:27.083%}
-.day-bar-fill.to-20{width:28.472%}
-.day-bar-fill.to-21{width:29.861%}
-.day-bar-fill.to-22{width:31.250%}
-.day-bar-fill.to-23{width:32.639%}
-.day-bar-fill.to-24{width:34.028%}
-.day-bar-fill.to-25{width:35.417%}
-.day-bar-fill.to-26{width:36.806%}
-.day-bar-fill.to-27{width:38.194%}
-.day-bar-fill.to-28{width:39.583%}
-.day-bar-fill.to-29{width:40.972%}
-.day-bar-fill.to-30{width:42.361%}
-.day-bar-fill.to-31{width:43.750%}
-.day-bar-fill.to-32{width:45.139%}
-.day-bar-fill.to-33{width:46.528%}
-.day-bar-fill.to-34{width:47.917%}
-.day-bar-fill.to-35{width:49.306%}
-.day-bar-fill.to-36{width:50.694%}
-.day-bar-fill.to-37{width:52.083%}
-.day-bar-fill.to-38{width:53.472%}
-.day-bar-fill.to-39{width:54.861%}
-.day-bar-fill.to-40{width:56.250%}
-.day-bar-fill.to-41{width:57.639%}
-.day-bar-fill.to-42{width:59.028%}
-.day-bar-fill.to-43{width:60.417%}
-.day-bar-fill.to-44{width:61.806%}
-.day-bar-fill.to-45{width:63.194%}
-.day-bar-fill.to-46{width:64.583%}
-.day-bar-fill.to-47{width:65.972%}
-.day-bar-fill.to-48{width:67.361%}
-.day-bar-fill.to-49{width:68.750%}
-.day-bar-fill.to-50{width:70.139%}
-.day-bar-fill.to-51{width:71.528%}
-.day-bar-fill.to-52{width:72.917%}
-.day-bar-fill.to-53{width:74.306%}
-.day-bar-fill.to-54{width:75.694%}
-.day-bar-fill.to-55{width:77.083%}
-.day-bar-fill.to-56{width:78.472%}
-.day-bar-fill.to-57{width:79.861%}
-.day-bar-fill.to-58{width:81.250%}
-.day-bar-fill.to-59{width:82.639%}
-.day-bar-fill.to-60{width:84.028%}
-.day-bar-fill.to-61{width:85.417%}
-.day-bar-fill.to-62{width:86.806%}
-.day-bar-fill.to-63{width:88.194%}
-.day-bar-fill.to-64{width:89.583%}
-.day-bar-fill.to-65{width:90.972%}
-.day-bar-fill.to-66{width:92.361%}
-.day-bar-fill.to-67{width:93.750%}
-.day-bar-fill.to-68{width:95.139%}
-.day-bar-fill.to-69{width:96.528%}
-.day-bar-fill.to-70{width:97.917%}
-.day-bar-fill.to-71{width:99.306%}
+
+.day-bar .at-0{left:0.521%}
+.day-bar .at-1{left:1.562%}
+.day-bar .at-2{left:2.604%}
+.day-bar .at-3{left:3.646%}
+.day-bar .at-4{left:4.688%}
+.day-bar .at-5{left:5.729%}
+.day-bar .at-6{left:6.771%}
+.day-bar .at-7{left:7.812%}
+.day-bar .at-8{left:8.854%}
+.day-bar .at-9{left:9.896%}
+.day-bar .at-10{left:10.938%}
+.day-bar .at-11{left:11.979%}
+.day-bar .at-12{left:13.021%}
+.day-bar .at-13{left:14.062%}
+.day-bar .at-14{left:15.104%}
+.day-bar .at-15{left:16.146%}
+.day-bar .at-16{left:17.188%}
+.day-bar .at-17{left:18.229%}
+.day-bar .at-18{left:19.271%}
+.day-bar .at-19{left:20.312%}
+.day-bar .at-20{left:21.354%}
+.day-bar .at-21{left:22.396%}
+.day-bar .at-22{left:23.438%}
+.day-bar .at-23{left:24.479%}
+.day-bar .at-24{left:25.521%}
+.day-bar .at-25{left:26.562%}
+.day-bar .at-26{left:27.604%}
+.day-bar .at-27{left:28.646%}
+.day-bar .at-28{left:29.688%}
+.day-bar .at-29{left:30.729%}
+.day-bar .at-30{left:31.771%}
+.day-bar .at-31{left:32.812%}
+.day-bar .at-32{left:33.854%}
+.day-bar .at-33{left:34.896%}
+.day-bar .at-34{left:35.938%}
+.day-bar .at-35{left:36.979%}
+.day-bar .at-36{left:38.021%}
+.day-bar .at-37{left:39.062%}
+.day-bar .at-38{left:40.104%}
+.day-bar .at-39{left:41.146%}
+.day-bar .at-40{left:42.188%}
+.day-bar .at-41{left:43.229%}
+.day-bar .at-42{left:44.271%}
+.day-bar .at-43{left:45.312%}
+.day-bar .at-44{left:46.354%}
+.day-bar .at-45{left:47.396%}
+.day-bar .at-46{left:48.438%}
+.day-bar .at-47{left:49.479%}
+.day-bar .at-48{left:50.521%}
+.day-bar .at-49{left:51.562%}
+.day-bar .at-50{left:52.604%}
+.day-bar .at-51{left:53.646%}
+.day-bar .at-52{left:54.688%}
+.day-bar .at-53{left:55.729%}
+.day-bar .at-54{left:56.771%}
+.day-bar .at-55{left:57.812%}
+.day-bar .at-56{left:58.854%}
+.day-bar .at-57{left:59.896%}
+.day-bar .at-58{left:60.938%}
+.day-bar .at-59{left:61.979%}
+.day-bar .at-60{left:63.021%}
+.day-bar .at-61{left:64.062%}
+.day-bar .at-62{left:65.104%}
+.day-bar .at-63{left:66.146%}
+.day-bar .at-64{left:67.188%}
+.day-bar .at-65{left:68.229%}
+.day-bar .at-66{left:69.271%}
+.day-bar .at-67{left:70.312%}
+.day-bar .at-68{left:71.354%}
+.day-bar .at-69{left:72.396%}
+.day-bar .at-70{left:73.438%}
+.day-bar .at-71{left:74.479%}
+.day-bar .at-72{left:75.521%}
+.day-bar .at-73{left:76.562%}
+.day-bar .at-74{left:77.604%}
+.day-bar .at-75{left:78.646%}
+.day-bar .at-76{left:79.688%}
+.day-bar .at-77{left:80.729%}
+.day-bar .at-78{left:81.771%}
+.day-bar .at-79{left:82.812%}
+.day-bar .at-80{left:83.854%}
+.day-bar .at-81{left:84.896%}
+.day-bar .at-82{left:85.938%}
+.day-bar .at-83{left:86.979%}
+.day-bar .at-84{left:88.021%}
+.day-bar .at-85{left:89.062%}
+.day-bar .at-86{left:90.104%}
+.day-bar .at-87{left:91.146%}
+.day-bar .at-88{left:92.188%}
+.day-bar .at-89{left:93.229%}
+.day-bar .at-90{left:94.271%}
+.day-bar .at-91{left:95.312%}
+.day-bar .at-92{left:96.354%}
+.day-bar .at-93{left:97.396%}
+.day-bar .at-94{left:98.438%}
+.day-bar .at-95{left:99.479%}
+.day-bar-fill.to-0{width:0.521%}
+.day-bar-fill.to-1{width:1.562%}
+.day-bar-fill.to-2{width:2.604%}
+.day-bar-fill.to-3{width:3.646%}
+.day-bar-fill.to-4{width:4.688%}
+.day-bar-fill.to-5{width:5.729%}
+.day-bar-fill.to-6{width:6.771%}
+.day-bar-fill.to-7{width:7.812%}
+.day-bar-fill.to-8{width:8.854%}
+.day-bar-fill.to-9{width:9.896%}
+.day-bar-fill.to-10{width:10.938%}
+.day-bar-fill.to-11{width:11.979%}
+.day-bar-fill.to-12{width:13.021%}
+.day-bar-fill.to-13{width:14.062%}
+.day-bar-fill.to-14{width:15.104%}
+.day-bar-fill.to-15{width:16.146%}
+.day-bar-fill.to-16{width:17.188%}
+.day-bar-fill.to-17{width:18.229%}
+.day-bar-fill.to-18{width:19.271%}
+.day-bar-fill.to-19{width:20.312%}
+.day-bar-fill.to-20{width:21.354%}
+.day-bar-fill.to-21{width:22.396%}
+.day-bar-fill.to-22{width:23.438%}
+.day-bar-fill.to-23{width:24.479%}
+.day-bar-fill.to-24{width:25.521%}
+.day-bar-fill.to-25{width:26.562%}
+.day-bar-fill.to-26{width:27.604%}
+.day-bar-fill.to-27{width:28.646%}
+.day-bar-fill.to-28{width:29.688%}
+.day-bar-fill.to-29{width:30.729%}
+.day-bar-fill.to-30{width:31.771%}
+.day-bar-fill.to-31{width:32.812%}
+.day-bar-fill.to-32{width:33.854%}
+.day-bar-fill.to-33{width:34.896%}
+.day-bar-fill.to-34{width:35.938%}
+.day-bar-fill.to-35{width:36.979%}
+.day-bar-fill.to-36{width:38.021%}
+.day-bar-fill.to-37{width:39.062%}
+.day-bar-fill.to-38{width:40.104%}
+.day-bar-fill.to-39{width:41.146%}
+.day-bar-fill.to-40{width:42.188%}
+.day-bar-fill.to-41{width:43.229%}
+.day-bar-fill.to-42{width:44.271%}
+.day-bar-fill.to-43{width:45.312%}
+.day-bar-fill.to-44{width:46.354%}
+.day-bar-fill.to-45{width:47.396%}
+.day-bar-fill.to-46{width:48.438%}
+.day-bar-fill.to-47{width:49.479%}
+.day-bar-fill.to-48{width:50.521%}
+.day-bar-fill.to-49{width:51.562%}
+.day-bar-fill.to-50{width:52.604%}
+.day-bar-fill.to-51{width:53.646%}
+.day-bar-fill.to-52{width:54.688%}
+.day-bar-fill.to-53{width:55.729%}
+.day-bar-fill.to-54{width:56.771%}
+.day-bar-fill.to-55{width:57.812%}
+.day-bar-fill.to-56{width:58.854%}
+.day-bar-fill.to-57{width:59.896%}
+.day-bar-fill.to-58{width:60.938%}
+.day-bar-fill.to-59{width:61.979%}
+.day-bar-fill.to-60{width:63.021%}
+.day-bar-fill.to-61{width:64.062%}
+.day-bar-fill.to-62{width:65.104%}
+.day-bar-fill.to-63{width:66.146%}
+.day-bar-fill.to-64{width:67.188%}
+.day-bar-fill.to-65{width:68.229%}
+.day-bar-fill.to-66{width:69.271%}
+.day-bar-fill.to-67{width:70.312%}
+.day-bar-fill.to-68{width:71.354%}
+.day-bar-fill.to-69{width:72.396%}
+.day-bar-fill.to-70{width:73.438%}
+.day-bar-fill.to-71{width:74.479%}
+.day-bar-fill.to-72{width:75.521%}
+.day-bar-fill.to-73{width:76.562%}
+.day-bar-fill.to-74{width:77.604%}
+.day-bar-fill.to-75{width:78.646%}
+.day-bar-fill.to-76{width:79.688%}
+.day-bar-fill.to-77{width:80.729%}
+.day-bar-fill.to-78{width:81.771%}
+.day-bar-fill.to-79{width:82.812%}
+.day-bar-fill.to-80{width:83.854%}
+.day-bar-fill.to-81{width:84.896%}
+.day-bar-fill.to-82{width:85.938%}
+.day-bar-fill.to-83{width:86.979%}
+.day-bar-fill.to-84{width:88.021%}
+.day-bar-fill.to-85{width:89.062%}
+.day-bar-fill.to-86{width:90.104%}
+.day-bar-fill.to-87{width:91.146%}
+.day-bar-fill.to-88{width:92.188%}
+.day-bar-fill.to-89{width:93.229%}
+.day-bar-fill.to-90{width:94.271%}
+.day-bar-fill.to-91{width:95.312%}
+.day-bar-fill.to-92{width:96.354%}
+.day-bar-fill.to-93{width:97.396%}
+.day-bar-fill.to-94{width:98.438%}
+.day-bar-fill.to-95{width:99.479%}
+/* 본문 폭을 묶고(왼쪽 붙임), 완료 표시는 초록, 사이드바는 메뉴 위주 */
+.main{max-width:80rem}
+.schedule-check.is-done{border-color:var(--select-icon);background:var(--select-icon);color:var(--on-primary)}
+.sidebar-members{display:none}
+.sidebar-settings{gap:2px}
+.sidebar-settings h2{display:none}
+.sidebar-settings{margin-top:-1rem}
