@@ -1,7 +1,7 @@
 <form method="post" action="{{ form_action }}" class="input-dialog-form" data-input-form {% if routine_form %}data-dialog-routine{% endif %} {% if pet_form %}data-pet-profile{% endif %} {% if preferences_form %}data-preferences-form{% endif %} {% if supply_form %}data-supply-editor{% endif %}>
 {% csrf_token %}<header class="input-dialog-heading"><p class="eyebrow">{{ room.name }}{% if spec %} · {{ spec.name }}{% endif %}</p><h2 id="input-dialog-title" tabindex="-1">{{ title }}</h2>{% if preset %}<p class="meta">{{ preset.title }} · 이번 기록에 적용</p>{% endif %}</header>
 <div class="input-dialog-fields">{% if return_to %}<input type="hidden" name="return_to" value="{{ return_to }}">{% endif %}
-{% if routine_completion %}<div class="routine-input-intro field-wide"><strong>실제로 한 내용을 확인하고 완료해요</strong>{% if missing_labels %}<p>필요한 항목: {{ missing_labels|join:' · ' }}</p>{% endif %}<p>저장하기 전에는 일정이 완료되지 않아요. 모르는 측정값은 비워 두세요.</p></div>{% endif %}
+{% if routine_completion %}<div class="routine-input-intro field-wide"><strong>실제로 한 내용을 확인하고 완료해요</strong>{% if missing_labels %}<p>필요한 항목: {{ missing_labels|join:' · ' }}</p>{% endif %}<p>모르는 값은 비워 두세요.</p></div>{% endif %}
 {% if form.non_field_errors %}<div class="form-errors" role="alert" tabindex="-1">{{ form.non_field_errors }}</div>{% endif %}
 {% for field in form.hidden_fields %}{{ field }}{% for error in field.errors %}<p class="field-error" role="alert">{{ error }}</p>{% endfor %}{% endfor %}
 {% if pet_form %}{{ form.breed_catalog|json_script:'pet-breeds-data' }}{% endif %}
