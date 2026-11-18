@@ -128,7 +128,7 @@ body.sidebar-closed{--sticky-top:calc(var(--topbar-h) + 20px)}
 .topbar-role{margin-left:auto}
 .sidebar-restore{height:32px;padding:0 10px}
 
-.main{grid-column:2;grid-row:3;width:100%;max-width:1240px;justify-self:center;padding:44px 48px 96px}
+.main{grid-column:2;grid-row:3;width:100%;max-width:1720px;justify-self:start;padding:44px 48px 96px}
 .messages{display:grid;gap:8px;margin-bottom:24px}
 .message{padding:12px 16px;border-radius:var(--r-control);background:var(--fill);color:var(--ink);font-size:14px;font-weight:550}
 .message.error{background:var(--danger-soft);color:var(--danger)}
@@ -152,7 +152,7 @@ body.sidebar-closed{--sticky-top:calc(var(--topbar-h) + 20px)}
 .empty-state .button{margin-top:8px}
 
 /* ── 오늘: 본문 + 일정 칸 ───────────────────────────── */
-.care-workspace{display:grid;grid-template-columns:minmax(0,1fr) 312px;gap:40px;align-items:start}
+.care-workspace{display:grid;grid-template-columns:minmax(0,1fr) clamp(300px,22vw,360px);gap:40px;align-items:start}
 .workspace-primary{min-width:0}
 .workspace-primary>.section:first-child{margin-top:0}
 
@@ -166,6 +166,11 @@ body.sidebar-closed{--sticky-top:calc(var(--topbar-h) + 20px)}
 /* 빠른 기록 카드: 이름 · 오늘 상태 · 기본 설정 · 버튼 네 줄 */
 .quick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(236px,1fr));gap:16px}
 .quick-grid>.empty-state{grid-column:1/-1}
+/* 넓은 본문에서 카드가 3·5·6·9개면 3열로 맞춰 마지막 줄이 비지 않게 한다 */
+.workspace-primary{container-type:inline-size}
+@container (min-width:980px){
+  .quick-grid:has(>:nth-child(3):last-child),.quick-grid:has(>:nth-child(5):last-child),.quick-grid:has(>:nth-child(6):last-child),.quick-grid:has(>:nth-child(9):last-child){grid-template-columns:repeat(3,minmax(0,1fr))}
+}
 .quick-card{position:relative;display:flex;flex-direction:column;gap:4px;padding:18px 18px 16px;border:1px solid var(--line);border-radius:var(--r-panel);background:var(--surface);transition:border-color .15s,box-shadow .15s}
 .quick-card:hover{border-color:var(--line-strong)}
 .quick-card>.tile-value{position:absolute;top:18px;right:18px;height:32px}
