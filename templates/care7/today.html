@@ -1,15 +1,9 @@
 {% extends 'care/base.html' %}{% load static care_tags %}{% block stylesheets %}<link rel="stylesheet" href="{% static 'care/petnote.css' %}">{% endblock %}{% block content %}
-<section class="pet-hero" aria-label="{{ room.name }} 오늘 요약">
-<div class="pet-id"><span class="pet-avatar" data-species="{{ room.species }}" aria-hidden="true">{{ room.name|slice:':1' }}</span><div><p class="eyebrow">{{ day|date:'n월 j일 l' }}</p><h1>{{ room.name }}의 오늘</h1><p class="pet-meta">{{ room.get_species_display }} · {{ member.role_label }}</p></div></div>
-<dl class="pet-stats"><div><dt>오늘 기록</dt><dd data-today-count>{{ today_count }}<small>건</small></dd></div><div><dt>오늘 할 일</dt><dd>{{ schedule_done }}<small>/{{ schedule_total }}</small></dd></div><div><dt>다가오는 알림</dt><dd>{{ notices|length }}<small>개</small></dd></div></dl>
-<a class="button secondary pet-hero-link" href="{% url 'modules' room.id %}">모든 기능</a>
-</section>
-<div class="care-workspace">
-<div class="workspace-primary">
-<section class="section quick-section"><div class="section-heading"><h2>바로 기록</h2>{% if member.can_manage %}<a class="quiet-link" href="{% url 'module_settings' room.id %}">편집</a>{% endif %}</div><div class="quick-grid flow-quick-grid">{% for card in cards %}<article class="quick-card" data-module="{{ card.spec.key }}" data-category="{{ card.spec.key|module_category }}"><div class="quick-card-title"><span class="module-symbol">{% icon card.spec.icon %}</span><a href="{% url 'module' room.id card.spec.key %}"><h3>{{ card.spec.name }}</h3></a></div><div class="tile-value{% if card.tile.empty %} is-empty{% endif %}"><strong>{{ card.tile.display.value }}</strong><span>{{ card.tile.display.unit }}</span></div>{% if card.tile.caption == '오늘 완료한 기록이 없어요' %}<p class="tile-caption is-quiet">오늘 기록 없음</p>{% else %}<p class="tile-caption">{{ card.tile.caption }}</p>{% endif %}{% include 'care/_tile_secondary.html' with tile=card.tile %}{% include 'care7/_action.html' with compact_actions=True %}</article>{% empty %}<div class="empty-state"><h3>오늘 화면에 띄울 기능이 없어요</h3><a class="button secondary" href="{% url 'modules' room.id %}">기능 고르기</a></div>{% endfor %}</div></section>
+<div class="page-heading"><div><p class="eyebrow">{{ day|date:'n월 j일 l' }}</p><h1>{{ room.name }}의 오늘</h1></div><a class="button secondary" href="{% url 'modules' room.id %}">모든 기능</a></div>
+<div class="care-workspace"><div class="workspace-primary">
+<section class="section"><div class="section-heading"><h2>빠른 기록 <small data-today-count>오늘 {{ today_count }}건</small></h2>{% if member.can_manage %}<a class="quiet-link" href="{% url 'module_settings' room.id %}">편집</a>{% endif %}</div><div class="quick-grid flow-quick-grid">{% for card in cards %}<article class="quick-card" data-module="{{ card.spec.key }}" data-category="{{ card.spec.key|module_category }}"><div class="quick-card-title"><span class="module-symbol">{% icon card.spec.icon %}</span><a href="{% url 'module' room.id card.spec.key %}"><h3>{{ card.spec.name }}</h3></a></div><div class="tile-value{% if card.tile.empty %} is-empty{% endif %}"><strong>{{ card.tile.display.value }}</strong><span>{{ card.tile.display.unit }}</span></div>{% if card.tile.caption == '오늘 완료한 기록이 없어요' %}<p class="tile-caption is-quiet">오늘 기록 없음</p>{% else %}<p class="tile-caption">{{ card.tile.caption }}</p>{% endif %}{% include 'care/_tile_secondary.html' with tile=card.tile %}{% include 'care7/_action.html' with compact_actions=True %}</article>{% empty %}<div class="empty-state"><h3>오늘 화면에 띄울 기능이 없어요</h3><a class="button secondary" href="{% url 'modules' room.id %}">기능 고르기</a></div>{% endfor %}</div></section>
 {% include 'care7/_ongoing.html' %}
-</div>
-{% include 'care8/_schedule_panel.html' %}
-<section class="section today-log"><div class="section-heading"><h2>최근 기록</h2><a class="quiet-link" href="{% url 'records' room.id %}">전체 기록</a></div>{% include 'care/_record_list.html' with records=recent %}</section>
-</div>
+
+<section class="section"><div class="section-heading"><h2>최근 기록</h2><a class="quiet-link" href="{% url 'records' room.id %}">전체 기록</a></div>{% include 'care/_record_list.html' with records=recent %}</section>
+</div>{% include 'care8/_schedule_panel.html' %}</div>
 {% endblock %}
