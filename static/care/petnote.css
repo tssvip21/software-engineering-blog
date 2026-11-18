@@ -1186,3 +1186,19 @@ body.public-shell{background:var(--page)}
 .sidebar-settings{gap:2px}
 .sidebar-settings h2{display:none}
 .sidebar-settings{margin-top:-1rem}
+/* 넓은 화면: 시간 막대는 전체 폭, 그 아래 왼쪽은 빠른 기록과 최근 기록, 오른쪽 열은 오늘 할 일 */
+@media (min-width:1600px){
+  .main:has(.today-board){max-width:150rem}
+  .care-workspace.today-board{display:grid;grid-template-columns:minmax(0,1fr) minmax(20rem,25rem);grid-template-rows:auto auto 1fr;gap:0 3.5rem;align-items:start}
+  .today-board>.workspace-primary,.today-board .today-columns{display:contents}
+  .today-board .workspace-primary>.today-section:first-child{grid-column:1;grid-row:1}
+  .today-board .workspace-primary>.section{grid-column:1;grid-row:2}
+  .today-board .today-log{grid-column:1;grid-row:3;margin-top:2.75rem}
+  .today-board .today-todo{grid-column:2;grid-row:1/4;margin-top:0}
+  .today-board .quick-grid:has(>:nth-child(3):last-child),.today-board .quick-grid:has(>:nth-child(5):last-child),.today-board .quick-grid:has(>:nth-child(6):last-child),.today-board .quick-grid:has(>:nth-child(9):last-child){grid-template-columns:repeat(3,minmax(0,1fr))}
+  .today-board .quick-grid:has(>:nth-child(4):last-child),.today-board .quick-grid:has(>:nth-child(8):last-child){grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media (min-width:2200px){
+  .today-board .quick-grid:has(>:nth-child(6):last-child){grid-template-columns:repeat(6,minmax(0,1fr))}
+  .today-board .quick-grid:has(>:nth-child(5):last-child){grid-template-columns:repeat(5,minmax(0,1fr))}
+}
