@@ -1182,10 +1182,6 @@ body.public-shell{background:var(--page)}
 /* 본문 폭을 묶고(왼쪽 붙임), 완료 표시는 초록, 사이드바는 메뉴 위주 */
 .main{max-width:80rem;justify-self:center}
 .schedule-check.is-done{border-color:var(--select-icon);background:var(--select-icon);color:var(--on-primary)}
-.sidebar-members{display:none}
-.sidebar-settings{gap:2px}
-.sidebar-settings h2{display:none}
-.sidebar-settings{margin-top:-1rem}
 /* 오늘 할 일: 개편 전처럼 오른쪽 패널, 모양은 다른 구역과 같은 굵은 선 머리 */
 .care-workspace.today-board{display:grid;grid-template-columns:minmax(0,1fr) clamp(19rem,24%,28rem);column-gap:3rem}
 .today-log{container-type:inline-size}
