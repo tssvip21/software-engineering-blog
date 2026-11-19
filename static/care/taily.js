@@ -39,7 +39,7 @@
   let resizeSession = null;
   function setSidebarWidth(value, persist = false) {
     sidebarWidth = Math.max(200, Math.min(360, value));
-    document.documentElement.style.setProperty('--sidebar-w', `${sidebarWidth}px`);
+    document.documentElement.style.setProperty('--sidebar-w', `${sidebarWidth / 16}rem`);
     separator?.setAttribute('aria-valuenow', String(sidebarWidth));
     separator?.setAttribute('aria-valuetext', `${sidebarWidth}픽셀`);
     if (persist) storage.set('taily.sidebar.width', sidebarWidth);
@@ -82,7 +82,7 @@
     separator.setPointerCapture(event.pointerId);
     document.body.classList.add('is-resizing');
   });
-  separator?.addEventListener('pointermove', event => { if (resizeSession === event.pointerId) setSidebarWidth(Math.round(event.clientX)); });
+  separator?.addEventListener('pointermove', event => { if (resizeSession === event.pointerId) setSidebarWidth(Math.round(event.clientX * 16 / parseFloat(getComputedStyle(document.documentElement).fontSize))); });
   const endResize = () => { if (resizeSession !== null) setSidebarWidth(sidebarWidth, true); resizeSession = null; document.body.classList.remove('is-resizing'); };
   separator?.addEventListener('pointerup', endResize);
   separator?.addEventListener('pointercancel', endResize);
