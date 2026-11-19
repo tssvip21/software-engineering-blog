@@ -1194,3 +1194,17 @@ body.public-shell{background:var(--page)}
 .today-board .workspace-schedule>summary{padding:1rem 0}
 .today-board .schedule-label strong{font-size:1.1875rem;font-weight:800;letter-spacing:-.035em}
 .today-board .schedule-panel-content{padding:0 0 1rem}
+/* 좁은 화면(패널이 옆에 못 붙는 폭): 빠른 기록, 오늘 일정(펼침), 최근 기록 순서 */
+@media (max-width:1279px){
+  .today-board>.workspace-primary{display:contents}
+  .today-board .schedule-rail{order:2;margin:2.75rem 0 0}
+  .today-board .today-log{order:3}
+}
+@media (min-width:641px) and (max-width:1279px){
+  .today-board .quick-grid:has(>:nth-child(3):last-child),.today-board .quick-grid:has(>:nth-child(5):last-child),.today-board .quick-grid:has(>:nth-child(6):last-child),.today-board .quick-grid:has(>:nth-child(9):last-child){grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+/* 최근 기록은 두 단으로 흘려 한 줄이 길게 늘어나지 않게 한다 */
+.today-log .history-list{column-count:2;column-gap:3rem}
+.today-log .history-entry{break-inside:avoid}
+.today-log .history-date{column-span:all}
+@media (max-width:640px){.today-log .history-list{column-count:1}}

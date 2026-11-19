@@ -43,12 +43,12 @@
     const header=document.querySelector('.workspace-topbar');if(header)scheduleObserver.observe(header);
     fitSchedule();
     const remembered=choices.get(location.pathname+':'+wide.matches);
-    node.open=remembered===undefined ? wide.matches : remembered;
+    node.open=remembered===undefined ? (wide.matches || !!node.closest('.today-board')) : remembered;
     node.addEventListener('toggle',()=>{choices.set(location.pathname+':'+wide.matches,node.open);fitSchedule();});
   }
   wide.addEventListener('change',()=>{
     const node=document.querySelector('[data-schedule-panel]');if(!node)return;
-    node.open=choices.get(location.pathname+':'+wide.matches) ?? wide.matches;
+    node.open=choices.get(location.pathname+':'+wide.matches) ?? (wide.matches || !!node.closest('.today-board'));
     fitSchedule();
   });
   function petForm(form) {
