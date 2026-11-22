@@ -200,4 +200,4 @@ def day_marks(records, pending, completed, day):
             if s is not None:
                 marks.append({"slot": s, "kind": kind, "label": f"{timezone.localtime(at):%H:%M} {row.get('name', '') if isinstance(row, dict) else ''}"})
     now_slot = slot(now) if now.date() == day else None
-    return {"marks": marks, "now": now_slot, "now_text": f"{now:%H:%M}"}
+    return {"marks": marks, "now": now_slot, "now_text": f"{now:%H:%M}", "now_sec": now.hour * 3600 + now.minute * 60 + now.second}
