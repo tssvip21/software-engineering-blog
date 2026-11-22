@@ -5,30 +5,30 @@
 @font-face{font-family:"Pretendard";src:url("fonts/PretendardVariable.woff2") format("woff2");font-weight:100 900;font-style:normal;font-display:swap}
 @font-face{font-family:"Manrope";src:url("fonts/ManropeLatin.woff2") format("woff2");font-weight:400 800;font-style:normal;font-display:swap}
 
-/* 색: 따뜻한 미색 바탕, 갈색이 도는 먹색 글자, 로고 초록(#22624F)을 버튼과 선택 표시에 쓴다. 로고 노랑은 글자 선택 바탕에만. */
+/* 색: 흰 바탕과 회색 칸, 푸른 기가 도는 먹색 글자. 강조색은 코랄 하나만 버튼과 선택 표시에 쓰고, 분류 아이콘은 무채색으로 맞춘다. */
 :root{
-  --page:#FAF8F4; --side:#FFFFFF; --surface:#FFFFFF; --fill:#F1EEE8; --fill-2:#F8F6F2;
-  --line:#E8E3DA; --line-soft:#F0ECE5; --line-strong:#D4CEC3;
-  --ink:#1F1D1A; --ink-2:#55504A; --ink-3:#8A847B; --ink-4:#B8B2A8;
-  --primary:#22624F; --primary-hover:#1A4E3F; --on-primary:#FFFFFF;
-  --select:#E3F0E9; --select-ink:#1A4E3F; --select-icon:#22624F;
-  --quick-bg:#E3F0E9; --quick-fg:#1A4E3F; --quick-hover:#D3E7DC;
-  --highlight:#FFF1B8;
-  --banner-bg:#22624F; --banner-ink:#CFE3D9; --banner-strong:#FFFFFF; --banner-line:#22624F;
-  --nutrition:#D2692E; --nutrition-soft:#FBEEE4;
-  --activity:#3F6FC6; --activity-soft:#EAF0FB;
-  --wellbeing:#8459C4; --wellbeing-soft:#F1ECFA;
-  --living:#1C8A73; --living-soft:#E2F2EC;
-  --danger:#C23A45; --danger-soft:#FCECEC; --warn:#94600A; --warn-soft:#FFF3DA;
-  --toast:#1F1D1A; --toast-link:#9FDCC0; --toast-muted:#CFC9BF;
-  --scrim:rgba(24,20,15,.42); --ring:rgba(34,98,79,.22);
+  --page:#FFFFFF; --side:#F9FAFB; --surface:#FFFFFF; --fill:#F2F4F6; --fill-2:#F9FAFB;
+  --line:#E5E8EB; --line-soft:#EEF0F2; --line-strong:#D1D6DB;
+  --ink:#191F28; --ink-2:#4E5968; --ink-3:#8B95A1; --ink-4:#B0B8C1;
+  --primary:#FF6B3D; --primary-hover:#F2552A; --on-primary:#FFFFFF;
+  --select:#FFEDE5; --select-ink:#C2431A; --select-icon:#FF6B3D;
+  --quick-bg:#FFEDE5; --quick-fg:#C2431A; --quick-hover:#FFE0D3;
+  --highlight:#FFEDE5;
+  --banner-bg:#F2F4F6; --banner-ink:#6B7684; --banner-strong:#191F28; --banner-line:#E5E8EB;
+  --nutrition:#6B7684; --nutrition-soft:#F2F4F6;
+  --activity:#6B7684; --activity-soft:#F2F4F6;
+  --wellbeing:#6B7684; --wellbeing-soft:#F2F4F6;
+  --living:#6B7684; --living-soft:#F2F4F6;
+  --danger:#E0384B; --danger-soft:#FDECEE; --warn:#9A5B00; --warn-soft:#FFF3DA;
+  --toast:#191F28; --toast-link:#FFB59C; --toast-muted:#B0B8C1;
+  --scrim:rgba(25,31,40,.42); --ring:rgba(255,107,61,.22);
   --page-glass:rgba(255,255,255,.88);
   --logo-plate:transparent;
   --sans:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
   --num:"Manrope","Pretendard",system-ui,sans-serif;
   --r-control:0.5625rem; --r-panel:0.875rem; --r-dialog:1.125rem;
   --topbar-h:3.5rem; --sidebar-w:248px; --sticky-top:1.75rem;
-  --shadow-pop:0 1.5rem 3.75rem -24px rgba(24,20,15,.32),0 0 0 1px rgba(24,20,15,.06);
+  --shadow-pop:0 1.5rem 3.75rem -24px rgba(25,31,40,.32),0 0 0 1px rgba(25,31,40,.06);
   color-scheme:light;
 }
 /* ── 기본 ─────────────────────────────────────────── */
@@ -90,7 +90,7 @@ body.app-shell.sidebar-closed{background:var(--page)}
 .brand small{display:none}
 .room-switch{display:grid;gap:0.5rem}
 .room-switch label,.sidebar-settings h2,.sidebar-members .section-heading strong{padding:0 0.625rem;font-size:0.75rem;font-weight:600;color:var(--ink-3);letter-spacing:0}
-.room-switch select{appearance:none;width:100%;height:2.625rem;padding:0 2.25rem 0 0.75rem;border:1px solid var(--line);border-radius:var(--r-control);background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A847B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E") no-repeat right 0.6875rem center/1rem;font-size:0.875rem;font-weight:650;color:var(--ink);cursor:pointer}
+.room-switch select{appearance:none;width:100%;height:2.625rem;padding:0 2.25rem 0 0.75rem;border:1px solid var(--line);border-radius:var(--r-control);background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238B95A1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E") no-repeat right 0.6875rem center/1rem;font-size:0.875rem;font-weight:650;color:var(--ink);cursor:pointer}
 .room-switch select:hover{border-color:var(--line-strong)}
 .room-switch-spacer{display:none}
 .nav-list{display:grid;gap:2px}
@@ -334,7 +334,7 @@ fieldset>legend{margin-bottom:0.5rem}
 .required-text{margin-left:0.375rem;font-size:0.6875rem;font-weight:700;color:var(--ink-3)}
 input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=range]),select,textarea{width:100%;min-height:2.625rem;padding:0.5625rem 0.75rem;border:1px solid var(--line-strong);border-radius:var(--r-control);background:var(--surface);font-size:0.9375rem;line-height:1.4;transition:border-color .12s,box-shadow .12s}
 textarea{min-height:5.75rem;resize:vertical}
-select{appearance:none;padding-right:2.25rem;background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A847B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E") no-repeat right 0.6875rem center/1rem}
+select{appearance:none;padding-right:2.25rem;background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238B95A1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E") no-repeat right 0.6875rem center/1rem}
 input:hover,select:hover,textarea:hover{border-color:var(--ink-4)}
 input:focus,select:focus,textarea:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 0.1875rem var(--ring)}
 input[type=checkbox],input[type=radio]{width:1.125rem;height:1.125rem;margin:0;accent-color:var(--primary);flex:none}
@@ -470,7 +470,7 @@ body.public-shell{background:var(--page)}
 .landing-description{font-size:1.0625rem;color:var(--ink-2)}
 .landing-actions{display:flex;flex-wrap:wrap;gap:0.625rem}
 .landing-actions form{margin:0}
-.service-preview{border:1px solid var(--line);border-radius:1.375rem;background:var(--surface);box-shadow:0 1.875rem 3.75rem -40px rgba(24,20,15,.35);overflow:hidden}
+.service-preview{border:1px solid var(--line);border-radius:1.375rem;background:var(--surface);box-shadow:0 1.875rem 3.75rem -40px rgba(25,31,40,.35);overflow:hidden}
 .service-preview>header{display:flex;align-items:center;justify-content:space-between;padding:0.875rem 1.25rem;border-bottom:1px solid var(--line-soft)}
 .service-preview .brand{font-size:0.9375rem}
 .sample-label{font-size:0.7188rem;color:var(--ink-3)}
@@ -877,7 +877,7 @@ body.public-shell{background:var(--page)}
 }
 
 /* ── 오늘: B 구성 (흰 바탕 · 굵은 선 구역 · 회색 타일 · 한 줄 기록) ── */
-:root{--page:#FFFFFF;--side:#F8F6F1;--tile:#F6F3EE;--tile-hover:#EFEBE3;--strip-todo:#F3D9C7}
+:root{--page:#FFFFFF;--side:#F9FAFB;--tile:#F2F4F6;--tile-hover:#EAEDF0;--strip-todo:#F3D9C7}
 .nav-list a[aria-current="page"]{position:relative;background:transparent;color:var(--ink);font-weight:800}
 .nav-list a[aria-current="page"]::before{content:"";position:absolute;left:0;top:0.5625rem;bottom:0.5625rem;width:0.1875rem;border-radius:2px;background:var(--select-icon)}
 .nav-list a:hover{background:transparent}
@@ -919,7 +919,7 @@ body.public-shell{background:var(--page)}
 .today-board .flow-primary7 .button.primary{flex:1;height:2.375rem;padding:0 0.75rem;border-radius:0.625rem;background:var(--surface);color:var(--ink);font-weight:700}
 .today-board .flow-primary7 .button.primary:hover{background:var(--surface);box-shadow:inset 0 0 0 1px var(--line-strong)}
 .today-board .flow-primary7 .button.primary .icon{width:0.9375rem;height:0.9375rem}
-.today-board .flow-primary7 .quiet-link{flex:none;width:2.375rem;height:2.375rem;border-radius:0.625rem;font-size:0;color:transparent;background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2355504A' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.6 5.4l4 4L9 19H5v-4ZM12.6 7.4l4 4'/%3E%3C/svg%3E") center/1rem no-repeat}
+.today-board .flow-primary7 .quiet-link{flex:none;width:2.375rem;height:2.375rem;border-radius:0.625rem;font-size:0;color:transparent;background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234E5968' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.6 5.4l4 4L9 19H5v-4ZM12.6 7.4l4 4'/%3E%3C/svg%3E") center/1rem no-repeat}
 .today-board .flow-primary7 .quiet-link:hover{box-shadow:inset 0 0 0 1px var(--line-strong)}
 .today-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:3rem;margin-top:2.75rem}
 .today-columns>.today-section{margin-top:0}
@@ -972,7 +972,7 @@ body.public-shell{background:var(--page)}
 
 /* 오늘 막대: 이어진 막대 위에 실제 시각 위치로 점을 찍는다(15분 단위 72칸) */
 .day-bar{position:relative;height:.875rem;border-radius:99px;background:var(--fill)}
-.day-bar-fill{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:var(--select)}
+.day-bar-fill{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:var(--line)}
 .day-mark{position:absolute;top:-.1875rem;width:1.25rem;height:1.25rem;margin-left:-.625rem;border-radius:50%;box-sizing:border-box;border:2px solid var(--surface)}
 .day-mark.is-record{background:var(--nutrition)}
 .day-mark.is-done{background:var(--select-icon)}
