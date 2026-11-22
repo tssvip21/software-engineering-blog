@@ -489,14 +489,19 @@ body.public-shell{background:var(--page)}
 @keyframes landing-rise{from{opacity:0;transform:translateY(.5rem)}}
 @keyframes landing-open{from{grid-template-rows:0fr;opacity:0}to{grid-template-rows:1fr;opacity:1}}
 @keyframes landing-flash{from{background:var(--select)}to{background:transparent}}
+@keyframes landing-close{from{grid-template-rows:1fr;opacity:1}to{grid-template-rows:0fr;opacity:0}}
 .landing-copy>*{animation:landing-rise .5s ease-out both}
 .landing-copy>:nth-child(2){animation-delay:.06s}.landing-copy>:nth-child(3){animation-delay:.12s}.landing-copy>:nth-child(4){animation-delay:.18s}.landing-copy>:nth-child(5){animation-delay:.24s}
 .landing-stage{animation:landing-rise .6s ease-out .1s both}
-.landing-feed>li:not(.is-new){animation:landing-rise .45s ease-out both}
-.landing-feed>li:nth-child(2){animation-delay:.35s}.landing-feed>li:nth-child(3){animation-delay:.45s}.landing-feed>li:nth-child(4){animation-delay:.55s}
-.landing-feed>li.is-new{animation:landing-open .5s cubic-bezier(.2,.8,.2,1) 1.3s both}
-.landing-feed>li.is-new>div{animation:landing-flash 1.6s ease-out 1.5s both}
-.landing-alert{animation:landing-rise .45s ease-out 2.1s both}
+.landing-feed:not(.is-live)>li{animation:landing-rise .45s ease-out both}
+.landing-feed:not(.is-live)>li:nth-child(1){animation-delay:.3s}.landing-feed:not(.is-live)>li:nth-child(2){animation-delay:.4s}.landing-feed:not(.is-live)>li:nth-child(3){animation-delay:.5s}.landing-feed:not(.is-live)>li:nth-child(4){animation-delay:.6s}
+.landing-alert{animation:landing-rise .45s ease-out .8s both}
+/* landing.js가 몇 초마다 새 기록을 맨 위에 넣고 맨 아래 기록을 뺀다. */
+.landing-feed>li.is-entering{animation:landing-open .5s cubic-bezier(.2,.8,.2,1) both}
+.landing-feed>li.is-entering>div{animation:landing-flash 1.8s ease-out .2s both}
+.landing-feed>li.is-leaving{animation:landing-close .4s ease-in both}
+.landing-feed{transition:opacity .4s}.landing-feed.is-resetting{opacity:0}
+.landing-alert.is-changing{animation:landing-rise .45s ease-out both}
 .landing-benefits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0.875rem}
 .landing-benefits article{display:grid;gap:0.375rem;padding:1.375rem;border-radius:var(--r-panel);background:var(--surface);border:1px solid var(--line)}
 .landing-benefits span{display:none}
