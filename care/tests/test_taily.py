@@ -367,7 +367,7 @@ class InformationTests(TailyCase):
         self.assertContains(response,"sidebar-members")
         self.assertContains(response,"방장")
         self.assertContains(response,"관리자")
-        self.assertContains(response,"테일리")
+        self.assertContains(response,"펫노트")
 
     def test_removed_member_cannot_use_new_apis(self):
         client=self.client_for(self.guest)
