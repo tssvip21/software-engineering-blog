@@ -479,11 +479,12 @@ class StatsFilterForm(forms.Form):
     end = forms.DateField(label="종료일", widget=DateInput())
     def clean(self):
         data = super().clean()
-        if data.get("start") and data.get("end"):
-            if data["end"] < data["start"]:
+        start, end = data.get("start"), data.get("end")
+        if start and end:
+            if end < start:
                 self.add_error("end", "종료일을 시작일과 같거나 뒤의 날짜로 선택해 주세요.")
-            if (data["end"] - data["start"]).days > 365:
+            elif (end - start).days > 365:
                 self.add_error("end", "한 번에 최대 366일을 조회할 수 있어요.")
-            if data["end"] > timezone.localdate():
+            if end > timezone.localdate():
                 self.add_error("end", "통계 종료일은 오늘까지 선택할 수 있어요.")
         return data

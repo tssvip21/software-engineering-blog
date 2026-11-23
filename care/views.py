@@ -1,6 +1,6 @@
 from .organization import browse_context
 from .navigation import record_return, with_return
-from datetime import date, timedelta
+from datetime import date
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 import json
@@ -8,22 +8,18 @@ import uuid
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.core.paginator import Paginator
 from django.db import connection, OperationalError
-from django.db.models import Q
-from django.http import Http404, JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
-from . import services, cadences, ui_forms
-from .dashboard import today_tiles, statistics_periods
-from .presentation import integrated_context, GROUPS
+from . import services, ui_forms
 from .interactions import config_state
-from .forms import RoomForm, ProductForm, RecordForm, InvitationForm, JoinForm, CancelForm, RoutineForm, StatsFilterForm
-from .models import Activity, Product, Routine, RoutineItem, RoutineRun, Membership
-from .modules import MODULES, MODULE_LIST, MODULE_CHOICES, payload_display, record_summary
-from .stats import bounds, get_statistics, overview, routine_schedule
+from .forms import RecordForm, InvitationForm, JoinForm, CancelForm, RoutineForm
+from .models import Activity, Routine, RoutineItem, RoutineRun, Membership
+from .modules import MODULES, payload_display, record_summary
+from .stats import bounds
 
 
 def error(request, title, detail, status=400):
@@ -79,71 +75,6 @@ def room_new(request):
     elif request.method == "POST":
         status = 422
     return render(request, "care8/new_pet.html", {"form": form, "title": "반려동물 등록", "pet_form": True, "form_action":request.get_full_path(), "submit_label": "돌봄 공간 만들기", "back_url": reverse("home")}, status=status)
-
-
-@require_GET
-def today(request, room_id):
-    room, member = services.get_room(request, room_id)
-    day = services.local_date(room)
-    lower, upper = bounds(room, day, day)
-    allowed = services.visible_modules(member)
-    activities = list(Activity.objects.filter(room=room, module__in=allowed, voided=False).select_related("author", "performer").order_by("-occurred_at", "-created_at"))
-    recent = [record_card(a, member) for a in activities if a.occurred_at <= timezone.now()][:6]
-    ongoing = [record_card(a, member) for a in activities if a.status == "active"]
-    planned = sorted([record_card(a, member) for a in activities if a.status == "planned"], key=lambda a: a.occurred_at)[:8]
-    cards = []
-    for setting in room.module_settings.filter(enabled=True, pinned=True):
-        from .modules import SELECTABLE_MODULES
-        if setting.key not in allowed or setting.key not in SELECTABLE_MODULES:
-            continue
-        candidates = [a for a in activities if a.module == setting.key and a.status != "planned"]
-        completed_today = [a for a in candidates if a.status == "done" and lower <= a.occurred_at < upper]
-        cards.append({"spec": MODULES[setting.key], "count": len(completed_today), "latest": candidates[0] if candidates else None})
-    cards = today_tiles(member, cards, activities, day)
-    schedule = routine_schedule(member, day)
-    due = [row for row in cadences.schedule(member) if row["due"]]
-    total = sum(r["total"] for r in schedule)
-    done = sum(r["done"] for r in schedule)
-    return render(request, "care/today.html", {"title": room.name + "의 오늘", "day": day, "cards": cards, "due_cadences": due, "cards_more": [], "recent": recent, "ongoing": ongoing,
-                  "planned": planned, "schedule": schedule, "routine_total": total, "routine_done": done, "routine_progress": round(done / total * 100, 2) if total else 0, "active_tab": "today", "live_page": True,
-                  "today_count": sum(a.status == "done" and lower <= a.occurred_at < upper and a.occurred_at <= timezone.now() for a in activities)})
-
-
-@require_GET
-def module_page(request, room_id, module):
-    room, member = services.get_room(request, room_id)
-    services.require_module(member, module)
-    enabled = room.module_settings.get(key=module).enabled
-    records = Activity.objects.filter(room=room, module=module).select_related("author", "performer")
-    if request.GET.get("include_cancelled") != "1":
-        records = records.filter(voided=False)
-    page = Paginator(records, 20).get_page(request.GET.get("page"))
-    page.object_list = [record_card(a, member) for a in page.object_list]
-    today_date = services.local_date(room)
-    stats = get_statistics(room, module, today_date - timedelta(days=6), today_date)
-    from .modules import RETIRED_MODULES
-    from .comparisons import recent_statistics
-    comparison = recent_statistics(member) if module in ("weight", "walk") else {}
-    comparison["module_comparison_cards"] = [c for c in comparison.get("comparison_cards", []) if c["module"] == module]
-    return render(request, "care/module.html", {**comparison, "retired_module": module in RETIRED_MODULES, "title": MODULES[module].name, "spec": MODULES[module], "enabled": enabled, "page_obj": page,
-                  "stats": stats, "cadences": [row for row in cadences.schedule(member, include_paused=True) if row["cadence"].module == module], "activity_options": [(key, value[3]) for key, value in cadences.activity_options([module]).items()] if module not in RETIRED_MODULES else [], "active_tab": "modules", "include_cancelled": request.GET.get("include_cancelled") == "1", "live_page": True})
-
-
-@require_GET
-def modules(request, room_id):
-    room, member = services.get_room(request, room_id)
-    allowed = services.visible_modules(member)
-    groups = {}
-    enabled_modules = []
-    for setting in room.module_settings.all():
-        spec = MODULES[setting.key]
-        if spec.key not in allowed:
-            continue
-        row = {"spec": spec, "enabled": setting.enabled, "pinned": setting.pinned}
-        groups.setdefault(spec.group, []).append(row)
-        if setting.enabled:
-            enabled_modules.append(row)
-    return render(request, "care/modules.html", {"title": "돌봄 기능", "groups": groups.items(), "enabled_modules": enabled_modules, "active_tab": "modules", "hidden_count": len(MODULES) - len(allowed)})
 
 
 @require_http_methods(["GET", "POST"])
@@ -268,137 +199,6 @@ def record_cancel(request, room_id, activity_id):
                   "submit_label": "기록 취소", "danger": True, "back_url": reverse("record_detail", args=[room.pk, activity.pk]), "active_tab": "records"}, status=status)
 
 
-@require_GET
-def records(request, room_id):
-    room, member = services.get_room(request, room_id)
-    allowed = services.visible_modules(member)
-    qs = Activity.objects.filter(room=room, module__in=allowed).select_related("author", "performer")
-    selected_modules = request.GET.get("modules", "")
-    if selected_modules:
-        keys = selected_modules.split(",")
-        if len(keys) > len(MODULES) or any(k not in allowed for k in keys):
-            raise PermissionDenied()
-        qs = qs.filter(module__in=keys)
-    selected_module = request.GET.get("module", "")
-    selected_group = request.GET.get("group", "")
-    if selected_group in GROUPS:
-        qs = qs.filter(module__in=set(GROUPS[selected_group][1]) & set(allowed))
-    elif selected_group:
-        raise Http404()
-    selected_state = request.GET.get("state", "valid")
-    selected_author = request.GET.get("author", "")
-    problem = ""
-    if selected_module:
-        if selected_module not in allowed:
-            raise PermissionDenied()
-        qs = qs.filter(module=selected_module)
-    if selected_state == "cancelled":
-        qs = qs.filter(voided=True)
-    elif selected_state in ("done", "active", "planned"):
-        qs = qs.filter(voided=False, status=selected_state)
-    elif selected_state != "all":
-        qs = qs.filter(voided=False)
-    if selected_author:
-        try:
-            author = uuid.UUID(selected_author)
-            qs = qs.filter(author_id=author)
-        except ValueError:
-            problem = "기록자를 다시 선택해 주세요."
-            qs = qs.none()
-    begin, end = request.GET.get("start", ""), request.GET.get("end", "")
-    try:
-        if begin:
-            begin_day = date.fromisoformat(begin)
-            qs = qs.filter(occurred_at__gte=bounds(room, begin_day, begin_day)[0])
-        if end:
-            end_day = date.fromisoformat(end)
-            qs = qs.filter(occurred_at__lt=bounds(room, end_day, end_day)[1])
-        if begin and end and begin_day > end_day:
-            raise ValueError()
-    except ValueError:
-        problem = "시작일과 종료일을 확인해 주세요."
-        qs = qs.none()
-    query = request.GET.get("q", "").strip()[:100]
-    if query:
-        qs = qs.filter(Q(note__icontains=query) | Q(payload__icontains=query))
-    page = Paginator(qs, 25).get_page(request.GET.get("page"))
-    page.object_list = [record_card(a, member) for a in page.object_list]
-    params = request.GET.copy(); params.pop("page", None)
-    return render(request, "care/records.html", {"title": "전체 기록", "page_obj": page, "module_choices": [(k, MODULES[k].name) for k in allowed],
-                  "selected_modules": selected_modules, "selected_module": selected_module, "selected_group": selected_group, "group_label": GROUPS.get(selected_group, ("", ()))[0], "selected_state": selected_state, "selected_author": selected_author,
-                  "authors": room.members.order_by("display_name"), "start": begin, "end": end, "query": query, "query_params": params.urlencode(),
-                  "problem": problem, "active_tab": "records", "live_page": True})
-
-
-@require_GET
-def statistics(request, room_id, module):
-    room, member = services.get_room(request, room_id)
-    services.require_module(member, module)
-    today_date = services.local_date(room)
-    initial = {"start": today_date - timedelta(days=29), "end": today_date}
-    submitted = {"start": request.GET.get("start"), "end": request.GET.get("end")} if "start" in request.GET or "end" in request.GET else None
-    form = StatsFilterForm(submitted, initial=initial)
-    stats = None
-    if submitted is None:
-        stats = get_statistics(room, module, initial["start"], initial["end"])
-    elif form.is_valid():
-        stats = get_statistics(room, module, form.cleaned_data["start"], form.cleaned_data["end"])
-    chosen = form.cleaned_data if submitted is not None and form.is_valid() else initial if submitted is None else {}
-    periods = statistics_periods(room, module, chosen.get("start"), chosen.get("end"))
-    return render(request, "care/statistics.html", {"title": MODULES[module].name + " 통계", "spec": MODULES[module], "form": form, "stats": stats, "periods": periods, "active_tab": "overview"})
-
-
-@require_GET
-def overview_page(request, room_id):
-    room, member = services.get_room(request, room_id)
-    context = integrated_context(member)
-    context.update({"title": "최근 통계", "active_tab": "overview", "live_page": True})
-    return render(request, "care/overview.html", context)
-
-
-@require_GET
-def products(request, room_id):
-    room, member = services.get_room(request, room_id)
-    return render(request, "care/products.html", {"title": "사료·간식 정보", "products": room.products.order_by("-active", "name"), "active_tab": "settings"})
-
-
-@require_http_methods(["GET", "POST"])
-def product_edit(request, room_id, product_id=None):
-    room, member = services.get_room(request, room_id)
-    services.require_manager(member)
-    instance = get_object_or_404(Product, pk=product_id, room=room) if product_id else None
-    form = ProductForm(request.POST or None, instance=instance)
-    status = 200
-    if request.method == "POST" and form.is_valid():
-        try:
-            services.save_product(member, form, instance.pk if instance else None)
-            messages.success(request, "제품 정보를 저장했어요. 이전 기록에 쓰인 영양 정보는 그대로예요.")
-            return redirect("products", room_id=room.pk)
-        except ValidationError as exc:
-            add_form_error(form, exc)
-            status = 409 if isinstance(exc, services.Conflict) else 400
-    return render(request, "care/form.html", {"title": "제품 정보 수정" if instance else "제품 등록", "intro": "포장지에서 확인한 값과 단위를 적어 주세요. 모르는 값은 비워 두세요.",
-                  "form": form, "submit_label": "제품 저장", "back_url": reverse("products", args=[room.pk]), "active_tab": "settings"}, status=status)
-
-
-@require_http_methods(["GET", "POST"])
-def room_settings(request, room_id):
-    room, member = services.get_room(request, room_id)
-    if not member.can_manage:
-        return render(request, "care/room_info.html", {"title": "반려동물 정보", "active_tab": "settings"})
-    form = RoomForm(request.POST or None, instance=room, member=member)
-    status = 200
-    if request.method == "POST" and form.is_valid():
-        try:
-            services.update_room(member, form)
-            messages.success(request, "정보를 저장했어요. 사용 중인 돌봄 기능은 바뀌지 않았어요.")
-            return redirect("room_settings", room_id=room.pk)
-        except ValidationError as exc:
-            add_form_error(form, exc)
-            status = 409 if isinstance(exc, services.Conflict) else 400
-    return render(request, "care7/settings.html", {"title": "공간 설정", "form": form, "active_tab": "settings"}, status=status)
-
-
 def members_context(room, member, form=None, invite_url=None):
     return {"title": "구성원", "people": room.members.filter(active=True).order_by("joined_at"), "invitation_form": form or InvitationForm(),
             "invitations": list(room.invitations.order_by("-created_at")[:20]) if member.role == "owner" else [], "invite_url": invite_url, "active_tab": "members"}
@@ -514,21 +314,6 @@ def room_archive(request, room_id):
         return error(request, "이름을 확인해 주세요", " ".join(exc.messages), 400)
     messages.success(request, "공간을 보관했어요. 목록에서 숨기고 새 참여를 막았으며, 기존 기록은 보관했어요.")
     return redirect("home")
-
-
-@require_GET
-def routines(request, room_id):
-    room, member = services.get_room(request, room_id)
-    today_date = services.local_date(room)
-    try:
-        day = date.fromisoformat(request.GET.get("date", today_date.isoformat()))
-        if not today_date - timedelta(days=366) <= day <= today_date + timedelta(days=31):
-            raise ValueError()
-    except ValueError:
-        return error(request, "날짜를 확인해 주세요", "최근 1년부터 앞으로 31일까지 선택할 수 있어요.")
-    schedule = routine_schedule(member, day)
-    return render(request, "care/routines.html", {"title": "루틴", "schedule": schedule, "day": day, "today_date": today_date, "future_day": day > today_date,
-                  "routine_list": list(room.routines.all()) if member.can_manage else [], "active_tab": "routines", "live_page": True})
 
 
 @require_http_methods(["GET", "POST"])
