@@ -163,7 +163,7 @@ class DisplayIntegrationTests(CareCase):
         a=self.make('walk',minutes='1.234',distance='1.457')
         response=self.client.get(reverse('record_edit',args=[self.room.pk,a.pk]),HTTP_X_TAILY_DIALOG='1')
         self.assertContains(response,'1.234');self.assertContains(response,'1.457')
-        self.assertContains(self.client.get(reverse('today',args=[self.room.pk])),'readability.css')
+        self.assertContains(self.client.get(reverse('today',args=[self.room.pk])),'care/petnote.css')
 
 
 class RoutineRecoveryTests(CareCase):

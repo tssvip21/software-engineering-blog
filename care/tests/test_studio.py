@@ -82,7 +82,7 @@ class StudioBoardTests(CareCase):
 
     def test_new_surface_loads_local_fonts_and_shared_interaction_only(self):
         response = self.client.get(reverse("modules", args=[self.room.pk]))
-        self.assertContains(response, "care/studio.css")
+        self.assertContains(response, "care/petnote.css")
         self.assertContains(response, "care/studio.js")
         self.assertNotContains(response, "fonts.googleapis.com")
         self.assertNotContains(response, "care/phase5.css")

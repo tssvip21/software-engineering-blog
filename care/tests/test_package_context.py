@@ -38,7 +38,7 @@ class PackageContextTests(CareCase):
         self.make('meal',product=str(p.pk),quantity='55',unit='g')
         item=stock_view(self.owner)['items'][0]
         self.assertEqual(item['balance'],D(1945))
-        response=self.client.get(reverse('supplies8',args=[self.room.pk]))
+        response=self.client.get(reverse('supplies8',args=[self.room.pk]), {'tab': 'stock'})
         self.assertContains(response,'미개봉 포장 개수와는 달라요.')
         self.assertContains(response,'남은 내용물')
 

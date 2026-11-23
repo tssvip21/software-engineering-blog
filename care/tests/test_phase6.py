@@ -213,7 +213,7 @@ class StatisticsIntegrationTests(CareCase):
         self.assertEqual(result['latest_weight']['ids'],[str(today.pk)])
         self.assertEqual(result['comparison_end'],services.local_date(self.room)-timedelta(days=1))
         response=self.client.get(reverse('overview',args=[self.room.pk]))
-        for text in ['최근 통계','모듈별 측정값 비교','+0.4','+5%','평균','기록한']:
+        for text in ['최근 통계','측정값 비교','+0.4','+5%','평균','기록한']:
             self.assertContains(response,text)
         self.assertNotContains(response,'최근 변화')
 

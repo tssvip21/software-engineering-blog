@@ -22,7 +22,7 @@ class OverviewDisclosureTests(TailyCase):
         self.populate()
         context = context_for(self.owner)
         response = self.client.get(reverse("overview", args=[self.room.pk]))
-        self.assertContains(response, context["summary"]["title"])
+        self.assertContains(response, "<h1>최근 통계</h1>", html=True)
         self.assertContains(response, "오늘 평소와 다르다고")
         self.assertNotContains(response, "data-summary-primary")
         for term in ("중앙값", "MAD", "기울기", "계산 방법과 한계"):
@@ -30,7 +30,7 @@ class OverviewDisclosureTests(TailyCase):
         # The old pattern engine remains covered; the new screen uses typed module comparisons.
         for item in context["status_cards"]:
             self.assertEqual(self.client.get(item["url"]).status_code, 200)
-        self.assertContains(response, "모듈별 측정값 비교")
+        self.assertContains(response, "측정값 비교")
         self.assertContains(response, "함께 살펴볼 기록")
         for card in response.context["report"]["module_cards"]:
             self.assertContains(response, card["name"])
@@ -59,7 +59,7 @@ class OverviewDisclosureTests(TailyCase):
         self.assertEqual(context["summary_additional"], [])
         self.assertEqual(context["record_count"], 0)
         response = self.client.get(reverse("overview", args=[self.room.pk]))
-        self.assertContains(response, '아직은 최근과 이전을 비교하기 어려워요')
+        self.assertContains(response, '이 기간에는 비교할 기록이 없어요')
         self.assertNotContains(response, 'class="summary-more"')
 
     def test_summary_detail_links_keep_same_room_and_period(self):
