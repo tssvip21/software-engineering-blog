@@ -66,6 +66,22 @@ class Phase8Case(CareCase):
 
 
 class PetSettingsTests(Phase8Case):
+    def test_registration_retry_returns_original_room_and_rejects_changed_form(self):
+        url = reverse("room_new")
+        data = {"name": "첫 공간", "species": "cat", "request_token": str(uuid.uuid4())}
+        first = self.client.post(url, data)
+        self.assertEqual(first.status_code, 302)
+        self.assertEqual(self.client.post(url, data).url, first.url)
+        self.assertEqual(self.client.post(url, {**data, "name": "다른 이름"}).status_code, 409)
+        self.assertEqual(Room.objects.filter(owner=self.owner_user, name="첫 공간").count(), 1)
+        second = self.client.post(url, {**data, "request_token": str(uuid.uuid4())})
+        self.assertNotEqual(second.url, first.url)
+
+    def test_empty_registration_shows_errors_and_old_form_without_token_still_works(self):
+        url = reverse("room_new")
+        self.assertContains(self.client.post(url, {}), "field-error", status_code=422)
+        self.assertEqual(self.client.post(url, {"name": "보리", "species": "dog"}).status_code, 302)
+
     def test_animal_form_excludes_shared_and_item_settings(self):
         f=PetProfileForm(instance=self.room,member=self.owner)
         self.assertTrue({'name','species','breed_key','sex','birth_date','maturity','size'}<=set(f.fields))

@@ -6,6 +6,7 @@ import uuid
 from zoneinfo import ZoneInfo
 
 from django import forms
+from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
@@ -101,6 +102,30 @@ def fingerprint(form):
     values={k:list(v) for k,v in form.data.lists()} if hasattr(form.data,'lists') else dict(form.data)
     values.pop('csrfmiddlewaretoken',None)
     return hashlib.sha256(json.dumps(values,sort_keys=True,ensure_ascii=False,default=str).encode()).hexdigest()
+
+
+@transaction.atomic
+def register_pet(request, form):
+    """Serialize registrations for one account, including a retry after a lost response."""
+    user = get_user_model().objects.select_for_update().get(pk=request.user.pk)
+    token = form.cleaned_data.get("request_token")
+    if token:
+        digest = fingerprint(form)
+        previous = ActionReceipt.objects.select_related("room", "actor").filter(
+            actor__user=user, operation="room.create", token=token
+        ).first()
+        if previous:
+            if (previous.request_hash != digest or not previous.actor.active
+                    or previous.room.archived_at is not None):
+                raise services.Conflict("이 등록 요청은 이미 처리됐어요. 내 돌봄 공간을 확인해 주세요.")
+            return previous.room
+    if not services.rate_limit(request, "room-create", 10, 3600):
+        return None
+    room = services.create_room(user, form)
+    if token:
+        ActionReceipt.objects.create(room=room, actor=room.members.get(user=user),
+                                     token=token, request_hash=digest, operation="room.create")
+    return room
 
 
 @transaction.atomic

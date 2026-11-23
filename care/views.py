@@ -62,19 +62,23 @@ def room_new(request):
     if not request.user.is_authenticated:
         messages.info(request, "반려동물을 등록하려면 구글 계정으로 로그인해 주세요.")
         return redirect("home")
-    from .settings8 import PetProfileForm
-    form = PetProfileForm(request.POST or None)
+    from .settings8 import PetProfileForm, register_pet
+    form = PetProfileForm(request.POST if request.method == "POST" else None)
     form.fields["request_token"].required=False
+    status = 200
     if request.method == "POST" and form.is_valid():
         try:
-            if not services.rate_limit(request, "room-create", 10, 3600):
+            room = register_pet(request, form)
+            if room is None:
                 return error(request, "잠시 후 다시 시도해 주세요", "등록 요청이 여러 번 이어졌어요. 잠시 후 다시 시도해 주세요.", 429)
-            room = services.create_room(request.user, form)
             messages.success(request, "반려동물을 등록했어요. 오늘의 돌봄을 남겨 보세요.")
             return redirect("today", room_id=room.pk)
         except ValidationError as exc:
             add_form_error(form, exc)
-    return render(request, "care8/new_pet.html", {"form": form, "title": "반려동물 등록", "pet_form": True, "form_action":request.get_full_path(), "submit_label": "돌봄 공간 만들기", "back_url": reverse("home")})
+            status = 409 if isinstance(exc, services.Conflict) else 422
+    elif request.method == "POST":
+        status = 422
+    return render(request, "care8/new_pet.html", {"form": form, "title": "반려동물 등록", "pet_form": True, "form_action":request.get_full_path(), "submit_label": "돌봄 공간 만들기", "back_url": reverse("home")}, status=status)
 
 
 @require_GET
