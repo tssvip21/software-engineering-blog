@@ -1,4 +1,5 @@
 """Bounded visual/accessibility probes; not a user study or accessibility certification."""
+from demo_browser_session import select_fixture_role
 from pathlib import Path
 import json
 import os
@@ -46,7 +47,7 @@ def main():
             browser = pw.chromium.launch(headless=True)
             context = browser.new_context(viewport={"width":1440,"height":1000}, locale="ko-KR", reduced_motion="reduce")
             page = context.new_page();page.set_default_timeout(10000)
-            page.goto(BASE);page.get_by_role("button",name="방장으로 보기",exact=True).click()
+            page.goto(BASE);select_fixture_role(page, 'owner')
             scopes = [
                 ("", [".pulse-main h2", ".pulse-number", ".pulse-main p", ".pulse-kicker", ".pulse-schedule p", ".tile-caption", ".quick-card .button", ".tile-value strong", ".nav-list a[aria-current]", ".demo-banner"]),
                 ("modules/", [".cluster-heading h2", ".category-manage", ".module-tile-name strong", ".module-tile-name small", ".module-context", ".module-tile .button", ".category-pills button"]),

@@ -1,4 +1,5 @@
 """Phase9 UI/record checks on a disposable SQLite copy. No production or original-demo writes."""
+from demo_browser_session import select_fixture_role
 from contextlib import closing
 from datetime import datetime,timezone
 from pathlib import Path
@@ -87,7 +88,7 @@ def run_engine(pw,engine,fixture):
             if module!='inventory' and data.get('_stock',{}).get('item')==fixture['stock_name']:amount-=float(data['_stock'].get('quantity') or 0)
         return round(amount,6)
     try:
-        p.goto(BASE,wait_until='networkidle');p.get_by_role('button',name='방장으로 보기',exact=True).click()
+        p.goto(BASE,wait_until='networkidle');select_fixture_role(p, 'owner')
         RESULT.setdefault('browser_versions',{})[engine]=browser.version
         # Inspect representative held-out species and widths without changing their records.
         nav=json.loads((ROOT/'tmp/handoff/phase7/demo-navigation.json').read_text(encoding='utf8'))['showcase']
@@ -176,7 +177,7 @@ def run_engine(pw,engine,fixture):
         p.screenshot(path=str(OUT/(engine+'-large-text.png')))
         check('short-mobile-height-and-200-percent-text',engine)
         # Guest role may not read a private routine by its count, name, or direct form URL.
-        guest=browser.new_context(viewport={'width':375,'height':812},locale='ko-KR',timezone_id='Asia/Seoul');g=guest.new_page();g.goto(BASE);g.get_by_role('button',name='일반 참여자로 보기',exact=True).click();g.goto(BASE+root,wait_until='networkidle')
+        guest=browser.new_context(viewport={'width':375,'height':812},locale='ko-KR',timezone_id='Asia/Seoul');g=guest.new_page();g.goto(BASE);select_fixture_role(g, 'member');g.goto(BASE+root,wait_until='networkidle')
         assert '권한 제한 일정' not in g.locator('#main').inner_text()
         denied=guest.request.get(BASE+root+'routines/items/'+items['blocked']+'/complete/?date='+day);assert denied.status==403
         guest.close();check('private-routine-not-exposed-to-guest',engine)

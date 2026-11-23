@@ -1,4 +1,5 @@
 """Focused visual/accessibility checks, reusing only the isolated browser fixture."""
+from demo_browser_session import select_fixture_role
 from pathlib import Path
 from urllib.parse import urlparse
 import json,os,socket,subprocess,sys,time,traceback
@@ -24,7 +25,7 @@ def main():
         with sync_playwright() as pw:
             browser=pw.chromium.launch(headless=True);ctx=browser.new_context(viewport={'width':1440,'height':1000},locale='ko-KR')
             page=ctx.new_page();page.on('pageerror',lambda e:RESULT['errors'].append(str(e)))
-            page.goto(BASE);page.get_by_role('button',name='방장으로 보기',exact=True).click();page.wait_for_url(BASE+'/')
+            page.goto(BASE);select_fixture_role(page, 'owner');page.wait_for_url(BASE+'/')
             # A same-origin test stylesheet obeys the app CSP. No production policy changes.
             test_style=BASE+'/static/care/verification-spacing.css'
             stylesheet='html{font-size:200%!important} *{line-height:1.5!important;letter-spacing:.12em!important;word-spacing:.16em!important} p{margin-bottom:2em!important}'

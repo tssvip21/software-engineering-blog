@@ -1,4 +1,5 @@
 """End-to-end interaction checks on a separate local demo database only."""
+from demo_browser_session import select_fixture_role
 import json
 import os
 from pathlib import Path
@@ -64,7 +65,7 @@ def main():
             page.goto(BASE+'/',wait_until='networkidle')
             expect(page.locator('.demo-banner')).to_be_visible()
             page.screenshot(path=str(OUT/'landing-desktop.png'),full_page=True)
-            page.get_by_role('button',name='방장으로 보기',exact=True).click()
+            select_fixture_role(page, 'owner')
             page.wait_for_url(BASE+'/')
             expect(page.locator('h1')).to_contain_text('내 돌봄 공간')
             checkpoint('csrf-protected-demo-login')

@@ -1,4 +1,5 @@
 """Focused Firefox compatibility checks against a running, local-only review server."""
+from demo_browser_session import select_fixture_role
 from pathlib import Path
 import argparse,json,traceback
 from urllib.parse import urlparse
@@ -17,7 +18,7 @@ def main():
             ctx=browser.new_context(viewport={'width':1440,'height':1000},locale='ko-KR',reduced_motion='reduce')
             page=ctx.new_page();page.set_default_timeout(10000);page.on('pageerror',lambda e:report['errors'].append(str(e)))
             page.on('request',lambda r:report['requests'].append({'method':r.method,'host':urlparse(r.url).hostname,'path':urlparse(r.url).path}) if r.method!='GET' else None)
-            page.goto(base);page.get_by_role('button',name='방장으로 보기',exact=True).click();page.wait_for_url(base+'/')
+            page.goto(base);select_fixture_role(page, 'owner');page.wait_for_url(base+'/')
             for width in [1440,390]:
                 page.set_viewport_size({'width':width,'height':1000 if width>600 else 844})
                 for suffix in ['', 'modules/', 'modules/settings/', 'records/', 'overview/', 'routines/', 'settings/', 'members/']:

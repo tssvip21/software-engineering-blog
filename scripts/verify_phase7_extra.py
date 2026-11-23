@@ -1,4 +1,5 @@
 """Cross-browser, 375px accessibility, 200% text and keyboard-only forms."""
+from demo_browser_session import select_fixture_role
 from pathlib import Path
 from contextlib import closing
 from datetime import datetime,timezone
@@ -52,7 +53,7 @@ def main():
                     problems=[]
                     page.on("pageerror",lambda e:problems.append(str(e)))
                     page.goto(BASE,wait_until="networkidle")
-                    page.get_by_role("button",name="방장으로 보기",exact=True).click()
+                    select_fixture_role(page, 'owner')
                     expected={"오늘":"","돌봄 기능":"modules/","최근 통계":"overview/","루틴":"routines/","설정":"settings/",
                               "메모 입력":"modules/observation/entry/","체중 통계":"modules/weight/statistics/",
                               "프리셋":"modules/meal/presets/","구성원":"members/"}

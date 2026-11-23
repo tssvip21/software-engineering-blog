@@ -1,4 +1,5 @@
 """Fourth-iteration browser and developer task inspection on a disposable DB only."""
+from demo_browser_session import select_fixture_role
 from contextlib import closing
 from datetime import timedelta
 from pathlib import Path
@@ -51,7 +52,7 @@ def main():
             page=context.new_page();page.set_default_timeout(10000);page.on('dialog',lambda d:d.accept())
             page.on('pageerror',lambda e:RESULT['page_errors'].append(str(e)))
             page.on('request',lambda r:RESULT['network_hosts'].append(urlparse(r.url).hostname) if urlparse(r.url).hostname not in RESULT['network_hosts'] else None)
-            page.goto(BASE+'/',wait_until='networkidle');page.get_by_role('button',name='방장으로 보기',exact=True).click()
+            page.goto(BASE+'/',wait_until='networkidle');select_fixture_role(page, 'owner')
             page.wait_for_url(BASE+'/');checkpoint('csrf-demo-login-and-korean-landing')
             page.goto(BASE+'/rooms/new/');page.locator('#id_name').fill('4차 검증');page.locator('#id_species').select_option('dog')
             page.locator('#breed-search').fill('포메');page.get_by_role('option',name=re.compile('포메라니안')).click()
@@ -150,7 +151,7 @@ def main():
             RESULT['tasks'].append({'task':'최근 변화 의미와 관련 값 확인','initial_graphs':0,'initial_characters':len(initial),'expanded_has_method_jargon':False,'expansion_actions':1,'summary':page.locator('#overall-title').inner_text()})
             checkpoint('plain-conclusion-and-date-value-evidence-without-methods-or-required-graphs')
             User=get_user_model();membership,_=Membership.objects.get_or_create(room=room,user=User.objects.get(username='demo_member'),defaults={'display_name':'검증 참여자','role':'guest'})
-            guest=browser.new_context(locale='ko-KR');g=guest.new_page();g.goto(BASE+'/');g.get_by_role('button',name='일반 참여자로 보기',exact=True).click();g.goto(BASE+path+'modules/')
+            guest=browser.new_context(locale='ko-KR');g=guest.new_page();g.goto(BASE+'/');select_fixture_role(g, 'member');g.goto(BASE+path+'modules/')
             assert g.locator('[data-category-manage]').count()==0
             assert g.request.get(BASE+endpoint).status==403
             assert g.request.get(BASE+path+'records/?modules=medication').status==403

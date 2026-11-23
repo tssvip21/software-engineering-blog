@@ -1,4 +1,5 @@
 """Real browser checks against a disposable database; never mutates the user's database."""
+from demo_browser_session import select_fixture_role
 from pathlib import Path
 from contextlib import closing
 import json, os, re, socket, sqlite3, subprocess, sys, time, traceback, uuid
@@ -53,7 +54,7 @@ def main():
             page=context.new_page();page.set_default_timeout(12000)
             page.on('pageerror',lambda e:RESULT['page_errors'].append(str(e)))
             page.on('dialog',lambda d:d.accept())
-            page.goto(BASE+'/',wait_until='networkidle');page.get_by_role('button',name='방장으로 보기',exact=True).click();page.wait_for_url(BASE+'/')
+            page.goto(BASE+'/',wait_until='networkidle');select_fixture_role(page, 'owner');page.wait_for_url(BASE+'/')
             checkpoint('real-demo-login')
             page.goto(BASE+'/rooms/new/',wait_until='networkidle')
             page.locator('#id_name').fill('테일리 3차 검증')
@@ -191,7 +192,7 @@ def main():
             assert post.value.status==200;assert room.members.get(user=member_user).role=='guest'
             checkpoint('member-ellipsis-promote-in-list-demote-in-sidebar')
             # Distinct session and server response, not merely hidden controls.
-            other=browser.new_context(viewport={'width':390,'height':844},locale='ko-KR',timezone_id='Asia/Seoul');g=other.new_page();g.goto(BASE+'/');g.get_by_role('button',name='일반 참여자로 보기',exact=True).click();g.goto(BASE+path+'modules/')
+            other=browser.new_context(viewport={'width':390,'height':844},locale='ko-KR',timezone_id='Asia/Seoul');g=other.new_page();g.goto(BASE+'/');select_fixture_role(g, 'member');g.goto(BASE+path+'modules/')
             assert g.locator('.member-menu').count()==0
             assert g.request.get(BASE+path+'groups/config/').status==403
             assert g.request.get(BASE+path+'modules/medication/quick/').status==403

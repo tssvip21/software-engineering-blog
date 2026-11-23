@@ -1,4 +1,5 @@
 """Cross-feature UI regression checks in a separate copy, never the review or original DB."""
+from demo_browser_session import select_fixture_role
 from contextlib import closing
 from datetime import timedelta
 from pathlib import Path
@@ -75,7 +76,7 @@ def main():
             browser=pw.chromium.launch(headless=True)
             context=browser.new_context(viewport={'width':1440,'height':1000},locale='ko-KR',reduced_motion='reduce')
             page=context.new_page();page.set_default_timeout(10000);page.on('dialog',lambda d:d.accept());page.on('pageerror',lambda e:RESULT['errors'].append(str(e)))
-            page.goto(BASE);page.get_by_role('button',name='방장으로 보기',exact=True).click()
+            page.goto(BASE);select_fixture_role(page, 'owner')
             page.goto(BASE+path+'groups/',wait_until='networkidle');page.locator('[data-group-add]').click()
             last=page.locator('.group-editor-row').last;last.locator('[data-group-name]').fill('5차 확인 그룹');last.locator('[data-group-key="meal"]').check();last.locator('[data-group-key="walk"]').check()
             endpoint=page.locator('#group-editor').get_attribute('data-endpoint')

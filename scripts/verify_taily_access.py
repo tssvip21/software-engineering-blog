@@ -1,4 +1,5 @@
 """Browser permission and overview checks, restricted to the isolated test database."""
+from demo_browser_session import select_fixture_role
 from pathlib import Path
 import json
 import os
@@ -64,7 +65,7 @@ def main():
                 page.on('dialog', lambda d: d.accept())
                 return c, page
             context, page = tab()
-            page.goto(BASE + '/'); page.get_by_role('button', name='방장으로 보기', exact=True).click()
+            page.goto(BASE + '/'); select_fixture_role(page, 'owner')
             page.wait_for_url(BASE + '/')
             page.goto(BASE + roompath + 'overview/')
             expect(page.locator('[data-summary-primary] > article')).to_have_count(4)

@@ -1,4 +1,5 @@
 """Actual browser/HTTP verification using a disposable copy, never the user's databases."""
+from demo_browser_session import select_fixture_role
 from contextlib import closing
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
@@ -46,7 +47,7 @@ def main():
             page=context.new_page();page.set_default_timeout(12000)
             page.on('pageerror',lambda e:RESULT['errors'].append(str(e)))
             page.on('request',lambda r:RESULT['hosts'].append(urlparse(r.url).hostname) if urlparse(r.url).hostname not in RESULT['hosts'] else None)
-            page.goto(BASE);page.get_by_role('button',name='방장으로 보기',exact=True).click();page.wait_for_url(BASE+'/')
+            page.goto(BASE);select_fixture_role(page, 'owner');page.wait_for_url(BASE+'/')
             pages={'today':'','modules':'modules/','overview':'overview/','config':'modules/settings/','records':'records/','routines':'routines/','settings':'settings/','walk':'modules/walk/','statistics':'modules/walk/statistics/','presets':'modules/meal/presets/','entry':'modules/medication/entry/'}
             if not FAST_MODE:
                 for width in [320,375,390,768,1024,1440,1920]:
@@ -159,7 +160,7 @@ def main():
             check('server-error-preserves-data-and-retry-succeeds')
             page.goto(BASE+path+'overview/',wait_until='networkidle')
             # Guest receives neither sensitive controls nor hidden source facts.
-            guest=browser.new_context(locale='ko-KR',viewport={'width':375,'height':900});g=guest.new_page();g.goto(BASE);g.get_by_role('button',name='일반 참여자로 보기',exact=True).click();g.goto(BASE+path+'overview/',wait_until='networkidle')
+            guest=browser.new_context(locale='ko-KR',viewport={'width':375,'height':900});g=guest.new_page();g.goto(BASE);select_fixture_role(g, 'member');g.goto(BASE+path+'overview/',wait_until='networkidle')
             assert g.locator('[data-statistic-module="medication"]').count()==0
             assert g.request.get(BASE+path+'modules/settings/').status==403
             assert g.request.get(BASE+path+'records/?module=expense').status==403

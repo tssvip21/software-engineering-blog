@@ -1,4 +1,5 @@
 """Browser verification against the explicit local demo environment only."""
+from demo_browser_session import select_fixture_role
 import argparse
 from datetime import timedelta
 import json
@@ -42,7 +43,7 @@ def main():
             page.goto(base+'/',wait_until='networkidle')
             if not page.locator('.demo-banner').is_visible():
                 raise RuntimeError('Refusing to run on a non-demo application.')
-            page.get_by_role('button',name='방장으로 보기',exact=True).click()
+            select_fixture_role(page, 'owner')
             expect(page.get_by_role('heading',name='내 돌봄 공간',exact=True)).to_be_visible()
             passed('real-browser-csrf-login')
             page.goto(base+'/rooms/new/',wait_until='networkidle')

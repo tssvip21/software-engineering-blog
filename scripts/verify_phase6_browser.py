@@ -1,4 +1,5 @@
 """Real Chromium actions and layout/contrast checks in a disposable local database."""
+from demo_browser_session import select_fixture_role
 from contextlib import closing
 from datetime import timedelta
 from pathlib import Path
@@ -112,7 +113,7 @@ def main():
             page.on("request", lambda r: RESULT["network_hosts"].append(urlparse(r.url).hostname) if urlparse(r.url).hostname not in RESULT["network_hosts"] else None)
             page.goto(BASE, wait_until="networkidle")
             page.screenshot(path=str(OUT / "public-1440.png"), full_page=True)
-            page.get_by_role("button", name="방장으로 보기", exact=True).click()
+            select_fixture_role(page, 'owner')
             page.goto(BASE + path, wait_until="networkidle")
             expect(page.locator(".care-pulse")).to_be_visible()
             expect(page.locator(".mobile-dock")).not_to_be_visible()
@@ -297,7 +298,7 @@ def main():
             expect(page.locator('[data-result="weight"] .pattern-values')).to_contain_text('→')
             checkpoint('legacy-robust-pattern-is-separate-and-numerically-complete')
             guest = browser.new_context(locale="ko-KR")
-            g = guest.new_page();g.goto(BASE);g.get_by_role("button", name="일반 참여자로 보기", exact=True).click()
+            g = guest.new_page();g.goto(BASE);select_fixture_role(g, 'member')
             g.goto(BASE + path + "modules/")
             assert g.locator('[data-category-manage]').count() == 0
             assert g.locator('[data-module-key="expense"]').count() == 0

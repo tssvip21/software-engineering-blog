@@ -1,4 +1,5 @@
 """Authorized local end-to-end UI tests on a disposable database, never real user records."""
+from demo_browser_session import select_fixture_role
 from pathlib import Path
 from contextlib import closing
 from datetime import datetime,timezone
@@ -68,7 +69,7 @@ def run():
             b=getattr(pw,engine).launch(headless=True);c=b.new_context(viewport={'width':1440,'height':1000},locale='ko-KR',timezone_id='Asia/Seoul',reduced_motion='reduce');p=c.new_page();p.set_default_timeout(12000);errors=[]
             p.on('pageerror',lambda e:errors.append(str(e)))
             try:
-                p.goto(BASE,wait_until='networkidle');p.get_by_role('button',name='방장으로 보기',exact=True).click();p.wait_for_load_state('networkidle')
+                p.goto(BASE,wait_until='networkidle');select_fixture_role(p, 'owner');p.wait_for_load_state('networkidle')
                 expect(p.locator('.room-card')).to_have_count(3)
                 order=p.locator('.room-card .meta').all_text_contents();assert order==['강아지','고양이','조류·앵무새'],order
                 p.get_by_role('link',name=re.compile('추가 검수 자료')).click();assert p.locator('.room-card').count()>=2

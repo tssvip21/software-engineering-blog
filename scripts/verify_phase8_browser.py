@@ -1,4 +1,5 @@
 """Phase8 browser verification on a disposable copy; no real care data or external services are modified."""
+from demo_browser_session import select_fixture_role
 from contextlib import closing
 from datetime import datetime,timezone
 from pathlib import Path
@@ -43,7 +44,7 @@ def run_engine(pw,engine):
     p=context.new_page();p.set_default_timeout(12000);errors=[]
     p.on('pageerror',lambda e:errors.append(str(e)))
     try:
-        p.goto(BASE,wait_until='networkidle');p.get_by_role('button',name='방장으로 보기',exact=True).click()
+        p.goto(BASE,wait_until='networkidle');select_fixture_role(p, 'owner')
         expect(p.locator('.room-card')).to_have_count(3)
         assert not any('검수' in t for t in p.locator('.room-card h2,.room-card h3').all_text_contents())
         check('three-existing-showcase-rooms-no-regeneration',engine)
@@ -181,7 +182,7 @@ def run_engine(pw,engine):
         screenshot(p,f'{engine}-today-text-200-percent');check('mobile-visual-height-simulation-and-200-percent-text',engine)
         # Guest sees read-only pet data, own preferences and no item editor.
         guest=browser.new_context(viewport={'width':375,'height':812},locale='ko-KR',timezone_id='Asia/Seoul');g=guest.new_page()
-        g.goto(BASE);g.get_by_role('button',name='일반 참여자로 보기',exact=True).click();g.goto(BASE+PATH,wait_until='networkidle')
+        g.goto(BASE);select_fixture_role(g, 'member');g.goto(BASE+PATH,wait_until='networkidle')
         open_setting(g,'settings/');expect(g.locator('#input-dialog [name="name"]')).to_be_disabled();expect(g.locator('#input-dialog button[type=submit]')).to_have_count(0);close_dialog(g)
         open_setting(g,'preferences/');expect(g.locator('#input-dialog [name="timezone"]')).to_be_disabled();expect(g.locator('#input-dialog [name="guest_sensitive"]')).to_be_disabled();close_dialog(g)
         g.goto(BASE+PATH+'supplies/');expect(g.get_by_role('link',name='물품 등록',exact=True)).to_have_count(0)
