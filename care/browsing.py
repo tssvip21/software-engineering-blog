@@ -174,7 +174,8 @@ def records(request, room_id):
     if not category:
         for entry in categories:
             keys = [r["key"] for r in entry["modules"]]
-            sections.append({**entry, "recent": [prepare(a) for a in qs.filter(module__in=keys)[:3]]})
+            recent = [prepare(a) for a in qs.filter(module__in=keys)[:3]] if entry["count"] else []
+            sections.append({**entry, "recent": recent})
     params = request.GET.copy()
     params.pop("page", None)
     if category:

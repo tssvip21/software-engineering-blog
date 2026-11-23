@@ -52,15 +52,19 @@ def board_data(member):
     presets=list(RecordPreset.objects.filter(room=room,active=True,module__in=allowed).select_related('product'))
     grouped=defaultdict(list)
     for p in presets:grouped[p.module].append(p)
-    records=list(Activity.objects.filter(room=room,module__in=allowed,voided=False,occurred_at__lte=now).select_related('author','performer').order_by('-occurred_at','-created_at','-id'))
+    records=list(Activity.objects.filter(room=room,module__in=allowed,voided=False,occurred_at__lte=now).prefetch_related('author','performer').order_by('-occurred_at','-created_at','-id'))
     from .supplies import filter_rows
     records=filter_rows(member,records)
     basic=[{'spec':MODULES[s.key],'enabled':s.key in canonical_enabled,'pinned':s.pinned,'category':organization.CATEGORY_OF[s.key]}
            for s in settings if s.key in allowed and s.key in SELECTABLE_MODULES]
     cards=today_tiles(member,basic,records,today)
+    completed = defaultdict(list)
+    for record in records:
+        if record.status == 'done':
+            completed[schedule7.logical_module(record.module)].append(record)
     for card in cards:
         key=card['spec'].key;card['presets']=grouped[key];card['default_preset']=next((p for p in grouped[key] if p.is_default),None)
-        same=[a for a in records if schedule7.logical_module(a.module)==key and a.status=='done']
+        same = completed[key]
         if key in ('hygiene','observation'):
             current=[a for a in same if a.occurred_at.astimezone(timezone.get_current_timezone()).date()==today]
             if current:card['tile'].update(value=str(len(current)),_raw_value=len(current),unit='건',caption='오늘 남긴 기록 · 이전 통합 유형 포함',empty=False)
@@ -95,7 +99,7 @@ def today(request,room_id):
     schedule=schedule7.opportunities(member,day,day)
     return render(request,'care7/today.html',{'title':room.name+'의 오늘','active_tab':'today','day':day,'cards':chosen,
         'ongoing':ongoing,'schedule_entries':schedule,'notices':schedule7.notices(member),
-        'recent':[record_card(a,member) for a in records[:6]],'today_count':sum(a.status=='done' and services.local_date(room)==a.occurred_at.astimezone(timezone.get_current_timezone()).date() for a in records),
+        'recent':[record_card(a,member) for a in records[:6]],'today_count':sum(a.status=='done' and day==a.occurred_at.astimezone(timezone.get_current_timezone()).date() for a in records),
         'routine_total':sum(not r['paused'] for r in schedule),'routine_done':sum(r['done'] for r in schedule),'routine_progress':round(sum(r['done'] for r in schedule)/sum(not r['paused'] for r in schedule)*100,2) if any(not r['paused'] for r in schedule) else 0,'live_page':True,**schedule_context(member,schedule)})
 
 

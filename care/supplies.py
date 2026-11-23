@@ -58,8 +58,19 @@ def visible_records(member,query):
 
 
 def filter_rows(member,rows):
-    names={inventory_ledger.normalized_item(s) for s in hidden_stock_names(member)}
-    return [r for r in rows if record_visible(member,r,names)]
+    allowed = set(services.visible_modules(member))
+    hidden = None
+    visible = []
+    for row in rows:
+        if row.module not in allowed:
+            continue
+        if row.module == "inventory":
+            if hidden is None:
+                hidden = {inventory_ledger.normalized_item(name) for name in hidden_stock_names(member)}
+            if inventory_ledger.normalized_item(row.payload.get("item")) in hidden:
+                continue
+        visible.append(row)
+    return visible
 
 
 def require_record_access(member,record):
