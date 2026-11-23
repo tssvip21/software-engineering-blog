@@ -19,10 +19,24 @@ from care.models import Room,Membership,Product,Activity,CareCadence,RecordPrese
 from care.modules import MODULES,SELECTABLE_MODULES,RETIRED_MODULES
 from care.presets import PresetForm,save_preset
 from care.demo_fixtures import record_data
+
+
+@transaction.atomic
+def connect_showcase_admin(fixture):
+    if fixture.get('synthetic') is not True:
+        raise ValueError('가상 시연 자료를 확인해 주세요.')
+    admin = get_user_model().objects.get(username='demo_admin')
+    for key in ('rich', 'cat', 'bird'):
+        room = Room.objects.get(pk=fixture['rooms'][key], owner__username='demo_owner')
+        Membership.objects.get_or_create(room=room, user=admin,
+                                         defaults={'display_name': admin.first_name, 'role': 'admin'})
+
+
 call_command('migrate',interactive=False,verbosity=0)
 call_command('seed_demo',verbosity=0)
 call_command('seed_references',verbosity=0)
 if (O/'fixture.json').exists():
+    connect_showcase_admin(json.loads((O/'fixture.json').read_text(encoding='utf8')))
     print('EXISTING_PHASE7_FIXTURE_PRESERVED');raise SystemExit(0)
 today=timezone.localdate();tz=ZoneInfo('Asia/Seoul');now=timezone.now()
 owner_user=get_user_model().objects.get(username='demo_owner');guest_user=get_user_model().objects.get(username='demo_member')
@@ -125,6 +139,7 @@ with transaction.atomic():
                     actions7.perform(owner,data)
             CareCadence.objects.create(room=room,module='hygiene',variant_field='task',variant_value='teeth',title='정해 둔 양치 확인',interval=3,unit='days',first_due=today-timedelta(days=1))
             CareCadence.objects.create(room=room,module='cleaning',variant_field='target',variant_value='bedding',title='침구 세탁',interval=7,unit='days',first_due=today+timedelta(days=2))
+    connect_showcase_admin(fixture)
 fixture['records']={label:Activity.objects.filter(room_id=pk).count() for label,pk in fixture['rooms'].items()}
 (O/'fixture.json').write_text(json.dumps(fixture,ensure_ascii=False,indent=2),encoding='utf8')
 print(json.dumps(fixture,ensure_ascii=False))
