@@ -1,0 +1,10 @@
+{% if form.non_field_errors %}<div class="form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+{% for field in form.hidden_fields %}{{ field }}{% for error in field.errors %}<p class="field-error" role="alert">{{ error }}</p>{% endfor %}{% endfor %}
+{% for field in form.visible_fields %}<div class="field {% if field.field.widget.input_type == 'checkbox' %}field-check{% endif %}">
+{% if routine_form and field.name == 'modules' %}<span class="field-label">{{ field.label }}<span class="required-text">필수</span></span><div id="routine-module-order" class="choice-order">{% for choice in field %}<div class="choice-order-row" data-value="{{ choice.data.value }}"><label>{{ choice.tag }}<span>{{ choice.choice_label }}</span></label><span class="order-buttons"><button type="button" data-choice-move="up" aria-label="{{ choice.choice_label }} 위로 이동">↑</button><button type="button" data-choice-move="down" aria-label="{{ choice.choice_label }} 아래로 이동">↓</button></span></div>{% endfor %}</div>
+{% elif field.field.widget.allow_multiple_selected %}<fieldset class="choice-set"><legend>{{ field.label }}{% if field.field.required %}<span class="required-text">필수</span>{% endif %}</legend>{{ field }}</fieldset>{% elif field.field.widget.input_type == 'checkbox' %}<label for="{{ field.id_for_label }}">{{ field }}<span>{{ field.label }}</span></label>
+{% else %}<label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span class="required-text">필수</span>{% endif %}</label>{{ field }}{% endif %}
+{% if field.help_text %}<p class="field-help" {% if field.id_for_label %}id="{{ field.id_for_label }}_helptext"{% endif %}>{{ field.help_text }}</p>{% endif %}
+{% for error in field.errors %}<p class="field-error" role="alert">{{ error }}</p>{% endfor %}</div>{% endfor %}
+
+{% if form.breed_catalog %}{{ form.breed_catalog|json_script:"breed-catalog" }}{% endif %}

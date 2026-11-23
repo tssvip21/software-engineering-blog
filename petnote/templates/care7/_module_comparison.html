@@ -1,0 +1,6 @@
+{% load care_tags %}
+<article class="module-comparison7" data-comparison-module="{{ comparison.key }}"><header class="comparison-heading7"><span class="module-symbol">{% icon comparison.icon %}</span><div><h2>{{ comparison.name }}</h2><p class="meta">{{ report.previous_start|date:'m.d' }}–{{ report.previous_end|date:'m.d' }} ↔ {{ report.start|date:'m.d' }}–{{ report.end|date:'m.d' }}</p></div><a class="quiet-link" href="{{ comparison.detail_url }}">기록·상세 →</a></header>
+{% if comparison.key == 'weight' %}{% include 'care7/_weight.html' %}{% endif %}
+<div class="metric-grid7{% if comparison.key == 'walk' %} walk-metrics7{% endif %}">{% for metric in comparison.metrics %}{% include 'care7/_metric.html' %}{% endfor %}</div>
+{% if not comparison.has_data %}<p class="meta">이 기간에는 비교할 값이 없어요.</p>{% endif %}
+</article>

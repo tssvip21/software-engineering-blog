@@ -1,0 +1,20 @@
+{$SITE_ADDRESS} {
+    encode zstd gzip
+    handle_path /try/* {
+        reverse_proxy demo:8000 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-For {remote_host}
+        }
+    }
+    handle_path /static/* {
+        root * /srv/static
+        file_server
+        header X-Content-Type-Options nosniff
+    }
+    handle {
+        reverse_proxy backend:8000 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-For {remote_host}
+        }
+    }
+}

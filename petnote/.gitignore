@@ -1,0 +1,26 @@
+.venv/
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+/data/
+/backups/
+/staticfiles/
+/tmp/
+/local-notes/
+/PROGRESS.md
+node_modules/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+playwright-report/
+test-results/
+.chart-data-*/
+.ppt-build/
+~$*
+
+# Locally retained course submissions with student IDs.
+/output/[0-9]*_*.pptx

@@ -1,0 +1,40 @@
+# Opt-in public synthetic demo sidecar. No production database or extra public port.
+services:
+  demo:
+    build: .
+    restart: unless-stopped
+    entrypoint: ["sh", "/app/deploy/entrypoint-demo.sh"]
+    command: ["python", "/app/deploy/serve.py"]
+    environment:
+      DJANGO_DEBUG: "0"
+      CARE_DEMO_MODE: "1"
+      CARE_PUBLIC_DEMO: "1"
+      CARE_DATA_DIR: /app/data
+      DJANGO_SECRET_KEY: ${DEMO_DJANGO_SECRET_KEY:?Set separate demo-only secret}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?Set production host}
+      APP_ORIGIN: ${APP_ORIGIN:?Set HTTPS service URL}
+      GOOGLE_CLIENT_ID: ""
+      GOOGLE_CLIENT_SECRET: ""
+    volumes:
+      - public_demo_data:/app/data
+      - ${PUBLIC_DEMO_SEED_PATH:?Set isolated synthetic seed}:/app/demo-seed.sqlite3:ro
+    tmpfs:
+      - /tmp:size=32m
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    networks: [web]
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD", "python", "/app/deploy/healthcheck.py"]
+      interval: 20s
+      timeout: 5s
+      start_period: 60s
+      retries: 4
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  public_demo_data:
