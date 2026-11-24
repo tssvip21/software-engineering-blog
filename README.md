@@ -1,12 +1,9 @@
-# 소프트웨어공학 개발 블로그
+# 펫노트 | 소프트웨어공학 학기 프로젝트
 
-반려동물 돌봄 관리 서비스의 공개 개발 기록입니다.
+펫노트는 가족이 반려동물의 급여·산책·체중 기록과 돌봄 일정을 함께 관리하는 웹 서비스입니다.
 
-- [블로그](https://tssvip21.github.io/software-engineering-blog/)
-- [1편: 주제 선정과 구현 범위](https://tssvip21.github.io/software-engineering-blog/posts/01-topic-proposal.html)
-- [2편: 데이터 설계와 ERD](https://tssvip21.github.io/software-engineering-blog/posts/02-data-design.html)
-- [3편: 첫 배포](https://tssvip21.github.io/software-engineering-blog/posts/03-first-deployment.html)
+개인정보가 포함된 기존 저장소를 삭제하고, 개인정보와 개인 작업 파일을 제외한 프로젝트 소스를 이 블로그 저장소의 `main` 브랜치로 옮겼습니다.
 
-프로젝트 코드는 별도 비공개 저장소에서 관리합니다. 이 저장소에는 공개한 글과 블로그 표시용 파일만 둡니다.
-
-본문을 수정한 뒤 `pip install markdown-it-py` 및 `python build.py`로 HTML을 생성합니다. `main` 브랜치의 루트를 GitHub Pages로 게시합니다.
+- [최신 코드와 실행 방법](./petnote/)
+- [이전 개발 이력](https://github.com/tssvip21/software-engineering-blog/commits/petnote/)
+- [개발 블로그](https://tssvip21.github.io/software-engineering-blog/)
