@@ -1,4 +1,5 @@
 from pathlib import Path
+from urllib.parse import urlsplit
 import os
 import secrets
 from django.core.exceptions import ImproperlyConfigured
@@ -6,7 +7,8 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env", override=False)
-DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
+ON_VERCEL = os.environ.get("VERCEL") == "1"
+DEBUG = not ON_VERCEL and os.environ.get("DJANGO_DEBUG", "1") == "1"
 DEMO_MODE = os.environ.get("CARE_DEMO_MODE", "0") == "1"
 PUBLIC_DEMO = os.environ.get("CARE_PUBLIC_DEMO", "0") == "1"
 PUBLIC_DEMO_ENTRY = os.environ.get("CARE_PUBLIC_DEMO_ENTRY", "0") == "1" and not PUBLIC_DEMO
@@ -15,7 +17,8 @@ if PUBLIC_DEMO and (DEBUG or not DEMO_MODE or os.environ.get("POSTGRES_HOST") or
 if DEMO_MODE and not DEBUG and not PUBLIC_DEMO:
     raise ImproperlyConfigured("시연 환경은 로컬 개발 설정에서만 실행할 수 있습니다.")
 DATA_DIR = Path(os.environ.get("CARE_DATA_DIR", str(BASE_DIR / "data")))
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+if not ON_VERCEL:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "")
 if not SECRET_KEY:
     if not DEBUG:
@@ -33,6 +36,15 @@ if not SECRET_KEY:
     SECRET_KEY = key_file.read_text(encoding="utf-8").strip()
 ALLOWED_HOSTS = [v.strip() for v in os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",") if v.strip()]
 APP_ORIGIN = os.environ.get("APP_ORIGIN", "http://127.0.0.1:8000").rstrip("/")
+if ON_VERCEL:
+    origin = urlsplit(APP_ORIGIN)
+    if origin.scheme != "https" or origin.hostname not in ALLOWED_HOSTS or origin.path or origin.query or origin.fragment:
+        raise ImproperlyConfigured("Vercel에서는 APP_ORIGIN과 DJANGO_ALLOWED_HOSTS에 서비스의 HTTPS 주소와 호스트를 설정하세요.")
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    for variable in ("VERCEL_URL", "VERCEL_PROJECT_PRODUCTION_URL"):
+        deployment_host = os.environ.get(variable, "")
+        if deployment_host.endswith(".vercel.app") and deployment_host not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(deployment_host)
 CSRF_TRUSTED_ORIGINS = [APP_ORIGIN]
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
@@ -48,7 +60,7 @@ LOCAL_DEMO_POSTGRES = (
     os.environ.get("PETNOTE_LOCAL_POSTGRES") == "1" and DEBUG and DEMO_MODE and not PUBLIC_DEMO
     and os.environ.get("POSTGRES_HOST") == "db" and os.environ.get("POSTGRES_DB") == "petnote_demo"
 )
-if os.environ.get("POSTGRES_HOST"):
+if os.environ.get("POSTGRES_HOST") and not ON_VERCEL:
     if DEMO_MODE and not LOCAL_DEMO_POSTGRES:
         raise ImproperlyConfigured("시연 DB는 로컬 SQLite만 사용합니다.")
     DATABASES = {"default": {
@@ -63,6 +75,26 @@ if os.environ.get("POSTGRES_HOST"):
         "OPTIONS": {"connect_timeout": 10},
     }}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+if ON_VERCEL:
+    from psycopg.conninfo import conninfo_to_dict
+
+    db_url = os.environ.get("DATABASE_URL", "")
+    if not db_url.startswith(("postgres://", "postgresql://")) or DEMO_MODE:
+        raise ImproperlyConfigured("Vercel 운영 앱에는 Supabase PostgreSQL DATABASE_URL이 필요합니다.")
+    params = conninfo_to_dict(db_url)
+    if not all(params.get(key) for key in ("host", "dbname", "user", "password")):
+        raise ImproperlyConfigured("DATABASE_URL에 PostgreSQL 호스트, DB명, 사용자와 비밀번호가 필요합니다.")
+    DATABASES = {"default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": params["dbname"],
+        "USER": params["user"],
+        "PASSWORD": params["password"],
+        "HOST": params["host"],
+        "PORT": params.get("port", "5432"),
+        "CONN_MAX_AGE": 0,
+        "DISABLE_SERVER_SIDE_CURSORS": True,
+        "OPTIONS": {"connect_timeout": 10, "sslmode": "require", "prepare_threshold": None},
+    }}
 LANGUAGE_CODE = "ko-kr"
 TIME_ZONE = "Asia/Seoul"
 USE_I18N = True
@@ -71,6 +103,8 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STORAGES = {"default": {"BACKEND": "django.core.files.storage.FileSystemStorage"}, "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"}}
+if ON_VERCEL:
+    STORAGES["staticfiles"]["BACKEND"] = "django.contrib.staticfiles.storage.StaticFilesStorage"
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_SECURE = not DEBUG

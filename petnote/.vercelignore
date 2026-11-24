@@ -1,0 +1,17 @@
+*
+!care/
+!care/**
+!config/
+!config/**
+!templates/
+!templates/**
+!static/
+!static/**
+!manage.py
+!requirements.txt
+!vercel.json
+!deploy/
+deploy/*
+!deploy/vercel_build.py
+**/__pycache__/
+**/*.pyc

@@ -1,1 +1,14 @@
 __pycache__/
+.env
+.env.*
+*.env
+!.env.example
+.vercel/
+client_secret*.json
+*-firebase-adminsdk-*.json
+*.pem
+*.p12
+*.pfx
+*.key
+*.dump
+*.sqlite3
