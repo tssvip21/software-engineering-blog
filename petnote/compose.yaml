@@ -17,8 +17,6 @@ services:
       PETNOTE_LOCAL_POSTGRES: "1"
       DJANGO_DEBUG: "1"
       CARE_DATA_DIR: /app/data
-      PHASE7_DATA_DIR: /app/data/preview-data
-      PHASE7_OUT: /app/data/showcase
       POSTGRES_HOST: db
       POSTGRES_DB: petnote_demo
       POSTGRES_USER: petnote
@@ -29,7 +27,6 @@ services:
       - staticfiles:/app/staticfiles
       - dbkey:/run/dbkey:ro
       - ./deploy/start-local.sh:/app/deploy/start-local.sh:ro
-      - ./scripts/prepare_phase7_demo.py:/app/scripts/prepare_phase7_demo.py:ro
     depends_on:
       db:
         condition: service_healthy

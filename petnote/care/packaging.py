@@ -1,6 +1,6 @@
 """Explicit packaging metadata and receipt snapshots; never infer unopened packages."""
 from decimal import Decimal
-from .display_values import measure,number
+from .reporting.display_values import measure,number
 from .inventory_ledger import MASS,VOLUME
 
 

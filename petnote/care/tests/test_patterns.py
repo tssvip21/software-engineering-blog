@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 import uuid
 from django.test import SimpleTestCase
-from care.patterns import analyze, compare, theil_sen
+from care.reporting.patterns import analyze, compare, theil_sen
 
 END=date(2026,11,5)
 TZ=ZoneInfo("Asia/Seoul")

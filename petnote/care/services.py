@@ -188,7 +188,7 @@ def save_product(member, form, product_id=None, *, _receipt=False):
     if not form.is_valid():
         raise ValidationError("제품 입력값을 확인해 주세요.")
     if product_id is None and form.cleaned_data.get("request_token") and not _receipt:
-        from .mutations7 import once
+        from .idempotency import once
         return once(member, form, "product.create", lambda: save_product(member, form, _receipt=True))
     if product_id:
         product = Product.objects.select_for_update().get(pk=product_id, room=member.room)
@@ -546,7 +546,7 @@ def save_routine(member, form, routine_id=None, *, _receipt=False):
         raise ValidationError("루틴 입력값을 확인해 주세요.")
     data = form.cleaned_data
     if routine_id is None and data.get("request_token") and not _receipt:
-        from .mutations7 import once
+        from .idempotency import once
         return once(member, form, "routine.create", lambda: save_routine(member, form, _receipt=True))
     if routine_id:
         routine = Routine.objects.select_for_update().get(pk=routine_id, room=member.room)

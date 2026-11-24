@@ -1,3 +1,0 @@
-{% extends 'care/base.html' %}{% load care_tags %}{% block content %}
-<div class="page-heading"><div><p class="eyebrow">일반 시연과 분리된 자료</p><h1>추가 검수 자료</h1><p class="lead">이전 시연·빈 기록·간헐 측정 사례를 보존했어요.</p></div><a class="button secondary" href="{% url 'home' %}">일반 시연으로</a></div>
-<div class="room-grid">{% for m in memberships %}<a class="room-card" href="{% url 'today' m.room_id %}"><div><span class="meta">{{ m.room.get_species_display }}</span><h2>{{ m.room.name }}</h2><p>{{ m.role_label }}</p></div>{% icon 'arrow' %}</a>{% empty %}<p>이 계정에 추가 검수 자료가 없어요.</p>{% endfor %}</div>{% endblock %}

@@ -1,5 +1,6 @@
 """Category-first record browsing and narrowly scoped module configuration."""
 from datetime import date
+from urllib.parse import urlencode, urlsplit
 import json
 import uuid
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -15,8 +16,25 @@ from .models import Activity, Room
 from .modules import MODULES
 from .organization import CATEGORIES, CATEGORY_OF
 from .presentation import GROUPS
-from .stats import bounds
-from .navigation import with_return
+from .reporting.stats import bounds
+
+
+def record_return(request, room):
+    value = request.POST.get("return_to", request.GET.get("return_to", ""))
+    fallback = reverse("records", args=[room.pk])
+    if not isinstance(value, str) or len(value) > 3000 or any(ord(c) < 32 for c in value) or "\\" in value:
+        return fallback
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        return fallback
+    if parsed.scheme or parsed.netloc or parsed.path != fallback:
+        return fallback
+    return parsed.path + ("?" + parsed.query if parsed.query else "")
+
+
+def with_return(path, return_to):
+    return path + ("&" if "?" in path else "?") + urlencode({"return_to": return_to})
 
 
 def category_state(room, category):

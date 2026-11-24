@@ -20,7 +20,7 @@ from care.demo_fixtures import record_data
 from care.forms import RoomForm, RecordForm, ProductForm, RoutineForm
 from care.models import Activity, ActivityRevision, AuditEvent, GoogleAccount, Invitation, Membership, Product, Reference, Room, RoutineRun
 from care.modules import MODULES
-from care.stats import get_statistics, overview, routine_schedule
+from care.reporting.stats import get_statistics, overview, routine_schedule
 
 
 class CareCase(TestCase):
@@ -51,8 +51,9 @@ class CareCase(TestCase):
         # Tests which say "today" must not drift into yesterday when run before 02:00.
         # Explicit boundary tests override this fixed clock and exercise local midnight separately.
         moment = timezone.localtime().replace(hour=12, minute=0, second=0, microsecond=0)
-        clock_started = clock.monotonic()
-        fixed_clock = patch("django.utils.timezone.now", side_effect=lambda: moment + timedelta(seconds=clock.monotonic()-clock_started))
+        # Sub-millisecond steps keep sequential writes ordered on Windows as well.
+        clock_started = clock.perf_counter()
+        fixed_clock = patch("django.utils.timezone.now", side_effect=lambda: moment + timedelta(seconds=clock.perf_counter()-clock_started))
         fixed_clock.start()
         self.addCleanup(fixed_clock.stop)
         self.client.force_login(self.owner_user)

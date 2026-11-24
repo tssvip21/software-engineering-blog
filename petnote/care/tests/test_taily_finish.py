@@ -7,7 +7,7 @@ from django.urls import reverse
 from care import services
 from care.models import CareCadence
 from care.presentation import integrated_context
-from care.status_view import context_for
+from care.reporting.status_view import context_for
 from .test_taily import TailyCase, UI
 
 

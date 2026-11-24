@@ -17,7 +17,7 @@ from . import services, ui_forms
 from .forms import RecordForm
 from .models import ActionReceipt, RecordPreset, RoutineItem, RoutineRun
 from .modules import MODULES
-from .mutations7 import form_fingerprint
+from .idempotency import form_fingerprint
 from .presets import input_for, snapshot
 
 
@@ -34,7 +34,7 @@ def errors_with_labels(form):
 class NeedsInput(ValidationError):
     def __init__(self,member,item,day,token,form):
         self.fields=errors_with_labels(form)
-        self.form_url=reverse('routine_complete9',args=[member.room_id,item.pk])+'?'+urlencode({'date':day.isoformat(),'token':str(token)})
+        self.form_url=reverse('routine_complete',args=[member.room_id,item.pk])+'?'+urlencode({'date':day.isoformat(),'token':str(token)})
         names=' · '.join(x['label'] for x in self.fields)
         super().__init__(names+'을(를) 확인하면 완료할 수 있어요.')
 
@@ -113,7 +113,7 @@ def save_completion(member,item_id,day,form):
         raise services.Conflict('루틴 설정이 바뀌었어요. 입력은 유지했으니 최신 일정을 확인해 주세요.')
     if form.cleaned_data['completion_preset']!=(str(preset.pk) if preset else '') or form.cleaned_data['preset_version']!=(preset.version if preset else 0):
         raise services.Conflict('연결된 저장 설정이 바뀌었어요. 최신 설정을 확인해 주세요.')
-    from .actions7 import response_for
+    from .record_actions import response_for
     run=RoutineRun.objects.filter(item=item,date=day).select_related('activity').first()
     if run and run.activity_id and not run.activity.voided:
         record=run.activity;result=response_for(member,record,created=False,changed=False,message='이미 이 일정에 기록이 연결돼 있어요.')
@@ -144,7 +144,7 @@ def complete(request,room_id,item_id):
         form=completion_form(member,item,snap,None,day,token,request.POST if request.method=='POST' else None)
         if not form.is_bound:form.cleaned_data={}
         form.add_error(None,' '.join(exc.messages)+' 입력 내용은 유지했어요. 오늘 일정에서 다시 확인해 주세요.')
-        return ui_forms.render_input(request,'care8/settings_page.html',{'title':'일정을 다시 확인해 주세요','room':room,
+        return ui_forms.render_input(request,'care/space/settings_page.html',{'title':'일정을 다시 확인해 주세요','room':room,
             'form':form,'read_only':True,'back_url':reverse('today',args=[room.pk]),'active_tab':'routines'},status=409)
     form=completion_form(member,item,snap,preset,day,token,request.POST if request.method=='POST' else None)
     status=200
@@ -161,6 +161,6 @@ def complete(request,room_id,item_id):
         else:status=422
     probe=completion_form(member,item,snap,preset,day,token)
     missing=[str(field.label) for key,field in probe.fields.items() if field.required and not isinstance(field.widget,forms.HiddenInput) and probe[key].value() in (None,'')]
-    return ui_forms.render_input(request,'care7/entry.html',{'title':safe_title(member,snap)+' 완료 기록','spec':MODULES[item.module],
+    return ui_forms.render_input(request,'care/records/entry.html',{'title':safe_title(member,snap)+' 완료 기록','spec':MODULES[item.module],
         'form':form,'routine_completion':True,'completion_name':safe_title(member,snap),'missing_labels':missing,
         'submit_label':'저장하고 완료','back_url':reverse('today',args=[room.pk]),'active_tab':'routines'},status=status)

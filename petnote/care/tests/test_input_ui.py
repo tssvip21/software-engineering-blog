@@ -9,17 +9,18 @@ from django.utils import timezone
 from care import services
 from care.models import Activity,ActivityRevision,AuditEvent,Routine,Membership,Room,Invitation
 from care.demo_fixtures import record_data
-from care.forms import RoomForm
-from care.demo_navigation import split
+from care import demo
+from care.management.commands.seed_demo import upgrade_local_examples, upgrade_public_seed
 from .test_functional import CareCase
 
 from care import urls as care_urls,auth
-urlpatterns=[*care_urls.urlpatterns,path('demo/login/',auth.demo_login,name='demo_login')]
+urlpatterns=[*care_urls.urlpatterns,path('demo/login/',auth.demo_login,name='demo_login'),
+             path('enter/', demo.enter, name='public_demo_enter')]
 HEADERS={'HTTP_X_TAILY_DIALOG':'1'}
 
 class InputDialogContractTests(CareCase):
     def input_url(self,key='observation'):
-        return reverse('entry7',args=[self.room.pk,key])
+        return reverse('record_entry',args=[self.room.pk,key])
 
     def test_get_is_only_a_fragment_and_original_get_stays_a_page(self):
         page=self.client.get(self.input_url());fragment=self.client.get(self.input_url(),**HEADERS)
@@ -91,7 +92,7 @@ class InputDialogContractTests(CareCase):
             self.assertEqual(r.status_code,403)
 
     def test_other_room_cannot_be_opened_via_modal(self):
-        r=self.client.get(reverse('entry7',args=[self.other_room.pk,'weight']),**HEADERS)
+        r=self.client.get(reverse('record_entry',args=[self.other_room.pk,'weight']),**HEADERS)
         self.assertIn(r.status_code,(403,404))
 
     def test_new_routine_requires_server_form_request_token(self):
@@ -119,7 +120,7 @@ class InputDialogContractTests(CareCase):
         self.assertEqual(r.status_code,403)
 
     def test_preset_form_fragment_and_validation(self):
-        url=reverse('preset_new7',args=[self.room.pk,'meal'])
+        url=reverse('preset_new',args=[self.room.pk,'meal'])
         self.assertEqual(self.client.get(url,**HEADERS)['X-Taily-Fragment'],'input-form')
         payload={'title':'저녁 사료','active':'on','is_default':'on','request_token':str(uuid.uuid4()),'product':str(self.product.pk),'quantity':'60','unit':'g'}
         r=self.client.post(url,payload,**HEADERS);self.assertTrue(r.json()['ok'])
@@ -129,58 +130,73 @@ class MemberPresentationTests(CareCase):
         page=self.client.get(reverse('today',args=[self.room.pk]))
         self.assertContains(page,'data-member-open7')
         self.assertNotContains(page,'class="member-menu-body"')
-        panel=self.client.get(reverse('member_panel7',args=[self.room.pk,self.member.pk]),HTTP_X_TAILY_PANEL='1')
+        panel=self.client.get(reverse('member_panel',args=[self.room.pk,self.member.pk]),HTTP_X_TAILY_PANEL='1')
         self.assertContains(panel,'이 공간에서의 역할');self.assertContains(panel,'공간 접근 관리')
         self.assertContains(panel,'name="revoke_links"');self.assertContains(panel,'name="role"')
 
     def test_self_profile_does_not_offer_self_promotion(self):
-        panel=self.client_for(self.member).get(reverse('member_panel7',args=[self.room.pk,self.member.pk]),HTTP_X_TAILY_PANEL='1')
+        panel=self.client_for(self.member).get(reverse('member_panel',args=[self.room.pk,self.member.pk]),HTTP_X_TAILY_PANEL='1')
         self.assertContains(panel,'내 설정');self.assertNotContains(panel,'name="role"')
 
     def test_role_change_preserves_owner_only_rule(self):
-        url=reverse('member_panel7',args=[self.room.pk,self.member.pk])
+        url=reverse('member_panel',args=[self.room.pk,self.member.pk])
         self.assertEqual(self.client_for(self.admin).post(url,{'action':'role','role':'admin'}).status_code,403)
         self.member.refresh_from_db();self.assertEqual(self.member.role,'guest')
         self.assertEqual(self.client.post(url,{'action':'role','role':'admin'}).status_code,200)
         self.member.refresh_from_db();self.assertEqual(self.member.role,'admin')
 
     def test_guest_without_account_cannot_be_promoted(self):
-        r=self.client.post(reverse('member_panel7',args=[self.room.pk,self.guest.pk]),{'action':'role','role':'admin'})
+        r=self.client.post(reverse('member_panel',args=[self.room.pk,self.guest.pk]),{'action':'role','role':'admin'})
         self.assertEqual(r.status_code,422);self.guest.refresh_from_db();self.assertEqual(self.guest.role,'guest')
 
     def test_removal_can_revoke_old_links_without_deleting_records(self):
         record=self.make('walk',member=self.member)
         invitation,_=services.create_invitation(self.owner,24,5)
-        r=self.client.post(reverse('member_panel7',args=[self.room.pk,self.member.pk]),{'action':'remove','revoke_links':'1'})
+        r=self.client.post(reverse('member_panel',args=[self.room.pk,self.member.pk]),{'action':'remove','revoke_links':'1'})
         self.assertEqual(r.status_code,200);self.member.refresh_from_db();self.assertFalse(self.member.active)
         invitation.refresh_from_db();self.assertTrue(invitation.revoked);record.refresh_from_db();self.assertFalse(record.voided)
 
-class DemoListOnlyTests(CareCase):
-    def create_space(self,name,species):
-        form=RoomForm({'name':name,'species':species,'timezone':'Asia/Seoul','use_defaults':'on'})
-        self.assertTrue(form.is_valid(),form.errors);return services.create_room(self.owner_user,form)
+class DemoRoomTests(CareCase):
+    def setUp(self):
+        super().setUp()
+        self.owner_user.username = 'demo_owner'
+        self.owner_user.save(update_fields=['username'])
+        self.admin_user.username = 'demo_admin'
+        self.admin_user.save(update_fields=['username'])
+        self.room.name = '강아지'
+        self.room.save(update_fields=['name'])
+        self.other_room.name = '고양이'
+        self.other_room.owner = self.owner_user
+        self.other_room.save(update_fields=['name', 'owner'])
+        Membership.objects.create(room=self.other_room, user=self.admin_user, role='admin')
 
-    def test_three_showcase_spaces_and_auxiliary_route_keep_records(self):
-        self.owner_user.username='demo_owner';self.owner_user.save(update_fields=['username'])
-        cat=self.create_space('나비','cat');bird=self.create_space('초록이','bird');extra=self.create_space('빈 기록','dog')
-        before=Room.objects.count()
-        config={'showcase':[str(self.room.pk),str(cat.pk),str(bird.pk)],'synthetic_rooms':[str(x.pk) for x in (self.room,cat,bird,extra)]}
-        with override_settings(DEMO_MODE=True,DEMO_NAVIGATION=config,ROOT_URLCONF=__name__):
-            page=self.client.get(reverse('home'));self.assertEqual(len(page.context['memberships']),3)
-            aux=self.client.get(reverse('demo_auxiliary'));self.assertEqual(len(aux.context['memberships']),1)
-            self.assertEqual(self.client.get(reverse('today',args=[extra.pk])).status_code,200)
-            new=self.create_space('사용자 새 공간','cat')
-            self.assertEqual(len(self.client.get(reverse('home')).context['memberships']),4)
-        self.assertEqual(Room.objects.count(),before+1)
+    @override_settings(PUBLIC_DEMO=True, ROOT_URLCONF=__name__)
+    def test_public_entry_accepts_only_the_two_demo_rooms(self):
+        self.assertEqual(self.client.get(reverse('public_demo_enter')).status_code, 302)
+        self.assertEqual(self.client.session['_auth_user_id'], str(self.admin_user.pk))
+        self.assertEqual({m.room.name for m in self.client.get(reverse('home')).context['memberships']}, {'강아지', '고양이'})
+        Room.objects.create(owner=self.outsider_user, name='개인 공간', species='cat')
+        self.assertEqual(self.client.get(reverse('public_demo_enter')).status_code, 403)
 
-    def test_real_mode_never_hides_spaces(self):
-        self.owner_user.username='demo_owner';self.owner_user.save(update_fields=['username'])
-        extra=self.create_space('다른 공간','cat')
-        config={'showcase':[str(self.room.pk)],'synthetic_rooms':[str(self.room.pk),str(extra.pk)]}
-        with override_settings(DEMO_MODE=False,DEMO_NAVIGATION=config):
-            self.assertEqual(len(self.client.get(reverse('home')).context['memberships']),2)
-            self.assertEqual(self.client.get(reverse('demo_auxiliary')).status_code,404)
+    @override_settings(PUBLIC_DEMO=True)
+    def test_public_upgrade_removes_seed_bird_and_is_repeatable(self):
+        bird = Room.objects.create(owner=self.owner_user, name='앵무새', species='bird')
+        Membership.objects.create(room=bird, user=self.admin_user, role='admin')
+        upgrade_public_seed()
+        upgrade_public_seed()
+        self.assertSetEqual(set(Room.objects.values_list('name', flat=True)), {'강아지', '고양이'})
 
-    def test_demo_manifest_does_not_change_authorization(self):
-        with override_settings(DEMO_MODE=True,DEMO_NAVIGATION={'showcase':[str(self.other_room.pk)],'synthetic_rooms':[str(self.other_room.pk)]}):
-            r=self.client.get(reverse('today',args=[self.other_room.pk]));self.assertIn(r.status_code,(403,404))
+    def test_local_upgrade_only_deletes_known_examples(self):
+        old = Room.objects.create(owner=self.owner_user, name='빈 기록', species='dog')
+        personal = Room.objects.create(owner=self.owner_user, name='빈 기록', species='dog')
+        self.room.name = '7차 검수 · 보리'
+        self.room.save(update_fields=['name'])
+        fixture = {'synthetic': True, 'rooms': {'rich': str(self.room.pk), 'cat': str(self.other_room.pk), 'empty': str(old.pk)}}
+        upgrade_local_examples(fixture)
+        upgrade_local_examples(fixture)
+        self.room.refresh_from_db()
+        self.assertEqual(self.room.name, '강아지')
+        self.assertFalse(Room.objects.filter(pk=old.pk).exists())
+        self.assertTrue(Room.objects.filter(pk=personal.pk).exists())
+        self.assertEqual(set(fixture['rooms']), {'rich', 'cat'})
+        self.assertEqual(self.client.get('/demo/inspection-rooms/').status_code, 404)

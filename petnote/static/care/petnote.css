@@ -454,7 +454,6 @@ tbody th{font-weight:600}
 .room-initial{display:grid;place-items:center;width:3rem;height:3rem;border-radius:50%;background:var(--select);color:var(--select-ink);font-size:1.1875rem;font-weight:800}
 .demo-picker{display:grid;gap:0.875rem;margin-bottom:2rem}
 .demo-picker h2{font-size:1rem;font-weight:750}
-.demo-auxiliary-link{margin-top:1rem}
 .account-link{display:grid;gap:0.625rem;justify-items:start;margin-top:2rem}
 .account-link h2{font-size:0.9375rem;font-weight:750}
 .home-usage{display:none}
@@ -464,44 +463,16 @@ body.public-shell{background:var(--page)}
 .public-header{display:flex;align-items:center;justify-content:space-between;gap:1rem;max-width:73.75rem;margin:0 auto;padding:1.375rem max(1.5rem,env(safe-area-inset-left,0px))}
 .public-main{max-width:73.75rem;margin:0 auto;padding:1.5rem max(1.5rem,env(safe-area-inset-left,0px)) 6rem}
 .public-main .page-heading{margin-bottom:1.75rem}
-/* 첫 화면 히어로: 왼쪽 문구, 오른쪽 휴대폰 속 가족 기록. 새 기록이 위에서 밀고 들어오는 짧은 움직임 하나만 둔다. */
-.landing-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,28rem);gap:4rem;align-items:center;padding:2rem 0 4rem}
+.landing-hero{padding:2rem 0 4rem}
 .landing-copy{display:grid;gap:1.25rem;justify-items:start}
 .landing-copy h1{font-size:clamp(2.25rem,4.6vw,3.5rem);line-height:1.15;font-weight:800;letter-spacing:-.045em}
 .landing-description{font-size:1.125rem;line-height:1.65;color:var(--ink-2)}
 .landing-actions{display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:.5rem}
 .landing-actions form{margin:0}
 .landing-actions .button{height:3rem;padding:0 1.375rem;font-size:.9375rem;border-radius:.75rem}
-.landing-people{display:flex;align-items:center;margin-top:1.25rem;font-size:.875rem;color:var(--ink-3)}
-.landing-people .person-mark{width:2rem;height:2rem;margin-right:-.5rem;border:2px solid var(--page);font-size:.8125rem}
-.landing-people span:last-child{margin-left:1.25rem}
-.landing-stage{display:grid;place-items:center;padding:2.5rem 1.5rem;border-radius:2rem;background:var(--select)}
-.landing-phone{width:min(100%,18.5rem);min-height:30rem;padding:1.25rem 1rem;border:8px solid var(--ink);border-radius:2.25rem;background:var(--surface);overflow:hidden}
-.landing-phone h2{margin:.25rem 0 .875rem;font-size:1.25rem;font-weight:800;letter-spacing:-.03em}
-.landing-feed{display:grid}
-.landing-feed>li{display:grid}
-.landing-feed>li>div{display:flex;gap:.625rem;min-height:0;overflow:hidden;padding:.75rem .375rem;border-bottom:1px solid var(--line-soft);border-radius:.625rem}
-.landing-feed .person-mark{width:2rem;height:2rem;font-size:.8125rem;flex:none}
-.landing-feed p{font-size:.875rem;line-height:1.4}
-.landing-feed small{display:block;margin-top:.125rem;font-size:.75rem;color:var(--ink-3)}
-.landing-alert{display:flex;align-items:center;gap:.5rem;margin-top:.875rem;padding:.75rem;border-radius:.875rem;background:var(--fill);font-size:.8125rem}
-.landing-alert .icon{color:var(--select-icon)}
 @keyframes landing-rise{from{opacity:0;transform:translateY(.5rem)}}
-@keyframes landing-open{from{grid-template-rows:0fr;opacity:0}to{grid-template-rows:1fr;opacity:1}}
-@keyframes landing-flash{from{background:var(--select)}to{background:transparent}}
-@keyframes landing-close{from{grid-template-rows:1fr;opacity:1}to{grid-template-rows:0fr;opacity:0}}
 .landing-copy>*{animation:landing-rise .5s ease-out both}
 .landing-copy>:nth-child(2){animation-delay:.06s}.landing-copy>:nth-child(3){animation-delay:.12s}.landing-copy>:nth-child(4){animation-delay:.18s}.landing-copy>:nth-child(5){animation-delay:.24s}
-.landing-stage{animation:landing-rise .6s ease-out .1s both}
-.landing-feed:not(.is-live)>li{animation:landing-rise .45s ease-out both}
-.landing-feed:not(.is-live)>li:nth-child(1){animation-delay:.3s}.landing-feed:not(.is-live)>li:nth-child(2){animation-delay:.4s}.landing-feed:not(.is-live)>li:nth-child(3){animation-delay:.5s}.landing-feed:not(.is-live)>li:nth-child(4){animation-delay:.6s}
-.landing-alert{animation:landing-rise .45s ease-out .8s both}
-/* landing.js가 몇 초마다 새 기록을 맨 위에 넣고 맨 아래 기록을 뺀다. */
-.landing-feed>li.is-entering{animation:landing-open .5s cubic-bezier(.2,.8,.2,1) both}
-.landing-feed>li.is-entering>div{animation:landing-flash 1.8s ease-out .2s both}
-.landing-feed>li.is-leaving{animation:landing-close .4s ease-in both}
-.landing-feed{transition:opacity .4s}.landing-feed.is-resetting{opacity:0}
-.landing-alert.is-changing{animation:landing-rise .45s ease-out both}
 .landing-benefits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0.875rem}
 .landing-benefits article{display:grid;gap:0.375rem;padding:1.375rem;border-radius:var(--r-panel);background:var(--surface);border:1px solid var(--line)}
 .landing-benefits span{display:none}
@@ -835,9 +806,7 @@ body.public-shell{background:var(--page)}
 @media (max-width:640px){
   .today-stats{order:3;width:100%;margin:0.25rem 0 0;padding-top:0.875rem;border-top:1px solid var(--line);gap:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
   .today-stats dd{font-size:1.375rem}
-  .landing-hero{grid-template-columns:minmax(0,1fr);gap:2.5rem;padding:1rem 0 2.5rem}
-  .landing-stage{padding:2rem 1rem;border-radius:1.5rem}
-  .landing-phone{min-height:0}
+  .landing-hero{padding:1rem 0 2.5rem}
   .landing-benefits{grid-template-columns:minmax(0,1fr)}
   .public-header{padding:1rem 1.25rem}
   .public-main{padding:0.75rem 1.25rem 4.5rem}

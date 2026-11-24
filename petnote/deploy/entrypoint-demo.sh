@@ -11,4 +11,5 @@ if [ ! -f /app/data/demo.sqlite3 ]; then
 fi
 python manage.py check
 python manage.py migrate --noinput
+python manage.py seed_demo --upgrade-public-seed
 exec "$@"

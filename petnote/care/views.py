@@ -1,5 +1,5 @@
 from .organization import browse_context
-from .navigation import record_return, with_return
+from .browsing import record_return, with_return
 from datetime import date
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
@@ -19,7 +19,7 @@ from .interactions import config_state
 from .forms import RecordForm, InvitationForm, JoinForm, CancelForm, RoutineForm
 from .models import Activity, Routine, RoutineItem, RoutineRun, Membership
 from .modules import MODULES, payload_display, record_summary
-from .stats import bounds
+from .reporting.stats import bounds
 
 
 def error(request, title, detail, status=400):
@@ -46,9 +46,7 @@ def record_card(activity, member):
 @require_GET
 def home(request):
     memberships = list(services.my_memberships(request).order_by("room__name"))
-    from .demo_navigation import split
-    memberships, auxiliary = split(request, memberships)
-    return render(request, "care/home.html", {"memberships": memberships, "demo_auxiliary_count":len(auxiliary), "has_identity": bool(memberships or request.user.is_authenticated)})
+    return render(request, "care/home.html", {"memberships": memberships, "has_identity": bool(memberships or request.user.is_authenticated)})
 
 
 @require_http_methods(["GET", "POST"])
@@ -58,7 +56,7 @@ def room_new(request):
     if not request.user.is_authenticated:
         messages.info(request, "반려동물을 등록하려면 구글 계정으로 로그인해 주세요.")
         return redirect("home")
-    from .settings8 import PetProfileForm, register_pet
+    from .profile_settings import PetProfileForm, register_pet
     form = PetProfileForm(request.POST if request.method == "POST" else None)
     form.fields["request_token"].required=False
     status = 200
@@ -74,7 +72,7 @@ def room_new(request):
             status = 409 if isinstance(exc, services.Conflict) else 422
     elif request.method == "POST":
         status = 422
-    return render(request, "care8/new_pet.html", {"form": form, "title": "반려동물 등록", "pet_form": True, "form_action":request.get_full_path(), "submit_label": "돌봄 공간 만들기", "back_url": reverse("home")}, status=status)
+    return render(request, "care/space/new_pet.html", {"form": form, "title": "반려동물 등록", "pet_form": True, "form_action":request.get_full_path(), "submit_label": "돌봄 공간 만들기", "back_url": reverse("home")}, status=status)
 
 
 @require_http_methods(["GET", "POST"])
@@ -169,7 +167,7 @@ def record_detail(request, room_id, activity_id):
     activity = get_object_or_404(Activity.objects.select_related("author", "performer"), pk=activity_id, room=room)
     services.require_module(member, activity.module)
     record_card(activity, member)
-    from .display_values import rounded_originals
+    from .reporting.display_values import rounded_originals
     activity.exact_numeric_values = rounded_originals(activity.module,activity.payload)
     revisions = list(activity.revisions.select_related("actor").all())
     for revision in revisions:

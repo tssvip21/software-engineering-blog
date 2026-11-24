@@ -1,0 +1,11 @@
+{% load care_tags %}
+<aside class="schedule-rail" aria-label="오늘 일정과 안내">
+<details id="workspace-schedule" class="workspace-schedule" data-schedule-panel open>
+<summary><span class="schedule-label">{% icon 'clock' %}<strong>오늘 일정</strong></span><span class="schedule-badge">{{ schedule_done }}/{{ schedule_total }} 완료</span><span class="schedule-chevron" aria-hidden="true">⌄</span></summary>
+<div class="schedule-panel-content">
+<div class="panel-heading"><span class="meta">{% if schedule_remaining %}{{ schedule_remaining }}개 남음{% else %}남은 루틴 없음{% endif %}</span><a class="quiet-link" href="{% url 'routines' room.id %}">관리</a></div>
+<div class="compact-schedule-list">{% for row in schedule_pending %}{% include 'care/routines/_schedule_row.html' %}{% empty %}<p class="agenda-empty">{% if schedule_completed %}오늘의 루틴을 모두 마쳤어요.{% else %}오늘 등록된 루틴이 없어요.{% endif %}</p>{% endfor %}</div>
+{% if schedule_completed %}<details class="schedule-completed" data-schedule-disclosure="completed"><summary>완료한 루틴 <span>{{ schedule_completed|length }}</span></summary><div class="compact-schedule-list">{% for row in schedule_completed %}{% include 'care/routines/_schedule_row.html' %}{% endfor %}</div></details>{% endif %}
+{% if notices %}<section class="compact-notices" aria-label="다가오는 일정 안내"><h3>알림 <small>{{ notices|length }}</small></h3>{% for notice in notices %}<article data-notice7><a href="{{ notice.url }}"><strong>{{ notice.title }}</strong><small>{{ notice.due|date:'m.d' }} · {{ notice.kind }} · {{ notice.timing }}</small></a><button type="button" class="icon-button" data-dismiss-notice7 data-key="{{ notice.key }}" data-stage="{{ notice.stage }}" aria-label="{{ notice.title }} 안내만 닫기">×</button><p data-action-feedback7 role="status" hidden></p></article>{% endfor %}</section>{% endif %}
+{% if member.can_manage %}<a class="button secondary schedule-add" href="{% url 'routine_new' room.id %}">{% icon 'plus' %}루틴 추가</a>{% endif %}
+</div></details></aside>

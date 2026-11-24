@@ -242,10 +242,10 @@ def _legacy_record_summary(module, payload):
 
 
 def payload_display(module,payload,*,status=None):
-    from .display_values import display_payload
+    from .reporting.display_values import display_payload
     return display_payload(module,payload,status=status)
 
 
 def record_summary(module,payload):
-    from .display_values import summary
+    from .reporting.display_values import summary
     return summary(module,payload)

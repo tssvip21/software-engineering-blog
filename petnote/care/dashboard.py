@@ -11,7 +11,7 @@ from django.utils import timezone
 from .models import Activity
 from .modules import record_summary, compact, decimal
 from .services import local_date, visible_modules
-from .stats import bounds, get_statistics, label_choice
+from .reporting.stats import bounds, get_statistics, label_choice
 
 
 def today_tiles(member, cards, records, day=None):
@@ -76,7 +76,7 @@ def today_tiles(member, cards, records, day=None):
         elif key=='shedding':
             active=[a for a in all_rows if a.status=='active' and a.occurred_at < upper]
             if active:tile.update(value=str(len(active)),_raw_value=len(active),unit='건',caption='진행 중 · 종료 기록을 남길 수 있어요',empty=False)
-        from .display_values import decorate_tile
+        from .reporting.display_values import decorate_tile
         decorate_tile(tile,key)
         enriched.append({**card,'tile':tile})
     return enriched

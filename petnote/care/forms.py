@@ -37,7 +37,7 @@ class RoomForm(forms.ModelForm):
         model = Room
         fields = ["name", "species", "breed_key", "subspecies", "sex", "maturity", "size_origin", "size", "birth_date", "timezone", "guest_sensitive"]
         labels = {"name": "반려동물 이름", "species": "동물 종류", "subspecies": "세부 종·품종 (선택)", "size": "강아지 체격", "birth_date": "생일 (모르면 비워 두세요)", "sex": "성별", "guest_sensitive": "투약·병원·지출 기록을 모든 구성원과 공유"}
-        widgets = {"birth_date": DateInput(), "name": forms.TextInput(attrs={"autocomplete": "off", "placeholder": "예: 보리"})}
+        widgets = {"birth_date": DateInput(), "name": forms.TextInput(attrs={"autocomplete": "off"})}
         help_texts = {"guest_sensitive": "선택하지 않으면 방장과 관리자만 해당 기록을 보고 남길 수 있어요. 기존 기록은 삭제되지 않아요.", "size": "체격 구분만으로 적정 체중을 정하지 않아요."}
     def __init__(self, *args, member=None, **kwargs):
         super().__init__(*args, **kwargs)

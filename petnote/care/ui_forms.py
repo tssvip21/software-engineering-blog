@@ -10,7 +10,7 @@ def render_input(request, template, context, status=200):
         form=context.get("form")
         if request.method=="POST" and form is not None and form.errors and status==200:
             status=422
-        response=render(request,"care7/_input_form.html",{**context,"in_dialog":True,"form_action":request.get_full_path()},status=status)
+        response=render(request,"care/records/_input_form.html",{**context,"in_dialog":True,"form_action":request.get_full_path()},status=status)
         response["X-Taily-Fragment"]="input-form"
         response["Cache-Control"]="no-store"
         return response

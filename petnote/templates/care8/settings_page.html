@@ -1,4 +1,0 @@
-{% extends 'care/base.html' %}{% block content %}
-<div class="page-heading"><div><p class="eyebrow">{{ room.name }}</p><h1>{{ title }}</h1></div><a class="quiet-link" href="{% url 'today' room.id %}">오늘로 돌아가기</a></div>
-<section class="settings-standalone">{% include 'care7/_input_form.html' %}</section>
-{% endblock %}

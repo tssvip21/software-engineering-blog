@@ -20,7 +20,7 @@ def main():
                 ('lint', [sys.executable, '-m', 'ruff', 'check', 'care', 'config', 'scripts', '--select', 'E9,F63,F7,F82']),
                 ('dependencies', [sys.executable, '-m', 'pip', 'check'])]
     commands += [('js-' + name, ['node', '--check', 'static/care/' + name + '.js'])
-                 for name in ['app', 'taily', 'phase3', 'phase4', 'phase5', 'studio']]
+                 for name in ['app', 'taily', 'module-browser', 'module-editor', 'disclosures', 'studio']]
     if args.browser:
         commands.append(('browser', [sys.executable, 'scripts/verify_studio_browser.py']))
         commands.append(('visual', [sys.executable, 'scripts/verify_studio_visual.py']))

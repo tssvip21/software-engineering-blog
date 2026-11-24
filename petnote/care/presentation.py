@@ -8,7 +8,7 @@ from django.urls import reverse
 from .models import Activity
 from .modules import MODULES, compact, decimal
 from .services import local_date, visible_modules
-from .stats import bounds, overview
+from .reporting.stats import bounds, overview
 
 GROUPS = {
     "daily": ("식사·물·배변", ("meal", "treat", "water", "toilet")),

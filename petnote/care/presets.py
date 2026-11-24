@@ -67,7 +67,7 @@ def save_preset(member,module,form,instance=None,*,_receipt=False):
     if not form.is_valid():raise ValidationError('저장 설정의 입력값을 확인해 주세요.')
     data=form.cleaned_data
     if instance is None and data.get('request_token') and not _receipt:
-        from .mutations7 import once
+        from .idempotency import once
         return once(member,form,'preset.create',lambda:save_preset(member,module,form,_receipt=True))
     if instance:
         preset=RecordPreset.objects.select_for_update().get(pk=instance.pk,room=member.room,module=module)

@@ -34,11 +34,13 @@ class PackageContextTests(CareCase):
         self.assertIn('2 봉지 분량',stock['context']['equivalent'])
 
     def test_food_use_changes_contents_not_fabricated_unopened_count(self):
-        p=self.pack_product();self.stock(p,quantity='1')
-        self.make('meal',product=str(p.pk),quantity='55',unit='g')
+        p = self.pack_product()
+        receipt = self.stock(p, quantity='1')
+        self.make('meal', product=str(p.pk), quantity='55', unit='g',
+                  occurred_at=(receipt.occurred_at + timedelta(minutes=1)).isoformat())
         item=stock_view(self.owner)['items'][0]
         self.assertEqual(item['balance'],D(1945))
-        response=self.client.get(reverse('supplies8',args=[self.room.pk]), {'tab': 'stock'})
+        response=self.client.get(reverse('supplies',args=[self.room.pk]), {'tab': 'stock'})
         self.assertContains(response,'미개봉 포장 개수와는 달라요.')
         self.assertContains(response,'남은 내용물')
 
@@ -135,14 +137,14 @@ class PackageContextTests(CareCase):
     def test_private_package_metadata_not_visible_to_guest(self):
         p=self.pack_product(name='비공개 약',category='medicine',stock_item='비공개 약',stock_unit='piece',package_label='병',package_amount=30,package_unit='piece')
         self.stock(p)
-        response=self.client_for(self.guest).get(reverse('supplies8',args=[self.room.pk]))
+        response=self.client_for(self.guest).get(reverse('supplies',args=[self.room.pk]))
         self.assertNotContains(response,'비공개 약')
         self.assertEqual(stock_view(self.guest)['items'],[])
 
 class RoutineUnavailableTests(CareCase):
     def test_future_date_returns_useful_conflict_not_server_error(self):
         r=self.routine(('weight',));item=r.items.get(active=True);day=services.local_date(self.room)+timedelta(days=1)
-        url=reverse('routine_complete9',args=[self.room.pk,item.pk])+'?date='+day.isoformat()
+        url=reverse('routine_complete',args=[self.room.pk,item.pk])+'?date='+day.isoformat()
         response=self.client.get(url,HTTP_X_TAILY_DIALOG='1')
         self.assertEqual(response.status_code,409);self.assertContains(response,'아직 오지 않은 날',status_code=409)
         self.assertEqual(response.headers['X-Taily-Fragment'],'input-form')
@@ -153,7 +155,7 @@ class RoutineUnavailableTests(CareCase):
         snap=services.effective_routine(r,day);probe=routine_completion.completion_form(self.owner,item,snap,None,day,uuid.uuid4())
         data={name:probe[name].value() for name in probe.fields};data.update(weight='6.3',unit='kg',note='작성한 내용을 유지')
         self.room.module_settings.filter(key='weight').update(enabled=False)
-        url=reverse('routine_complete9',args=[self.room.pk,item.pk])+'?date='+day.isoformat()
+        url=reverse('routine_complete',args=[self.room.pk,item.pk])+'?date='+day.isoformat()
         response=self.client.post(url,{k:'' if v is None else v for k,v in data.items()},HTTP_X_TAILY_DIALOG='1')
         self.assertEqual(response.status_code,409);self.assertContains(response,'작성한 내용을 유지',status_code=409)
         self.assertContains(response,'잠시 멈췄어요',status_code=409);self.assertFalse(Activity.objects.exists())

@@ -30,10 +30,7 @@ def main():
     call_command("migrate", interactive=False, verbosity=0)
     call_command("seed_references")
     if args.demo:
-        import subprocess
-        data = Path(os.environ["CARE_DATA_DIR"]).resolve()
-        subprocess.run([sys.executable, str(ROOT / "scripts" / "prepare_phase7_demo.py")],
-                       env={**os.environ, "PHASE7_DATA_DIR": str(data), "PHASE7_OUT": str(data / "showcase")}, check=True)
+        call_command("seed_demo")
     call_command("collectstatic", interactive=False, verbosity=0)
     from config.wsgi import application
     from waitress import serve

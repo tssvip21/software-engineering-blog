@@ -83,13 +83,13 @@ def result_category(value):
 
 @register.simple_tag
 def displayed(value,unit='',kind=''):
-    from care.display_values import measure
+    from care.reporting.display_values import measure
     return measure(value,unit,kind=kind)
 
 
 @register.filter
 def readable_number(value):
-    from care.display_values import number
+    from care.reporting.display_values import number
     return number(value)
 
 

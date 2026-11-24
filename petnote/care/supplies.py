@@ -11,7 +11,7 @@ from django.urls import reverse
 from . import inventory_ledger, services
 from .forms import ProductForm
 from .models import Activity, Product
-from .settings8 import apply_once
+from .profile_settings import apply_once
 
 FOOD=('meal','treat','both')
 PRIVATE=('supp','medicine')
@@ -329,7 +329,7 @@ def stock_view(member):
     visible=set(services.visible_modules(member))
     products=list(visible_products(member).exclude(stock_item=''))
     for item in result['items']:
-        from .display_values import measure
+        from .reporting.display_values import measure
         shown=measure(item['balance'],item['unit'])
         item['display_value'],item['display_unit']=shown.value,shown.unit
         from .packaging import stock_context

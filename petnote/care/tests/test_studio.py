@@ -6,7 +6,7 @@ from care import services
 from care.dashboard import module_board_tiles, today_tiles
 from care.models import Activity
 from care.modules import MODULES
-from care.status_view import context_for
+from care.reporting.status_view import context_for
 from .test_functional import CareCase
 
 
