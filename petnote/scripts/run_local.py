@@ -21,6 +21,8 @@ def main():
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
     from dotenv import load_dotenv
     load_dotenv(ROOT / ".env", override=False)
+    if args.demo:
+        os.environ.setdefault("CARE_DATA_DIR", str(ROOT / "tmp" / "local-demo"))
     import django
     django.setup()
     from django.core.management import call_command
@@ -28,7 +30,10 @@ def main():
     call_command("migrate", interactive=False, verbosity=0)
     call_command("seed_references")
     if args.demo:
-        call_command("seed_demo")
+        import subprocess
+        data = Path(os.environ["CARE_DATA_DIR"]).resolve()
+        subprocess.run([sys.executable, str(ROOT / "scripts" / "prepare_phase7_demo.py")],
+                       env={**os.environ, "PHASE7_DATA_DIR": str(data), "PHASE7_OUT": str(data / "showcase")}, check=True)
     call_command("collectstatic", interactive=False, verbosity=0)
     from config.wsgi import application
     from waitress import serve

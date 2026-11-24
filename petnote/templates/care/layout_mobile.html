@@ -1,0 +1,27 @@
+{% extends 'care/layout_desktop.html' %}{% load static care_tags %}
+{% block viewport %}width=device-width,initial-scale=1,viewport-fit=cover{% endblock %}
+{% block stylesheets %}{{ block.super }}
+<link rel="stylesheet" href="{% static 'care/mobile.css' %}">
+<script src="{% static 'care/mobile-menu.js' %}" defer></script>
+{% endblock %}
+{% block navigation %}
+<header class="phone-header">
+  <a class="brand" href="{% url 'home' %}"><img src="{% static 'care/brand/logo.svg' %}" width="28" height="28" alt=""><span>펫노트</span></a>
+  {% if room %}<button type="button" class="button secondary phone-menu-trigger" aria-haspopup="dialog" aria-controls="phone-menu"><span class="workspace-name">{{ room.name }}</span> · 메뉴</button>
+  {% elif user.is_authenticated %}<form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="text-button">로그아웃</button></form>
+  {% else %}<a class="quiet-link" href="{% url 'join' %}">초대로 참여</a>{% endif %}
+</header>
+{% if room %}
+<dialog id="phone-menu" aria-labelledby="phone-menu-title">
+  <header><h2 id="phone-menu-title">돌봄 메뉴</h2><form method="dialog"><button class="icon-button" aria-label="메뉴 닫기">{% icon 'close' %}</button></form></header>
+  <label for="room-switch">돌봄 공간</label>
+  <select id="room-switch" data-navigate>{% for m in nav_memberships %}<option value="{% url 'today' m.room_id %}" {% if m.room_id == room.id %}selected{% endif %}>{{ m.room.name }}</option>{% endfor %}</select>
+  <nav aria-label="돌봄 탐색">
+<a href="{% url 'today' room.id %}" {% if active_tab == 'today' %}aria-current="page"{% endif %}>{% icon 'today' %}오늘</a><a href="{% url 'modules' room.id %}" {% if active_tab == 'modules' %}aria-current="page"{% endif %}>{% icon 'grid' %}돌봄 기능</a><a href="{% url 'records' room.id %}" {% if active_tab == 'records' %}aria-current="page"{% endif %}>{% icon 'list' %}전체 기록</a><a href="{% url 'routines' room.id %}" {% if active_tab == 'routines' %}aria-current="page"{% endif %}>{% icon 'clock' %}루틴</a>{% if phase8_enabled %}<a href="{% url 'supplies8' room.id %}" {% if active_tab == 'supplies' %}aria-current="page"{% endif %}>{% icon 'box' %}물품 관리</a>{% endif %}<a href="{% url 'overview' room.id %}" {% if active_tab == 'overview' %}aria-current="page"{% endif %}>{% icon 'chart' %}최근 통계</a>
+    <a href="{% url 'members' room.id %}">{% icon 'list' %}구성원</a>
+<a href="{% url 'room_settings' room.id %}" {% if active_tab == 'pet' %}aria-current="page"{% endif %}>{% icon 'paw' %}반려동물 상태</a><a href="{% url 'preferences8' room.id %}" {% if active_tab == 'preferences' %}aria-current="page"{% endif %}>{% icon 'settings' %}일반 설정</a>
+  </nav>
+  <footer><a class="quiet-link" href="{% url 'home' %}">모든 돌봄 공간</a><form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="text-button">로그아웃</button></form></footer>
+</dialog>
+{% endif %}
+{% endblock %}

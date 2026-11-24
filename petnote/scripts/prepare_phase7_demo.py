@@ -26,14 +26,14 @@ def connect_showcase_admin(fixture):
     if fixture.get('synthetic') is not True:
         raise ValueError('가상 시연 자료를 확인해 주세요.')
     admin = get_user_model().objects.get(username='demo_admin')
-    for key in ('rich', 'cat', 'bird'):
+    for key in ('rich', 'cat'):
         room = Room.objects.get(pk=fixture['rooms'][key], owner__username='demo_owner')
         Membership.objects.get_or_create(room=room, user=admin,
                                          defaults={'display_name': admin.first_name, 'role': 'admin'})
 
 
 call_command('migrate',interactive=False,verbosity=0)
-call_command('seed_demo',verbosity=0)
+call_command('seed_demo', accounts_only=True, verbosity=0)
 call_command('seed_references',verbosity=0)
 if (O/'fixture.json').exists():
     connect_showcase_admin(json.loads((O/'fixture.json').read_text(encoding='utf8')))
@@ -61,16 +61,18 @@ def preset(owner,key,title,**data):
 
 with transaction.atomic():
     for label,name,species,breed,weight in [
-      ('rich','7차 검수 · 보리','dog','dog-bichon-frise',Decimal('8.4')),
-      ('cat','7차 검수 · 나비','cat','',Decimal('4.2')),
-      ('bird','7차 검수 · 초록이','bird','',Decimal('.095')),
-      ('empty','7차 검수 · 빈 기록','dog','',Decimal('6')),
-      ('sparse','7차 검수 · 간헐 체중','dog','mixed',Decimal('11'))]:
-        assert not Room.objects.filter(name=name).exists(),'Untracked pre-existing example; do not overwrite'
+      ('rich','강아지','dog','dog-bichon-frise',Decimal('8.4')),
+      ('cat','고양이','cat','',Decimal('4.2')),
+      ]:
+        assert not Room.objects.filter(name__in=[name, '7차 검수 · ' + name], members__display_name='참여자').exists(),'Untracked pre-existing example; do not overwrite'
         f=RoomForm({'name':name,'species':species,'breed_key':breed,'maturity':'adult','sex':'male','timezone':'Asia/Seoul','use_defaults':'on'})
         assert f.is_valid(),f.errors
-        room=services.create_room(owner_user,f);owner=room.members.get(role='owner')
-        Membership.objects.create(room=room,user=guest_user,display_name='검수 참여자',role='guest')
+        try:
+            room = Room.objects.get(owner=owner_user, name=name, species=species, archived_at__isnull=True)
+        except Room.DoesNotExist:
+            room = services.create_room(owner_user, f)
+        owner=room.members.get(role='owner')
+        Membership.objects.get_or_create(room=room,user=guest_user,defaults={'display_name':'참여자','role':'guest'})
         enabled=list(SELECTABLE_MODULES) if label=='rich' else ['meal','treat','water','weight','play','training','sleep','observation','hygiene','cleaning','environment','inventory'] if species in ('cat','bird') else ['weight','meal','walk','observation','inventory']
         if label=='empty':enabled=['weight','walk','meal','observation']
         order=enabled+[k for k in MODULES if k not in enabled]
@@ -78,8 +80,8 @@ with transaction.atomic():
         room.module_versions.update(effective_at=now-timedelta(days=200),settings={'enabled':enabled,'order':order,'pinned':[k for k in enabled if k in ['meal','treat','water','weight','walk','observation']]})
         fixture['rooms'][label]=str(room.pk)
         if label=='empty':continue
-        product=Product.objects.create(room=room,name='검수용 사료',brand='가상 브랜드',category='meal',energy=Decimal('380'),energy_basis='100g',source='합성 데이터 · 실제 영양 권장값 아님',stock_item=name+' 사료',stock_unit='g')
-        snack=Product.objects.create(room=room,name='검수용 간식',brand='가상 브랜드',category='treat',energy=Decimal('320'),energy_basis='100g',source='합성 데이터 · 실제 영양 권장값 아님',stock_item=name+' 간식',stock_unit='g')
+        product=Product.objects.create(room=room,name='사료',brand='',category='meal',energy=Decimal('380'),energy_basis='100g',source='합성 데이터 · 실제 영양 권장값 아님',stock_item=name+' 사료',stock_unit='g')
+        snack=Product.objects.create(room=room,name='간식',brand='',category='treat',energy=Decimal('320'),energy_basis='100g',source='합성 데이터 · 실제 영양 권장값 아님',stock_item=name+' 간식',stock_unit='g')
         make(owner,'inventory',45,item=product.stock_item,movement='set',quantity='20',unit='kg',minimum='1')
         make(owner,'inventory',45,item=snack.stock_item,movement='set',quantity='3',unit='kg',minimum='.2')
         portion='60' if species=='dog' else '35' if species=='cat' else '12'
@@ -94,7 +96,7 @@ with transaction.atomic():
         if label=='sparse':
             make(owner,'weight',60,weight='10',unit='kg',bcs='');make(owner,'weight',2,weight='11',unit='kg',bcs='')
             for ago in [40,30,20,10,2]:make(owner,'meal',ago,product=str(product.pk),quantity=portion,consumed=portion)
-            make(owner,'observation',10,simple=True,detail='관찰 간격이 긴 개체의 가상 메모')
+            make(owner,'observation',10,simple=True,detail='간헐적으로 체중을 측정했어요.')
             continue
         count=16 if label=='rich' else 8
         for ago in range(count,0,-1):
@@ -115,16 +117,16 @@ with transaction.atomic():
                 make(owner,'hygiene',ago,task='teeth' if species!='bird' else 'nail')
                 make(owner,'cleaning',ago,target='bedding' if species!='bird' else 'cage',task='청소')
             if label=='rich':make(owner,'toilet',ago,kind='stool',condition='usual')
-        make(owner,'observation',4,simple=True,detail='이 시기에 장난감을 바꿨어요. 변화 원인을 판정하는 자료가 아닌 가상 메모예요.')
-        make(owner,'observation',0,simple=True,detail='오늘 관찰 내용을 자유롭게 남기는 예시예요.')
+        make(owner,'observation',4,simple=True,detail='이 시기에 장난감을 바꿨어요.')
+        make(owner,'observation',0,simple=True,detail='오늘 관찰한 내용이에요.')
         make(owner,'weight',0,weight=str(weight if species!='bird' else weight*1000),unit='kg' if species!='bird' else 'g',bcs='5' if species!='bird' else '',bcs_by='guardian' if species!='bird' else '')
         make(owner,'meal',0,product=str(product.pk),quantity=portion,consumed='')
         make(owner,'inventory',0,item=product.stock_item,movement='in',quantity='1',unit='kg',minimum='1')
         if label=='rich':
-            make(owner,'medication',1,simple=True,routine_title='검수용 영양제 알림',dose='',medicine='',unit='',result='given')
-            make(owner,'veterinary',0,status='planned',occurred_at=(timezone.localtime()+timedelta(days=3)).isoformat(),kind='vaccine',detail='가상 예방접종 일정')
+            make(owner,'medication',1,simple=True,routine_title='영양제 알림',dose='',medicine='',unit='',result='given')
+            make(owner,'veterinary',0,status='planned',occurred_at=(timezone.localtime()+timedelta(days=3)).isoformat(),kind='vaccine',detail='예방접종 일정')
             make(owner,'shedding',1,simple=True,kind='fur')
-            make(owner,'expense',3,item='가상 소모품',amount='32000',currency='KRW',category='supplies')
+            make(owner,'expense',3,item='소모품',amount='32000',currency='KRW',category='supplies')
             med=preset(owner,'medication','영양제 확인',note='사용자 지정 알림 예시이며 실제 처방이 아님')
             for title,module,setting in [('아침 급여','meal',main),('영양제 확인','medication',med),('휴식 준비','sleep',None)]:
                 form=RoutineForm({'name':title,'at':'08:00','weekdays':[str(n) for n in range(7)],'modules':[module],'active':'on',

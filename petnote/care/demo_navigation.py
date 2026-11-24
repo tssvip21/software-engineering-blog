@@ -13,6 +13,13 @@ def manifest(request):
         return {}
     explicit=getattr(settings,"DEMO_NAVIGATION",None)
     if explicit is not None:return explicit
+    if settings.LOCAL_DEMO_POSTGRES or (settings.DATA_DIR / "showcase" / "fixture.json").is_file():
+        fixture_path = settings.DATA_DIR / "showcase" / "fixture.json"
+        rooms = json.loads(fixture_path.read_text(encoding="utf8"))["rooms"]
+        from .models import Room
+        synthetic = Room.objects.filter(owner__username="demo_owner").values_list("pk", flat=True)
+        return {"showcase": [rooms[key] for key in ("rich", "cat")],
+                "synthetic_rooms": [str(pk) for pk in synthetic]}
     path=Path(settings.BASE_DIR)/"tmp/handoff/phase7/demo-navigation.json"
     try:
         value=json.loads(path.read_text(encoding="utf8"))
@@ -26,6 +33,8 @@ def split(request,memberships):
     primary=[m for m in rows if str(m.room_id) in main or str(m.room_id) not in known]
     auxiliary=[m for m in rows if str(m.room_id) in known and str(m.room_id) not in main]
     primary.sort(key=lambda m:(main.index(str(m.room_id)) if str(m.room_id) in main else len(main),m.room.name))
+    if settings.LOCAL_DEMO_POSTGRES or (settings.DATA_DIR / "showcase" / "fixture.json").is_file():
+        return primary, []
     return primary,auxiliary
 
 @require_GET

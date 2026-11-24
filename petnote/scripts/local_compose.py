@@ -49,7 +49,7 @@ def main(argv=None):
         parser.error('기존 로컬 설정과 포트가 달라요. 이 환경을 덮어쓰지 않았어요.')
     if settings.get('GOOGLE_CLIENT_SECRET') or settings.get('GOOGLE_CLIENT_ID'):
         parser.error('이 분리된 검사 환경에는 외부 로그인 비밀값을 넣지 않아요.')
-    command=[docker,'compose','--project-directory',str(ROOT),'--env-file',str(envfile),'-p',args.project]
+    command=[docker,'compose','--project-directory',str(ROOT),'-f',str(ROOT/'compose.production.yaml'),'--env-file',str(envfile),'-p',args.project]
     steps={'up':['up','-d','--build','--wait'],'stop':['stop'],'down':['down'],
            'status':['ps'],'check':['config','--quiet'],
            'test':['exec','-T','backend','python','manage.py','test','care.tests','--noinput','--verbosity','1']}

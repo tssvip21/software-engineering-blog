@@ -11,6 +11,7 @@
 !static/
 !static/**
 !deploy/
+!deploy/entrypoint-demo.sh
 !deploy/entrypoint.sh
 !deploy/serve.py
 !deploy/healthcheck.py

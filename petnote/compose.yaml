@@ -1,86 +1,70 @@
-name: taily
+name: petnote-local
 services:
   frontend:
     image: caddy:2-alpine@sha256:78bd35025c7ba85961dd149ae670315129954e77abe2383ac47c89106b35ade9
-    restart: unless-stopped
-    environment:
-      SITE_ADDRESS: ${SITE_ADDRESS:?Set SITE_ADDRESS}
     ports:
-      - "${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-80}:80"
-      - "${HTTPS_BIND:-0.0.0.0}:${HTTPS_PORT:-443}:443"
+      - "127.0.0.1:${PETNOTE_PORT:-8096}:80"
     volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/Caddyfile.local:/etc/caddy/Caddyfile:ro
       - staticfiles:/srv/static:ro
-      - caddy_data:/data
-      - caddy_config:/config
     depends_on:
       backend:
         condition: service_healthy
-    networks: [web]
-    mem_limit: 128m
-    logging: &logging
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
   backend:
     build: .
-    restart: unless-stopped
     environment:
-      DJANGO_DEBUG: ${DJANGO_DEBUG:-0}
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY}
-      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?Set DJANGO_ALLOWED_HOSTS}
-      APP_ORIGIN: ${APP_ORIGIN:?Set APP_ORIGIN}
-      CARE_DEMO_MODE: "0"
-      CARE_PUBLIC_DEMO_ENTRY: ${CARE_PUBLIC_DEMO_ENTRY:-0}
+      CARE_DEMO_MODE: "1"
+      PETNOTE_LOCAL_POSTGRES: "1"
+      DJANGO_DEBUG: "1"
+      CARE_DATA_DIR: /app/data
+      PHASE7_DATA_DIR: /app/data/preview-data
+      PHASE7_OUT: /app/data/showcase
       POSTGRES_HOST: db
-      POSTGRES_DB: ${POSTGRES_DB:-taily}
-      POSTGRES_USER: ${POSTGRES_USER:-taily}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      POSTGRES_DB: petnote_demo
+      POSTGRES_USER: petnote
+      APP_ORIGIN: http://127.0.0.1:${PETNOTE_PORT:-8096}
+    entrypoint: [sh, /app/deploy/start-local.sh]
     volumes:
+      - localdata:/app/data
       - staticfiles:/app/staticfiles
-    tmpfs:
-      - /tmp:size=64m
-    read_only: true
-    security_opt: [no-new-privileges:true]
-    cap_drop: [ALL]
+      - dbkey:/run/dbkey:ro
+      - ./deploy/start-local.sh:/app/deploy/start-local.sh:ro
+      - ./scripts/prepare_phase7_demo.py:/app/scripts/prepare_phase7_demo.py:ro
     depends_on:
       db:
         condition: service_healthy
-    networks: [web, database]
-    mem_limit: 768m
     healthcheck:
-      test: ["CMD", "python", "/app/deploy/healthcheck.py"]
-      interval: 20s
-      timeout: 5s
-      start_period: 60s
-      retries: 5
-    logging: *logging
-  db:
-    image: postgres:16-bookworm@sha256:5264710be20f409750ac6dc4e5706dcef929c87e241605463f0f9aefa932a8d9
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-taily}
-      POSTGRES_USER: ${POSTGRES_USER:-taily}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks: [database]
-    mem_limit: 512m
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: [CMD, python, /app/deploy/healthcheck.py]
       interval: 5s
       timeout: 5s
       retries: 20
-    logging: *logging
-networks:
-  web:
-  database:
-    internal: true
+      start_period: 90s
+  db:
+    image: postgres:16-bookworm@sha256:5264710be20f409750ac6dc4e5706dcef929c87e241605463f0f9aefa932a8d9
+    environment:
+      POSTGRES_DB: petnote_demo
+      POSTGRES_USER: petnote
+      POSTGRES_PASSWORD_FILE: /run/dbkey/password
+    entrypoint:
+      - sh
+      - -ec
+      - |
+        if [ ! -s /run/dbkey/password ]; then
+          head -c 48 /dev/urandom | base64 > /run/dbkey/password.tmp
+          chmod 0444 /run/dbkey/password.tmp
+          mv /run/dbkey/password.tmp /run/dbkey/password
+        fi
+        exec docker-entrypoint.sh postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - dbkey:/run/dbkey
+    healthcheck:
+      test: [CMD, pg_isready, -h, 127.0.0.1, -U, petnote, -d, petnote_demo]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 volumes:
   postgres_data:
+  dbkey:
+  localdata:
   staticfiles:
-  caddy_data:
-  caddy_config:

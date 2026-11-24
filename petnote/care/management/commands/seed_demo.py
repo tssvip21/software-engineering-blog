@@ -14,10 +14,13 @@ from care.demo_fixtures import record_data
 
 class Command(BaseCommand):
     help = "별도 로컬 시연 DB에만 가상 데이터를 추가합니다. 기존 데이터는 지우지 않습니다."
+    def add_arguments(self, parser):
+        parser.add_argument("--accounts-only", action="store_true")
+
     @transaction.atomic
     def handle(self, *args, **options):
-        if not settings.DEMO_MODE or not settings.DEBUG or not str(settings.DATABASES["default"]["NAME"]).endswith("demo.sqlite3"):
-            raise CommandError("시연 모드의 demo.sqlite3에서만 실행할 수 있습니다.")
+        if not settings.DEMO_MODE or not settings.DEBUG or not (settings.LOCAL_DEMO_POSTGRES or str(settings.DATABASES["default"]["NAME"]).endswith("demo.sqlite3")):
+            raise CommandError("로컬 전용 시연 데이터베이스에서만 실행할 수 있습니다.")
         User = get_user_model()
         users = {}
         for key, name in (("owner", "지우"), ("admin", "민서"), ("member", "도윤"), ("outsider", "새 보호자")):
@@ -25,6 +28,8 @@ class Command(BaseCommand):
             if created:
                 u.set_unusable_password(); u.save(update_fields=["password"])
             users[key] = u
+        if options["accounts_only"]:
+            return
         if Room.objects.filter(owner=users["owner"]).exists():
             self.stdout.write("Demo already initialized; existing records preserved.")
             return
@@ -41,7 +46,7 @@ class Command(BaseCommand):
         today = services.local_date(room)
         earliest = datetime.combine(today - timedelta(days=40), time(0), ZoneInfo(room.timezone))
         ModuleConfigVersion.objects.filter(room=room).update(effective_at=earliest, settings={"enabled": list(MODULES), "order": list(MODULES)})
-        product = Product.objects.create(room=room, name="시연용 사료 A", category="meal", energy=380, energy_basis="100g", protein=24, fat=12, source="기능 설명을 위한 가상 영양 정보")
+        product = Product.objects.create(room=room, name="사료 A", category="meal", energy=380, energy_basis="100g", protein=24, fat=12, source="기능 설명을 위한 가상 영양 정보")
         for offset in (35, 29, 14, 7, 6, 5, 4, 3, 2, 1):
             for key in ("meal", "walk", "water", "weight"):
                 at = datetime.combine(today - timedelta(days=offset), time(18, 0), ZoneInfo(room.timezone))

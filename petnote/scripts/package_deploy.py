@@ -3,7 +3,7 @@ import tarfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-FILES = ("Dockerfile", ".dockerignore", "compose.yaml", "compose.demo.yaml", "manage.py",
+FILES = ("Dockerfile", ".dockerignore", "compose.production.yaml", "compose.demo.yaml", "manage.py",
          "requirements.lock", "requirements-deploy.txt")
 DIRECTORIES = ("config", "care", "templates", "static")
 DEPLOY_FILES = ("Caddyfile", "entrypoint.sh", "entrypoint-demo.sh", "serve.py", "healthcheck.py",
@@ -26,6 +26,8 @@ def main():
             if path.is_symlink():
                 raise ValueError(f"Unexpected symlink: {path.relative_to(ROOT)}")
             archive.add(path, arcname=str(path.relative_to(ROOT)), recursive=False)
+            if path == ROOT / "compose.production.yaml":
+                archive.add(path, arcname="compose.yaml", recursive=False)
     print(f"Packaged {len(paths)} application files: {output.name} ({output.stat().st_size} bytes)")
 
 

@@ -44,8 +44,12 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [{"BACKEND": "django.template.backends.django.DjangoTemplates", "DIRS": [BASE_DIR / "templates"], "APP_DIRS": True, "OPTIONS": {"context_processors": ["django.template.context_processors.request", "django.contrib.auth.context_processors.auth", "django.contrib.messages.context_processors.messages", "care.context.site_context"]}}]
 WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": str(DATA_DIR / ("demo.sqlite3" if DEMO_MODE else "care.sqlite3")), "OPTIONS": {"timeout": 25, "transaction_mode": "IMMEDIATE"}}}
+LOCAL_DEMO_POSTGRES = (
+    os.environ.get("PETNOTE_LOCAL_POSTGRES") == "1" and DEBUG and DEMO_MODE and not PUBLIC_DEMO
+    and os.environ.get("POSTGRES_HOST") == "db" and os.environ.get("POSTGRES_DB") == "petnote_demo"
+)
 if os.environ.get("POSTGRES_HOST"):
-    if DEMO_MODE:
+    if DEMO_MODE and not LOCAL_DEMO_POSTGRES:
         raise ImproperlyConfigured("시연 DB는 로컬 SQLite만 사용합니다.")
     DATABASES = {"default": {
         "ENGINE": "django.db.backends.postgresql",

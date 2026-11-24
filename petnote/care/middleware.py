@@ -11,6 +11,13 @@ class PrivateResponseMiddleware:
         finally:
             timezone.deactivate()
         if not request.path.startswith("/static/"):
+            if request.method == "GET":
+                layout = request.GET.get("layout")
+                if layout in ("mobile", "desktop"):
+                    response.set_cookie("petnote_layout", layout, httponly=True,
+                                        secure=request.is_secure(), samesite="Lax")
+                elif layout == "auto":
+                    response.delete_cookie("petnote_layout", samesite="Lax")
             response["Cache-Control"] = "no-store, private"
             response["Pragma"] = "no-cache"
             response["X-Robots-Tag"] = "noindex, nofollow, noarchive"

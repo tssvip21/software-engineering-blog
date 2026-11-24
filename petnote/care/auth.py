@@ -121,7 +121,8 @@ def logout_view(request):
 
 @require_POST
 def demo_login(request):
-    if not settings.DEMO_MODE or not settings.DEBUG or request.META.get("REMOTE_ADDR") not in ("127.0.0.1", "::1", "testserver"):
+    local_request = request.META.get("REMOTE_ADDR") in ("127.0.0.1", "::1", "testserver")
+    if not settings.DEMO_MODE or not settings.DEBUG or not (local_request or settings.LOCAL_DEMO_POSTGRES):
         raise Http404()
     role = request.POST.get("identity", "owner")
     if role not in ("owner", "admin", "member", "outsider"):
