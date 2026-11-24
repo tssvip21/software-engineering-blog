@@ -1,0 +1,50 @@
+name: PetNote CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "petnote/**"
+      - ".github/workflows/petnote-ci.yml"
+  pull_request:
+    paths:
+      - "petnote/**"
+      - ".github/workflows/petnote-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compose-and-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: petnote
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Build and start Caddy, Django and PostgreSQL
+        run: docker compose up --build --wait --wait-timeout 240 -d
+
+      - name: Check the app through Caddy
+        run: |
+          curl --fail --silent --show-error http://127.0.0.1:8096/health/ | jq -e '.status == "ok"'
+          curl --fail --silent --show-error http://127.0.0.1:8096/ > "$RUNNER_TEMP/petnote-home.html"
+          grep -q '펫노트' "$RUNNER_TEMP/petnote-home.html"
+
+      - name: Run Django tests with PostgreSQL
+        run: |
+          docker compose exec -T -e CARE_DEMO_MODE=0 backend sh -ec '
+            export POSTGRES_PASSWORD="$(cat /run/dbkey/password)"
+            exec python manage.py test care.tests --noinput
+          '
+
+      - name: Show container status on failure
+        if: failure()
+        run: docker compose ps -a
+
+      - name: Stop the CI stack
+        if: always()
+        run: docker compose down --volumes
