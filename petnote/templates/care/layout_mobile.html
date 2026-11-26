@@ -4,17 +4,22 @@
 {% block stylesheets %}{{ block.super }}
   <link rel="stylesheet" href="{% static 'care/mobile.css' %}">
   <link rel="stylesheet" href="{% static 'care/navigation.css' %}">
+  <link rel="stylesheet" href="{% static 'care/pn-mobile.css' %}?v=20261127b">
+  <link rel="expect" href="#main" blocking="render">
   <script src="{% static 'care/mobile-menu.js' %}" defer></script>
 {% endblock %}
 {% block navigation %}
   {% navigation as navigation %}
-  <header class="phone-header">
-    <a class="brand" href="{% url 'home' %}"><img src="{% static 'care/brand/logo.svg' %}" width="28" height="28" alt=""><span>펫노트</span></a>
+  <header class="phone-header{% if room %} has-room{% endif %}">
     {% if room %}
-      <a href="{{ navigation.menu.url }}" class="button secondary phone-menu-trigger" aria-haspopup="dialog" aria-controls="phone-menu" aria-expanded="false">
-        <span class="workspace-name">{{ room.name }}</span><span> · 메뉴</span>{% icon 'more' %}
+      <a href="{{ navigation.menu.url }}" class="phone-menu-trigger pn-pet" aria-haspopup="dialog" aria-controls="phone-menu" aria-expanded="false" aria-label="{{ room.name }} · 돌봄 공간 바꾸기와 메뉴">
+        <span class="workspace-name">{{ room.name }}</span>{% icon 'down' %}
       </a>
-    {% elif user.is_authenticated %}
+      <a class="pn-carers" href="{% url 'members' room.id %}" aria-label="함께 돌보는 사람 {{ sidebar_people_count }}명">{% for person in sidebar_people|slice:':3' %}<span class="{% if person == member %}is-me{% endif %}">{{ person.display_name|slice:':1' }}</span>{% endfor %}{% if sidebar_people_count > 3 %}<span class="is-more">+{{ sidebar_people_count|add:'-3' }}</span>{% endif %}</a>
+    {% else %}
+    <a class="brand" href="{% url 'home' %}"><img src="{% static 'care/brand/logo.svg' %}" width="28" height="28" alt=""><span>펫노트</span></a>
+    {% endif %}
+    {% if room %}{% elif user.is_authenticated %}
       <form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="text-button">로그아웃</button></form>
     {% else %}
       <a class="quiet-link" href="{% url 'join' %}">초대로 참여</a>

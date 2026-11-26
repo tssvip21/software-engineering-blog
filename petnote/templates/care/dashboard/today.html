@@ -1,4 +1,5 @@
 {% extends 'care/base.html' %}{% load care_tags static %}{% block title %}{{ room.name }} · 오늘{% endblock %}{% block content %}
+{% if petnote_layout == 'care/layout_mobile.html' %}{% include 'care/dashboard/_today_mobile.html' %}{% else %}
 <header class="today-head"><div><p class="eyebrow">{{ day|date:'n월 j일 l' }} · {{ room|pet_profile:day }}</p><h1>{{ room.name }}</h1></div><p class="today-summary">오늘 기록 <b data-today-count>{{ today_count }}</b>건 · 할 일 <b>{{ schedule_done }}</b>/{{ schedule_total }}{% if notices %} · 알림 <b>{{ notices|length }}</b>{% endif %}</p></header>
 {% day_marks recent schedule_pending schedule_completed day as bar %}<div class="day-bar" role="img" aria-label="오늘 0시부터 24시까지 기록과 할 일"{% if bar.now is not None %} data-now-sec="{{ bar.now_sec|stringformat:'d' }}"{% endif %}>{% if bar.now is not None %}<span class="day-bar-fill to-{{ bar.now }}"></span>{% endif %}{% for m in bar.marks %}<span class="day-mark is-{{ m.kind }} at-{{ m.slot }}" title="{{ m.label }}"></span>{% endfor %}{% if bar.now is not None %}<span class="day-now at-{{ bar.now }}" title="지금 {{ bar.now_text }}"></span>{% endif %}</div><div class="day-bar-hours" aria-hidden="true"><span>0시</span><span>6시</span><span>12시</span><span>18시</span><span>24시</span></div><div class="day-bar-legend" aria-hidden="true"><span class="is-record">기록</span><span class="is-done">끝낸 할 일</span><span class="is-todo">남은 할 일</span>{% if bar.now is not None %}<span class="is-now" data-now-label>지금 {{ bar.now_text }}</span>{% endif %}</div><script src="{% static 'care/day-bar.js' %}" defer></script>
 <div class="care-workspace today-board"><div class="workspace-primary">
@@ -8,4 +9,5 @@
 </div>
 {% include 'care/routines/_schedule_panel.html' %}
 </div>
+{% endif %}
 {% endblock %}

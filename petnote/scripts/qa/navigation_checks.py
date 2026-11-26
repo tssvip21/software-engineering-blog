@@ -91,7 +91,8 @@ def deep_links(page, root, flows, passed):
         flows.go(page, root + suffix + "?layout=mobile")
         assert_scope(page, scope, label)
     passed("입력·개별 통계·설정 상세 URL에서 올바른 상위 메뉴 선택")
-    flows.go(page, root + "records/?layout=mobile")
+    # Phones open the record tab on one day; the full list is the explicit list view.
+    flows.go(page, root + "records/?view=list&layout=mobile")
     record = page.locator("[data-record-link]").first.get_attribute("href")
     assert record, "Expected a previously created sample record"
     flows.go(page, record)
@@ -123,7 +124,7 @@ def hub_and_dialog(page, root, flows, passed):
     expect(dialog).not_to_be_visible()
     expect(trigger).to_be_focused()
     trigger.click()
-    dialog.get_by_role("link", name="전체 기록", exact=True).click()
+    dialog.get_by_role("link", name="기록", exact=True).click()
     assert_scope(page, "history", "기록")
     for suffix, name, label in (
         ("settings/", "반려동물 상태", "반려동물"), ("preferences/", "일반 설정", "설정")

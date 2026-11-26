@@ -1,0 +1,38 @@
+{% extends 'care/base.html' %}{% load care_tags %}{% block title %}{{ room.name }} · 기록{% endblock %}{% block content %}
+<h1 class="sr-only">{{ day|date:'n월 j일' }} 기록</h1>
+<nav class="pn-seg" aria-label="기록 보기 방식"><a href="{{ back_to_today }}" aria-current="page">하루별</a><a href="{{ list_url }}?view=list">전체 목록</a></nav>
+<nav class="pn-week" aria-label="날짜 고르기">
+  <a class="pn-week-step" href="{{ prev_week }}" aria-label="지난주">{% icon 'back' %}</a>
+  {% for d in week %}<a href="{{ d.url }}" class="{% if d.selected %}is-selected{% endif %}{% if d.future %} is-future{% endif %}{% if d.today %} is-today{% endif %}" {% if d.selected %}aria-current="date"{% endif %} aria-label="{{ d.date|date:'n월 j일' }} {{ d.weekday }}요일"><span>{{ d.weekday }}</span><b>{{ d.date|date:'j' }}</b></a>{% endfor %}
+  {% if next_week %}<a class="pn-week-step" href="{{ next_week }}" aria-label="다음 주">{% icon 'arrow' %}</a>{% else %}<span class="pn-week-step" aria-hidden="true"></span>{% endif %}
+</nav>
+{% if people|length > 1 %}<nav class="pn-chips" aria-label="기록한 사람">
+  <a href="{{ all_people_url }}" {% if not person %}aria-current="true"{% endif %}>모두</a>
+  {% for p in people %}<a href="{{ p.url }}" {% if p.selected %}aria-current="true"{% endif %}>{{ p.name }}{% if p.me %} <small>나</small>{% endif %}</a>{% endfor %}
+</nav>{% endif %}
+<p class="pn-day-sum">{{ day|date:'n월 j일' }}{% if is_today %} 오늘{% endif %} · 기록 <b>{{ record_count }}</b>건{% if not person and open_routines %} · 남은 할 일 <b>{{ open_routines }}</b>개{% endif %}</p>
+<section class="pn-tl" aria-label="시간 순서 기록">
+{% for group in groups %}
+  {% if group.now_before %}<div class="pn-now" role="presentation"><span>{{ now_text }}</span><i></i></div>{% endif %}
+  <div class="pn-tl-group{% if group.future %} is-future{% endif %}">
+    <time class="pn-tl-time">{{ group.label }}</time>
+    <ul class="pn-tl-items">
+    {% for item in group.items %}
+      {% if item.kind == 'record' %}
+      <li class="pn-tl-item is-record{% if item.active %} is-active{% endif %}"><a href="{{ item.url }}" data-record-link><strong>{{ item.title }}</strong><small>{{ item.module }}{% if item.who %} · {{ item.who }}{% endif %}{% if item.active %} · 진행 중{% endif %}</small></a></li>
+      {% else %}
+      <li class="pn-tl-item is-todo{% if item.skipped %} is-skipped{% endif %}"><div><strong>{{ item.title }}</strong><small>{{ item.module }} · {% if item.skipped %}건너뜀{% elif item.late %}아직 안 했어요{% else %}예정{% endif %}</small></div>
+        {% if not item.skipped and is_today %}<button type="button" class="pn-check" data-action7="routine_done" data-module="{{ item.row.module }}" data-routine-item="{{ item.row.item_id }}" data-date="{{ item.row.date|date:'Y-m-d' }}" {% if item.row.preset_id %}data-preset="{{ item.row.preset_id }}"{% endif %} aria-label="{{ item.title }} 완료 기록">{% icon 'check' %}</button>{% endif %}
+        <p class="flow-feedback" data-action-feedback7 role="status" hidden></p>
+      </li>
+      {% endif %}
+    {% endfor %}
+    </ul>
+  </div>
+{% empty %}
+  <div class="pn-empty"><p>{% if person %}{{ person.display_name }}님이 이날 남긴 기록이 없어요.{% else %}이날 남긴 기록이 없어요.{% endif %}</p></div>
+{% endfor %}
+{% if show_now_at_end and groups %}<div class="pn-now" role="presentation"><span>{{ now_text }}</span><i></i></div>{% endif %}
+</section>
+<p class="pn-tl-foot"><a class="quiet-link" href="{% url 'modules' room.id %}">{% icon 'plus' %}빠뜨린 기록 추가</a></p>
+{% endblock %}

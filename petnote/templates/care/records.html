@@ -1,4 +1,5 @@
 {% extends 'care/base.html' %}{% load care_tags %}{% block content %}
+{% if petnote_layout == 'care/layout_mobile.html' %}<nav class="pn-seg" aria-label="기록 보기 방식"><a href="{% url 'records' room.id %}?view=day">하루별</a><a href="{% url 'records' room.id %}?view=list" aria-current="page">전체 목록</a></nav>{% endif %}
 <div class="page-heading"><div><p class="eyebrow">{{ room.name }}</p><h1>전체 기록</h1></div></div>
 <nav class="record-categories" aria-label="기록 분류"><a href="{{ all_categories_url }}" {% if not selected_category %}aria-current="page"{% endif %}>전체</a>{% for item in record_categories %}<a href="{{ item.url }}" data-category="{{ item.key }}" {% if item.selected %}aria-current="page"{% endif %}>{{ item.label }} <span>{{ item.count }}</span></a>{% endfor %}</nav>
 <form method="get" class="record-search" aria-label="기록 조회 조건">

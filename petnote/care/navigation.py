@@ -12,7 +12,7 @@ GROUPS = (
         ("supplies", "supplies", "물품 관리", "물품", "box"),
     )),
     ("history", "기록", "지난 기록과 변화", "list", (
-        ("records", "records", "전체 기록", "기록", "list"),
+        ("records", "records", "기록", "기록", "list"),
         ("overview", "overview", "최근 통계", "통계", "chart"),
     )),
     ("manage", "관리", "함께 돌보는 사람과 공간", "settings", (

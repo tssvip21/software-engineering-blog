@@ -1,0 +1,45 @@
+{% load care_tags %}
+<h1 class="sr-only">{{ room.name }}의 오늘</h1>
+{% for notice in overdue_notices %}<div class="pn-alert" data-notice7>{% icon 'clock' %}<a href="{{ notice.url }}"><strong>{{ notice.title }}</strong> {{ notice.timing }}</a><button type="button" data-dismiss-notice7 data-key="{{ notice.key }}" data-stage="{{ notice.stage }}" aria-label="{{ notice.title }} 안내 닫기">{% icon 'close' %}</button><p data-action-feedback7 role="status" hidden></p></div>{% endfor %}
+<div class="pn-stack">
+<section class="pn-card pn-hero" aria-labelledby="pn-todo-title">
+  <p class="pn-date">{{ day|date:'n월 j일 l' }} · {{ room|pet_profile:day }}</p>
+  <h2 id="pn-todo-title">{% if open_routines %}할 일 {{ open_routines }}개가 남았어요{% elif schedule_total %}오늘 할 일을 모두 마쳤어요{% else %}오늘 정해 둔 할 일이 없어요{% endif %}</h2>
+  {% if schedule_total %}<progress class="pn-progress" value="{{ schedule_done }}" max="{{ schedule_total }}" aria-label="오늘 할 일 {{ schedule_total }}개 중 {{ schedule_done }}개 완료">{{ schedule_done }}/{{ schedule_total }}</progress>{% endif %}
+  {% for row in schedule_pending %}
+  <article class="pn-row{% if row.skipped %} is-skipped{% endif %}" data-schedule-key="{{ row.key }}">
+    <div class="pn-row-text"><strong>{{ row.name }}</strong><small><time>{{ row.at|date:'H:i' }}</time> · {{ row.spec.name }}{% if row.skipped or row.paused or row.active %} · {{ row.state }}{% endif %}</small></div>
+    {% if row.late %}<span class="pn-badge">늦음</span>{% endif %}
+    {% if row.record_url %}<a class="pn-check" href="{{ row.record_url }}" aria-label="{{ row.name }} 진행 기록 보기">{% icon 'arrow' %}</a>{% elif not row.paused and not row.skipped %}<button type="button" class="pn-check" data-action7="routine_done" data-module="{{ row.module }}" data-routine-item="{{ row.item_id }}" data-date="{{ row.date|date:'Y-m-d' }}" {% if row.preset_id %}data-preset="{{ row.preset_id }}"{% endif %} aria-label="{{ row.name }} 완료 기록">{% icon 'check' %}</button>{% endif %}
+    <p class="flow-feedback" data-action-feedback7 role="status" hidden></p>
+  </article>
+  {% endfor %}
+  {% if schedule_completed %}<p class="pn-done-note">끝낸 할 일 {{ schedule_completed|length }}개 · <a href="{% url 'records' room.id %}?view=day">기록 탭에서 보기</a></p>{% endif %}
+  {% if member.can_manage %}<a class="pn-link-row" href="{% url 'routines' room.id %}">루틴 관리</a>{% endif %}
+</section>
+
+{% include 'care/dashboard/_ongoing.html' %}
+
+<section class="pn-card" aria-labelledby="pn-quick-title">
+  <div class="pn-card-head"><h2 id="pn-quick-title">빠른 기록</h2>{% if member.can_manage %}<a class="quiet-link" href="{% url 'module_settings' room.id %}">편집</a>{% endif %}</div>
+  {% for card in cards %}
+  <div class="pn-qrow" data-module="{{ card.spec.key }}" data-action-scope="{{ card.spec.key }}">
+    <a class="pn-qrow-open" href="{{ card.quick_url }}" aria-label="{{ card.spec.name }} 자세히 기록"><span class="pn-icon">{% icon card.spec.icon %}</span><span class="pn-row-text"><strong>{{ card.spec.name }}</strong><small>{% if not card.tile.empty %}{{ card.tile.display.value }}{{ card.tile.display.unit }}{% if card.default_preset %} · {{ card.default_preset.title }}{% endif %}{% elif card.latest %}<time>{{ card.latest.at|date:'n.j' }}</time>{% if card.latest.text %} · {{ card.latest.text }}{% endif %}{% elif card.default_preset %}{{ card.default_preset.title }}{% else %}아직 기록 없음{% endif %}</small></span></a>
+    {% if card.instant %}<button type="button" class="pn-go" data-action7="{% if card.is_timer %}start{% else %}quick{% endif %}" data-module="{{ card.spec.key }}" {% if card.default_preset %}data-preset="{{ card.default_preset.pk }}" data-preset-version="{{ card.default_preset.version }}"{% endif %} aria-label="{{ card.spec.name }} {% if card.default_preset %}{{ card.default_preset.title }}로 {% endif %}바로 {{ card.action_label }}">{{ card.action_label }}</button>{% else %}<a class="pn-go is-quiet" href="{{ card.quick_url }}">입력</a>{% endif %}
+    <p class="flow-feedback" data-action-feedback7 role="status" hidden></p>
+  </div>
+  {% empty %}
+  <p class="pn-empty-line">오늘 화면에 띄울 기능이 없어요. <a href="{% url 'modules' room.id %}">기능 고르기</a></p>
+  {% endfor %}
+</section>
+
+{% if upcoming_notices %}<section class="pn-card" aria-labelledby="pn-next-title">
+  <div class="pn-card-head"><h2 id="pn-next-title">다가오는 일</h2></div>
+  {% for notice in upcoming_notices %}<a class="pn-row" href="{{ notice.url }}" data-notice7><span class="pn-row-text"><strong>{{ notice.title }}</strong><small>{{ notice.due|date:'n.j' }} · {{ notice.timing }}</small></span></a>{% endfor %}
+</section>{% endif %}
+
+<section class="pn-card" aria-labelledby="pn-log-title">
+  <div class="pn-card-head"><h2 id="pn-log-title">오늘 기록 <span data-today-count>{{ today_count }}</span>건</h2><a class="quiet-link" href="{% url 'records' room.id %}?view=day">기록 탭에서 보기</a></div>
+  {% if latest_record %}<a class="pn-row" href="{% url 'record_detail' room.id latest_record.pk %}"><time class="pn-time">{{ latest_record.occurred_at|date:'H:i' }}</time><span class="pn-row-text"><strong>{{ latest_record.brief|default:latest_record.spec.name }}</strong><small>마지막 기록 · {{ latest_record.spec.name }} · {% firstof latest_record.performer.display_name latest_record.author.display_name %}</small></span></a>{% else %}<p class="pn-empty-line">아직 남긴 기록이 없어요.</p>{% endif %}
+</section>
+</div>

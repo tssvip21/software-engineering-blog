@@ -98,6 +98,12 @@ def category_config(request, room_id, category):
 def records(request, room_id):
     from .views import record_card
     room, member = services.get_room(request, room_id)
+    from .context import layout_template
+    from .timeline import render_day
+    mobile = layout_template(request) == "care/layout_mobile.html"
+    # On phones the record tab opens on one day; the full list stays one tap away.
+    if request.GET.get("view") == "day" or (mobile and not set(request.GET) - {"layout"}):
+        return render_day(request, room, member)
     allowed = set(services.visible_modules(member))
     from .supplies import hidden_stock_names, visible_records
     hidden = hidden_stock_names(member)
