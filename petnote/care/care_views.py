@@ -141,8 +141,16 @@ def today(request,room_id):
     agenda = schedule_context(member, day=day)
     total = agenda['schedule_total']
     done = len(agenda['schedule_completed'])
+    for row in agenda['schedule_pending']:
+        row['late'] = row['due'] and not row['skipped'] and not row['active']
+    overdue = [notice for notice in agenda['notices'] if notice['stage'] == 'overdue']
+    upcoming = [notice for notice in agenda['notices'] if notice['stage'] != 'overdue']
+    latest = next((record for record in records if record.status == 'done'), None)
     return render(request, 'care/dashboard/today.html', {
         **agenda,
+        'overdue_notices': overdue, 'upcoming_notices': upcoming,
+        'latest_record': record_cards([latest], member)[0] if latest else None,
+        'open_routines': agenda['schedule_remaining'],
         'title': room.name + '의 오늘', 'active_tab': 'today', 'day': day,
         'cards': chosen, 'ongoing': ongoing, 'live_page': True,
         'recent': record_cards(records[:6], member),

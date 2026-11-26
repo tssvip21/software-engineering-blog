@@ -1,0 +1,198 @@
+/* Mobile layout: today as cards (what to do), records as one day's timeline (what was done).
+   Loaded only by layout_mobile.html, after navigation.css. Colours come from petnote.css tokens. */
+:root {
+  --pn-ease: cubic-bezier(.16, 1, .3, 1);
+  --pn-card-r: 1.375rem;
+  --pn-gap: .75rem;
+}
+
+/* ---------- Header: pet switch on the left, carers on the right ---------- */
+.phone-header.has-room {gap: .75rem; min-height: 3.5rem; padding-top: .375rem; padding-bottom: .375rem; border-bottom-color: transparent}
+.phone-header .pn-pet {
+  display: inline-flex; align-items: center; gap: .25rem; min-width: 0; max-width: calc(100% - 7rem);
+  min-height: 44px; padding: 0 .25rem; margin-left: -.25rem; border: 0; border-radius: .75rem; background: none;
+  color: var(--ink); font-size: 1.3125rem; font-weight: 750; letter-spacing: -.02em; white-space: nowrap;
+}
+.phone-header .pn-pet .workspace-name {font-size: inherit; overflow: hidden; text-overflow: ellipsis}
+.phone-header .pn-pet .icon {width: 1.25rem; height: 1.25rem; flex: none; color: var(--ink-3)}
+.pn-carers {display: flex; align-items: center; min-height: 44px; padding-left: .5rem}
+.pn-carers span {
+  display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 50%;
+  border: 2px solid var(--surface); background: var(--fill); color: var(--ink-2); font-size: .75rem; font-weight: 700;
+}
+.pn-carers span + span {margin-left: -.5rem}
+.pn-carers .is-me {background: var(--select); color: var(--select-ink)}
+.pn-carers .is-more {font-family: var(--num); font-size: .6875rem}
+
+/* Today uses a grey page so the white cards read as separate groups. */
+body.app-shell[data-layout="mobile"]:has(.pn-stack),
+body.app-shell[data-layout="mobile"]:has(.pn-stack) .main {background: var(--fill)}
+body:has(.pn-stack) .phone-header {background: var(--fill)}
+body:has(.pn-stack) .pn-carers span {border-color: var(--fill)}
+
+/* ---------- Bottom bar: every scope floats the same way ---------- */
+.mobile-dock.is-global {
+  inset: auto max(.75rem, env(safe-area-inset-right, 0px)) calc(.875rem + env(safe-area-inset-bottom, 0px)) max(.75rem, env(safe-area-inset-left, 0px));
+  width: auto; max-width: 31rem; min-height: 4.5rem; margin-inline: auto; padding: .5rem;
+  border: 1px solid var(--line-soft); border-radius: 2.5rem; box-shadow: var(--nav-shadow);
+}
+.mobile-dock.is-global .dock-link {border-radius: 1.5rem}
+
+/* ---------- Shared pieces ---------- */
+.pn-stack {display: grid; gap: var(--pn-gap)}
+.pn-card, .pn-stack > .section {background: var(--surface); border-radius: var(--pn-card-r); padding: 1.25rem 1.25rem .625rem; margin: 0}
+.pn-stack > .section {padding-bottom: 1.25rem}
+.pn-stack > .section h2 {font-size: 1.0625rem; margin: 0 0 .75rem}
+.pn-card h2 {margin: 0; font-size: 1.0625rem; font-weight: 700; letter-spacing: -.01em}
+.pn-card-head {display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .25rem}
+.pn-card-head .quiet-link {min-height: 44px; display: inline-flex; align-items: center; font-size: .8125rem; color: var(--ink-3)}
+.pn-row {display: flex; align-items: center; gap: .75rem; min-height: 3.5rem; padding: .375rem 0; color: inherit; text-decoration: none}
+.pn-row-text {flex: 1; min-width: 0; display: grid; gap: .0625rem}
+.pn-row-text strong {font-size: .9375rem; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap}
+.pn-row-text small {font-size: .8125rem; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap}
+.pn-row-text time, .pn-time {font-family: var(--num); font-variant-numeric: tabular-nums}
+.pn-time {flex: none; width: 2.75rem; font-size: .8125rem; font-weight: 650; color: var(--ink-3)}
+.pn-row.is-skipped strong {color: var(--ink-3)}
+.pn-row .flow-feedback, .pn-qrow .flow-feedback {flex-basis: 100%; margin: 0; font-size: .8125rem}
+.pn-row:has(.flow-feedback:not([hidden])), .pn-qrow:has(.flow-feedback:not([hidden])) {flex-wrap: wrap}
+.pn-badge {flex: none; padding: .1875rem .5rem; border-radius: .4375rem; background: var(--warn-soft); color: var(--warn); font-size: .75rem; font-weight: 700}
+.pn-check {
+  flex: none; display: grid; place-items: center; width: 44px; height: 44px; margin-right: -.375rem;
+  padding: 0; border: 0; background: none; color: transparent; cursor: pointer;
+}
+.pn-check::before {content: ""; grid-area: 1/1; width: 1.625rem; height: 1.625rem; border-radius: 50%; border: 2px solid var(--line-strong); transition: border-color .15s, background-color .15s}
+.pn-check .icon {grid-area: 1/1; width: 1rem; height: 1rem; stroke-width: 2.6; position: relative}
+.pn-check:hover::before {border-color: var(--ink-3)}
+a.pn-check {color: var(--ink-3)}
+a.pn-check::before {border-color: var(--line)}
+.pn-check[aria-busy="true"]::before, .pn-check:active::before {background: var(--primary); border-color: var(--primary)}
+.pn-check[aria-busy="true"] .icon, .pn-check:active .icon {color: var(--on-primary)}
+.pn-empty-line {margin: .25rem 0 .75rem; font-size: .875rem; color: var(--ink-3)}
+.pn-link-row {display: flex; align-items: center; min-height: 44px; font-size: .8125rem; color: var(--ink-3)}
+
+/* ---------- Today ---------- */
+.pn-alert {
+  display: flex; align-items: center; gap: .625rem; margin: 0 0 var(--pn-gap); padding: .25rem .25rem .25rem .875rem;
+  border-radius: 1rem; background: var(--danger-soft); color: var(--danger); font-size: .875rem; font-weight: 600;
+}
+.pn-alert > .icon {width: 1.125rem; height: 1.125rem; flex: none}
+.pn-alert a {flex: 1; min-width: 0; min-height: 44px; display: flex; align-items: center; color: inherit}
+.pn-alert a strong {margin-right: .25rem}
+.pn-alert button {flex: none; display: grid; place-items: center; width: 44px; height: 44px; border: 0; background: none; color: inherit; cursor: pointer}
+.pn-alert button .icon {width: 1rem; height: 1rem}
+.pn-alert p[data-action-feedback7]:not([hidden]) {flex-basis: 100%}
+.pn-hero {padding-top: 1.25rem}
+.pn-date {margin: 0 0 .25rem; font-size: .8125rem; font-weight: 500; color: var(--ink-3)}
+.pn-hero h2 {font-size: 1.375rem; line-height: 1.35; letter-spacing: -.02em}
+.pn-progress {
+  display: block; width: 100%; height: .375rem; margin: .875rem 0 .375rem; border: 0; border-radius: .1875rem;
+  background: var(--fill); color: var(--primary); overflow: hidden; -webkit-appearance: none; appearance: none;
+}
+.pn-progress::-webkit-progress-bar {background: var(--fill); border-radius: .1875rem}
+.pn-progress::-webkit-progress-value {background: var(--primary); border-radius: .1875rem; transition: width .4s var(--pn-ease)}
+.pn-progress::-moz-progress-bar {background: var(--primary); border-radius: .1875rem}
+.pn-done-note {margin: .25rem 0 0; font-size: .8125rem; color: var(--ink-3)}
+.pn-done-note a {color: var(--ink-2); text-decoration: underline; text-underline-offset: 2px}
+.pn-qrow {display: flex; align-items: center; gap: .5rem; min-height: 3.75rem}
+.pn-qrow-open {flex: 1; min-width: 0; display: flex; align-items: center; gap: .75rem; min-height: 3.5rem; color: inherit; text-decoration: none}
+.pn-icon {flex: none; display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: .875rem; background: var(--fill); color: var(--ink-2)}
+.pn-icon .icon {width: 1.375rem; height: 1.375rem}
+.pn-go {
+  flex: none; display: inline-flex; align-items: center; justify-content: center; min-width: 3.5rem; min-height: 2.25rem;
+  padding: 0 .875rem; border: 0; border-radius: .625rem; background: var(--select); color: var(--select-ink);
+  font: inherit; font-size: .875rem; font-weight: 700; white-space: nowrap; cursor: pointer; text-decoration: none;
+}
+.pn-go.is-quiet {background: var(--fill); color: var(--ink-2)}
+.pn-go[aria-busy="true"] {opacity: .6}
+
+/* ---------- Records: segmented switch, week strip, people, timeline ---------- */
+.pn-seg {display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: .25rem 0 .75rem; padding: .25rem; border-radius: .875rem; background: var(--fill)}
+.pn-seg a {display: grid; place-items: center; min-height: 2.5rem; border-radius: .625rem; color: var(--ink-3); font-size: .9063rem; font-weight: 600; text-decoration: none}
+.pn-seg a[aria-current] {background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(25, 31, 40, .1)}
+.pn-week {display: grid; grid-template-columns: 1.75rem repeat(7, minmax(0, 1fr)) 1.75rem; align-items: center; margin: 0 -.375rem .5rem}
+.pn-week a {display: grid; justify-items: center; gap: .125rem; min-height: 3.5rem; align-content: center; color: var(--ink-3); font-size: .75rem; text-decoration: none}
+.pn-week a b {display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; font-family: var(--num); font-size: .9375rem; font-weight: 700; color: var(--ink-2)}
+.pn-week a.is-today b {color: var(--select-ink)}
+.pn-week a.is-future b {color: var(--ink-4)}
+.pn-week a.is-selected b {background: var(--ink); color: var(--surface)}
+.pn-week .pn-week-step {min-height: 44px; color: var(--ink-3)}
+.pn-week .pn-week-step .icon {width: 1rem; height: 1rem}
+.pn-chips {display: flex; gap: .5rem; overflow-x: auto; margin: 0 calc(-1 * max(1rem, env(safe-area-inset-left, 0px))) .75rem; padding: 0 max(1rem, env(safe-area-inset-left, 0px)); scrollbar-width: none}
+.pn-chips::-webkit-scrollbar {display: none}
+.pn-chips a {flex: none; display: inline-flex; align-items: center; gap: .25rem; min-height: 2.25rem; padding: 0 .875rem; border-radius: 1.125rem; background: var(--fill); color: var(--ink); font-size: .8438rem; font-weight: 600; text-decoration: none}
+.pn-chips a small {font-size: .6875rem; color: var(--ink-3)}
+.pn-chips a[aria-current] {background: var(--ink); color: var(--surface)}
+.pn-chips a[aria-current] small {color: var(--ink-4)}
+.pn-day-sum {margin: 0 0 .5rem; font-size: .8438rem; color: var(--ink-3)}
+.pn-day-sum b {font-family: var(--num); color: var(--ink)}
+.pn-tl {padding: .25rem 0 0}
+.pn-tl-group {display: grid; grid-template-columns: 3rem minmax(0, 1fr); gap: 0 .375rem}
+.pn-tl-time {padding-top: 1rem; font-family: var(--num); font-size: .8125rem; font-weight: 700; color: var(--ink-3)}
+.pn-tl-items {margin: 0; padding: 0 0 0 1rem; list-style: none; border-left: 2px solid var(--line-soft)}
+.pn-tl-item {position: relative; display: flex; align-items: center; gap: .625rem; min-height: 3.25rem; padding: .375rem 0; flex-wrap: wrap}
+.pn-tl-item::before {content: ""; position: absolute; left: calc(-1rem - 6px); top: 1.5rem; width: 10px; height: 10px; border-radius: 50%; background: var(--ink-3); box-shadow: 0 0 0 2px var(--surface)}
+.pn-tl-item.is-todo::before {background: var(--surface); border: 2px solid var(--ink-4); width: 10px; height: 10px; box-sizing: border-box}
+.pn-tl-item.is-active::before {background: var(--primary)}
+.pn-tl-item > a, .pn-tl-item > div {flex: 1; min-width: 0; display: grid; gap: .0625rem; color: inherit; text-decoration: none}
+.pn-tl-item strong {font-size: .9375rem; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap}
+.pn-tl-item small {font-size: .8125rem; color: var(--ink-3)}
+.pn-tl-item.is-skipped strong {color: var(--ink-3)}
+.pn-tl-item .flow-feedback {flex-basis: 100%; margin: 0}
+.pn-tl-group.is-future .pn-tl-item {opacity: .62}
+.pn-now {display: grid; grid-template-columns: 3rem minmax(0, 1fr); gap: 0 .375rem; align-items: center; margin: .375rem 0}
+.pn-now span {font-family: var(--num); font-size: .75rem; font-weight: 800; color: var(--primary)}
+.pn-now i {position: relative; height: 2px; margin-left: -1px; background: var(--primary)}
+.pn-now i::before {content: ""; position: absolute; left: -4px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--primary)}
+.pn-empty {padding: 2rem 0; text-align: center; color: var(--ink-3); font-size: .875rem}
+.pn-tl-foot {margin: .75rem 0 0 3.375rem}
+.pn-tl-foot .quiet-link {display: inline-flex; align-items: center; gap: .375rem; min-height: 44px; color: var(--select-ink); font-weight: 650; font-size: .875rem}
+.pn-tl-foot .icon {width: 1.125rem; height: 1.125rem}
+
+/* ---------- Motion ---------- */
+/* Page changes: the bar stays put while the content swaps (cross-document view transitions).
+   Reduced motion keeps the opt-in but removes every animation below. */
+@view-transition {navigation: auto}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) {animation: none !important}
+}
+/* The page transition owns the bar's motion. navigation.css also plays a 180ms
+   arrival on every context-bar page load, which made the bar pop up again when
+   moving between two menus of the same area; turn that one off. */
+.mobile-dock.is-context, .mobile-dock.is-global {animation: none}
+@media (prefers-reduced-motion: no-preference) {
+  .mobile-dock {view-transition-name: pn-dock}
+  .phone-header {view-transition-name: pn-header}
+  ::view-transition-old(root) {animation: pn-fade-out .12s ease-out both}
+  ::view-transition-new(root) {animation: pn-rise-in .26s var(--pn-ease) .04s both}
+  /* Main bar → area bar: the bar morphs in place. Same area: both snapshots match, so nothing moves. */
+  ::view-transition-group(pn-dock) {animation-duration: .28s; animation-timing-function: var(--pn-ease)}
+  ::view-transition-old(pn-dock), ::view-transition-new(pn-dock) {animation-duration: .18s; height: 100%}
+  ::view-transition-group(pn-header) {animation-duration: 0s}
+
+  /* Bottom sheets rise from the bottom edge. */
+  dialog[open] {animation: pn-sheet-in .34s var(--pn-ease)}
+  dialog[open]::backdrop {animation: pn-fade-in .2s ease-out}
+
+  /* Press feedback. */
+  /* The check circle answers a press by filling in, so it stays out of the scale list. */
+  .pn-go, .pn-qrow-open, .pn-seg a, .pn-chips a, .pn-week a, .dock-link, .pn-pet {transition: transform .1s ease-out}
+  :is(.pn-go, .pn-qrow-open, .pn-seg a, .pn-chips a, .pn-week a, .dock-link, .pn-pet):active {transform: scale(.97)}
+
+  /* Confirmation toast slides up. */
+  .flow-toast7:not([hidden]), .action-feedback:not([hidden]) {animation: pn-toast-in .24s var(--pn-ease)}
+}
+@media (max-width: 640px) and (prefers-reduced-motion: no-preference) {
+  dialog[open] {animation-name: pn-sheet-up}
+}
+@keyframes pn-fade-out {to {opacity: 0}}
+@keyframes pn-fade-in {from {opacity: 0}}
+@keyframes pn-rise-in {from {opacity: 0; transform: translateY(10px)}}
+@keyframes pn-sheet-in {from {opacity: 0; transform: translateY(12px)}}
+@keyframes pn-sheet-up {from {transform: translateY(100%)}}
+@keyframes pn-toast-in {from {opacity: 0; translate: 0 12px}}
+
+/* Sheets get a grab handle on phones. */
+@media (max-width: 640px) {
+  dialog {border-radius: 1.5rem 1.5rem 0 0}
+  :is(.input-dialog, .quick-dialog)::before {content: ""; display: block; width: 2.5rem; height: .3125rem; margin: .625rem auto 0; border-radius: .1875rem; background: var(--line)}
+}

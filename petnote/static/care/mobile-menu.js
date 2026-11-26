@@ -2,6 +2,9 @@
 (() => {
   "use strict";
 
+  // iOS Safari applies :active (press feedback) only once some touch listener exists.
+  document.addEventListener("touchstart", () => {}, { passive: true });
+
   const menu = document.getElementById("phone-menu");
   const triggers = [...document.querySelectorAll(".phone-menu-trigger")];
   if (!menu || !triggers.length || typeof menu.showModal !== "function") return;

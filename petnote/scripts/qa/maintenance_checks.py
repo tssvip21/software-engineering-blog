@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from playwright.sync_api import expect
@@ -238,9 +239,12 @@ def responsive_layout(page, root, flows, passed):
     expect(page.locator("#phone-menu")).not_to_be_visible()
     expect(trigger).to_be_focused()
     passed("모바일 메뉴 Escape 닫기와 초점 복귀")
-    page.locator('.quick-card[data-module="water"]').get_by_role("link", name="직접 입력", exact=True).click()
+    # On phones a quick-record row opens the input sheet; its button records the default at once.
+    page.locator('.pn-qrow[data-module="water"] .pn-qrow-open').click()
     dialog = page.locator("#input-dialog")
     expect(dialog.locator("[data-input-form]")).to_be_visible()
+    # The sheet slides up when it opens; measure where it settles.
+    dialog.evaluate("el => Promise.all(el.getAnimations().map(a => a.finished))")
     bounds = dialog.bounding_box()
     assert bounds["y"] >= 0 and bounds["y"] + bounds["height"] <= 845, bounds
     passed("모바일 입력창이 화면 높이 안에 표시")
@@ -253,9 +257,12 @@ def responsive_layout(page, root, flows, passed):
     page.keyboard.press("Escape")
     expect(dialog).not_to_be_visible()
     trigger.click()
-    page.locator("#phone-menu nav").get_by_role("link", name="전체 기록", exact=True).click()
+    page.locator("#phone-menu nav").get_by_role("link", name="기록", exact=True).click()
+    # Phones open the record tab on today's timeline; the full list is one switch away.
+    expect(page.locator("h1")).to_have_text(re.compile(r"^\d+월 \d+일 기록$"))
+    page.locator(".pn-seg").get_by_role("link", name="전체 목록", exact=True).click()
     expect(page.locator("h1")).to_have_text("전체 기록")
-    passed("모바일 메뉴에서 전체 기록 이동")
+    passed("모바일 메뉴에서 기록 이동과 전체 목록 전환")
     page.set_viewport_size({"width": 1440, "height": 950})
     flows.go(page, root + "?layout=desktop")
     separator = page.locator("#sidebar-resize")
