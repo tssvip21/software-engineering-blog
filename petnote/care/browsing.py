@@ -1,7 +1,6 @@
 """Category-first record browsing and narrowly scoped module configuration."""
 from datetime import date
 from urllib.parse import urlencode, urlsplit
-import json
 import uuid
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
@@ -12,6 +11,7 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods
 from . import services
+from .json_inputs import load_json
 from .models import Activity, Room
 from .modules import MODULES
 from .organization import CATEGORIES, CATEGORY_OF
@@ -83,7 +83,7 @@ def category_config(request, room_id, category):
     if request.method == "GET":
         return JsonResponse(category_state(room, category))
     try:
-        result = apply_category(member, category, json.loads(request.body))
+        result = apply_category(member, category, load_json(request.body))
         result["message"] = "선택한 기능을 적용했어요. 이전 기록은 그대로 남아 있어요."
         return JsonResponse(result)
     except services.Conflict as exc:
@@ -99,8 +99,9 @@ def records(request, room_id):
     from .views import record_card
     room, member = services.get_room(request, room_id)
     allowed = set(services.visible_modules(member))
-    from .supplies import visible_records
-    qs = visible_records(member, Activity.objects.filter(room=room, module__in=allowed).select_related("author", "performer"))
+    from .supplies import hidden_stock_names, visible_records
+    hidden = hidden_stock_names(member)
+    qs = visible_records(member, Activity.objects.filter(room=room, module__in=allowed).select_related("author", "performer"), hidden_names=hidden)
     category = request.GET.get("category", "")
     if category and category not in CATEGORIES:
         raise Http404()
@@ -175,7 +176,7 @@ def records(request, room_id):
                 params[k] = v
         return root + ("?" + params.urlencode() if params else "")
     def prepare(activity):
-        record_card(activity, member)
+        record_card(activity, member, hidden_names=hidden)
         activity.detail_url = with_return(reverse("record_detail", args=[room.pk, activity.pk]), return_to)
         return activity
     categories = []

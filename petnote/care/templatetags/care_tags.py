@@ -49,6 +49,12 @@ PATHS = {
     "wallet": '<path d="M6 3.5h12v17l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4-2 1.4ZM9 8h6M9 11.5h6M9 15h3.5"/>',
 }
 
+@register.simple_tag(takes_context=True)
+def navigation(context):
+    from care.navigation import build_navigation
+    return build_navigation(context.get("room"), context.get("active_tab", ""))
+
+
 @register.simple_tag
 def icon(name):
     path = PATHS.get(name, PATHS["grid"])

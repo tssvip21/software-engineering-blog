@@ -1,7 +1,4 @@
 """Separate pet identity from personal preferences and shared space configuration."""
-import hashlib
-import hmac
-import json
 import uuid
 from zoneinfo import ZoneInfo
 
@@ -12,6 +9,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from . import services
+from .idempotency import form_fingerprint
 from .breeds import catalogue, choices, picker_data, suggest_size
 from .forms import DateInput, TIMEZONES
 from .models import ActionReceipt, Room
@@ -98,19 +96,13 @@ class SpacePreferencesForm(forms.Form):
         if member.role!='owner':self.fields['guest_sensitive'].help_text='공개 범위는 방장만 변경할 수 있어요.'
 
 
-def fingerprint(form):
-    values={k:list(v) for k,v in form.data.lists()} if hasattr(form.data,'lists') else dict(form.data)
-    values.pop('csrfmiddlewaretoken',None)
-    return hashlib.sha256(json.dumps(values,sort_keys=True,ensure_ascii=False,default=str).encode()).hexdigest()
-
-
 @transaction.atomic
 def register_pet(request, form):
     """Serialize registrations for one account, including a retry after a lost response."""
     user = get_user_model().objects.select_for_update().get(pk=request.user.pk)
     token = form.cleaned_data.get("request_token")
     if token:
-        digest = fingerprint(form)
+        digest = form_fingerprint(form, compact=False)
         previous = ActionReceipt.objects.select_related("room", "actor").filter(
             actor__user=user, operation="room.create", token=token
         ).first()
@@ -135,10 +127,10 @@ def apply_once(member,form,operation,handler):
     if not form.is_valid():raise ValidationError('입력 내용을 확인해 주세요.')
     token=form.cleaned_data.get('request_token')
     if not token:raise ValidationError('입력창을 다시 열어 주세요. 저장 요청 번호가 없어요.')
-    digest=fingerprint(form)
+    digest = form_fingerprint(form, compact=False)
     old=ActionReceipt.objects.filter(room=member.room,token=token).first()
     if old:
-        if old.actor_id!=member.pk or old.operation!=operation or not hmac.compare_digest(old.request_hash,digest):
+        if not old.matches(member, operation, digest):
             raise services.Conflict('앞서 보낸 저장 요청과 내용이 달라요. 최신 화면에서 다시 확인해 주세요.')
         return dict(old.result,replayed=True)
     result=handler(member)

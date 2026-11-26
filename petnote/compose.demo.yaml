@@ -1,7 +1,17 @@
 # Opt-in public synthetic demo sidecar. No production database or extra public port.
 services:
+  frontend:
+    environment:
+      CARE_PUBLIC_DEMO_ENTRY: "1"
+    depends_on:
+      demo:
+        condition: service_healthy
+  backend:
+    environment:
+      CARE_PUBLIC_DEMO_ENTRY: "1"
   demo:
     build: .
+    init: true
     restart: unless-stopped
     entrypoint: ["sh", "/app/deploy/entrypoint-demo.sh"]
     command: ["python", "/app/deploy/serve.py"]

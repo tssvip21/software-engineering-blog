@@ -1,0 +1,16 @@
+{% load care_tags %}
+<nav class="mobile-dock {% if navigation.scope == 'global' %}is-global{% else %}is-context{% endif %}"
+     data-nav-scope="{{ navigation.scope }}" data-page-navigation
+     aria-label="{% if navigation.scope == 'global' %}모바일 주요 화면{% else %}{{ navigation.scope_label }} 하단 메뉴{% endif %}">
+  {% if navigation.scope != 'global' %}
+    <a href="{{ navigation.back_url }}" class="mobile-dock-back" aria-label="기본 메뉴로 돌아가기">{% icon 'back' %}</a>
+  {% endif %}
+  <div class="dock-items">
+    {% for item in navigation.items %}
+      <a href="{{ item.url }}" class="dock-link" {% if item.active %}aria-current="page"{% endif %}>
+        <span class="dock-icon">{% icon item.icon %}</span>
+        <span class="dock-label">{{ item.short_label }}</span>
+      </a>
+    {% endfor %}
+  </div>
+</nav>

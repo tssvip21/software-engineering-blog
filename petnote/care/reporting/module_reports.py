@@ -20,7 +20,7 @@ from ..breeds import reference_for
 from .comparisons import reference_geometry
 from ..inventory_ledger import ledger, period_movement, display_quantity
 from ..models import Activity
-from ..modules import MODULES, SELECTABLE_MODULES, RETIRED_MODULES, compact
+from ..modules import MODULES, SELECTABLE_MODULES, compact
 from ..schedule import completion_summary, logical_module
 from .stats import bounds, union_seconds
 
@@ -95,13 +95,6 @@ def daily_numeric(rows,extractor,tz,*,reducer='sum'):
             points.append({'date':day,'value':number,'ids':[str(a.pk) for a,_ in known],'count':len(known)})
         else:partial.append(day)
     return {'points':points,'partial_days':partial,'missing_ids':missing,'record_days':set(grouped)}
-
-
-def count_series(rows,tz):
-    grouped=defaultdict(list)
-    for a in rows:grouped[row_date(a,tz)].append(a)
-    return {'points':[{'date':d,'value':Decimal(len(items)),'count':len(items),'ids':[str(a.pk) for a in items]} for d,items in sorted(grouped.items())],
-            'partial_days':[],'missing_ids':[],'record_days':set(grouped)}
 
 
 def sleep_series(rows,tz,lower,upper,now):
@@ -421,13 +414,13 @@ def relationships(metrics,enabled,notes,inventory,weight):
 
 
 def build_report(member,days=7,*,end=None,records=None):
-    member=services.fresh_member(member);room=member.room;now=timezone.now();today=services.local_date(room)
+    member=services.read_member(member);room=member.room;now=timezone.now();today=services.local_date(room)
     try:days=int(days)
     except (ValueError,TypeError):days=7
     if days not in (7,30,90):days=7
     end=min(end or today-timedelta(days=1),today-timedelta(days=1));start=end-timedelta(days=days-1)
     allowed=set(services.visible_modules(member))
-    enabled={k for k in room.module_settings.filter(enabled=True).values_list('key',flat=True) if k in allowed and k in SELECTABLE_MODULES}
+    enabled={setting.key for setting in services.read_module_settings(room) if setting.enabled and setting.key in allowed and setting.key in SELECTABLE_MODULES}
     enabled&=set(SELECTABLE_MODULES)
     if records is None:
         records=list(Activity.objects.filter(room=room,module__in=allowed,voided=False,status='done',occurred_at__lte=now).select_related('author').order_by('occurred_at','created_at','id'))

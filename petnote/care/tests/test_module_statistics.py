@@ -15,8 +15,7 @@ from django.utils import timezone
 from care import cadences, services
 from care.breeds import catalogue, reference_for
 from care.reporting.comparisons import change, compare_metric, daily_values, measurement, recent_statistics, reference_geometry
-from care.dashboard import module_board_tiles, today_tiles
-from care.demo_fixtures import record_data
+from care.dashboard import module_board_tiles
 from care.forms import RecordForm, RoutineForm
 from care.interactions import config_state
 from care.models import Activity, ActivityRevision, CareCadence, ModuleGroup
@@ -260,7 +259,7 @@ class StatisticsIntegrationTests(CareCase):
         self.room.species='bird';self.room.save();self.assertIsNone(recent_statistics(self.owner)['bcs_card'])
 
     def test_distance_is_on_both_cards_and_quick_finish_input(self):
-        a=self.make('walk',distance='1500',distance_unit='m')
+        self.make('walk',distance='1500',distance_unit='m')
         tile=module_board_tiles(self.owner,[{'spec':MODULES['walk']}])['walk']
         self.assertEqual(tile['secondary'][0]['value'],'1.5')
         self.assertEqual(tile['secondary'][0]['unit'],'km')

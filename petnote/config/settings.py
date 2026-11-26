@@ -34,11 +34,20 @@ if not SECRET_KEY:
     except FileExistsError:
         pass
     SECRET_KEY = key_file.read_text(encoding="utf-8").strip()
+# Apply the same minimums as Django's deployment check before serving requests.
+if not DEBUG and (len(SECRET_KEY) < 50 or len(set(SECRET_KEY)) < 5 or SECRET_KEY.startswith("django-insecure-")):
+    raise ImproperlyConfigured("운영 DJANGO_SECRET_KEY는 서로 다른 문자가 포함된 50자 이상의 임의 값으로 설정하세요.")
 ALLOWED_HOSTS = [v.strip() for v in os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",") if v.strip()]
 APP_ORIGIN = os.environ.get("APP_ORIGIN", "http://127.0.0.1:8000").rstrip("/")
 if ON_VERCEL:
-    origin = urlsplit(APP_ORIGIN)
-    if origin.scheme != "https" or origin.hostname not in ALLOWED_HOSTS or origin.path or origin.query or origin.fragment:
+    try:
+        origin = urlsplit(APP_ORIGIN)
+        valid_origin = (origin.scheme == "https" and origin.hostname in ALLOWED_HOSTS
+                        and origin.port in (None, 443) and origin.username is None
+                        and origin.password is None and not (origin.path or origin.query or origin.fragment))
+    except ValueError:
+        valid_origin = False
+    if not valid_origin:
         raise ImproperlyConfigured("Vercel에서는 APP_ORIGIN과 DJANGO_ALLOWED_HOSTS에 서비스의 HTTPS 주소와 호스트를 설정하세요.")
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     for variable in ("VERCEL_URL", "VERCEL_PROJECT_PRODUCTION_URL"):
@@ -51,7 +60,7 @@ GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
 GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI", APP_ORIGIN + "/auth/google/callback/")
 GOOGLE_CONFIGURED = bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)
 INSTALLED_APPS = ["django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles", "care.apps.CareConfig"]
-MIDDLEWARE = ["django.middleware.security.SecurityMiddleware", "whitenoise.middleware.WhiteNoiseMiddleware", "django.contrib.sessions.middleware.SessionMiddleware", "django.middleware.common.CommonMiddleware", "django.middleware.csrf.CsrfViewMiddleware", "django.contrib.auth.middleware.AuthenticationMiddleware", "django.contrib.messages.middleware.MessageMiddleware", "django.middleware.clickjacking.XFrameOptionsMiddleware", "care.middleware.PrivateResponseMiddleware"]
+MIDDLEWARE = ["django.middleware.security.SecurityMiddleware", "whitenoise.middleware.WhiteNoiseMiddleware", "care.middleware.ServerTimingMiddleware", "django.contrib.sessions.middleware.SessionMiddleware", "django.middleware.common.CommonMiddleware", "django.middleware.csrf.CsrfViewMiddleware", "django.contrib.auth.middleware.AuthenticationMiddleware", "django.contrib.messages.middleware.MessageMiddleware", "django.middleware.clickjacking.XFrameOptionsMiddleware", "care.middleware.PrivateResponseMiddleware"]
 ROOT_URLCONF = "config.urls"
 TEMPLATES = [{"BACKEND": "django.template.backends.django.DjangoTemplates", "DIRS": [BASE_DIR / "templates"], "APP_DIRS": True, "OPTIONS": {"context_processors": ["django.template.context_processors.request", "django.contrib.auth.context_processors.auth", "django.contrib.messages.context_processors.messages", "care.context.site_context"]}}]
 WSGI_APPLICATION = "config.wsgi.application"
@@ -65,8 +74,8 @@ if os.environ.get("POSTGRES_HOST") and not ON_VERCEL:
         raise ImproperlyConfigured("시연 DB는 로컬 SQLite만 사용합니다.")
     DATABASES = {"default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ.get("POSTGRES_DB", "taily"),
-        "USER": os.environ.get("POSTGRES_USER", "taily"),
+        "NAME": os.environ.get("POSTGRES_DB", "petnote"),
+        "USER": os.environ.get("POSTGRES_USER", "petnote"),
         "PASSWORD": os.environ["POSTGRES_PASSWORD"],
         "HOST": os.environ["POSTGRES_HOST"],
         "PORT": os.environ.get("POSTGRES_PORT", "5432"),
@@ -76,25 +85,11 @@ if os.environ.get("POSTGRES_HOST") and not ON_VERCEL:
     }}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 if ON_VERCEL:
-    from psycopg.conninfo import conninfo_to_dict
+    from .database import vercel_database
 
-    db_url = os.environ.get("DATABASE_URL", "")
-    if not db_url.startswith(("postgres://", "postgresql://")) or DEMO_MODE:
-        raise ImproperlyConfigured("Vercel 운영 앱에는 Supabase PostgreSQL DATABASE_URL이 필요합니다.")
-    params = conninfo_to_dict(db_url)
-    if not all(params.get(key) for key in ("host", "dbname", "user", "password")):
-        raise ImproperlyConfigured("DATABASE_URL에 PostgreSQL 호스트, DB명, 사용자와 비밀번호가 필요합니다.")
-    DATABASES = {"default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": params["dbname"],
-        "USER": params["user"],
-        "PASSWORD": params["password"],
-        "HOST": params["host"],
-        "PORT": params.get("port", "5432"),
-        "CONN_MAX_AGE": 0,
-        "DISABLE_SERVER_SIDE_CURSORS": True,
-        "OPTIONS": {"connect_timeout": 10, "sslmode": "require", "prepare_threshold": None},
-    }}
+    if DEMO_MODE:
+        raise ImproperlyConfigured("Vercel 운영 앱에서는 시연 DB를 사용할 수 없습니다.")
+    DATABASES = {"default": vercel_database(os.environ.get("DATABASE_URL", ""))}
 LANGUAGE_CODE = "ko-kr"
 TIME_ZONE = "Asia/Seoul"
 USE_I18N = True

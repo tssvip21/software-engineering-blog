@@ -2,7 +2,7 @@
    색은 모두 아래 변수에서만 정한다.
    여백은 넉넉하게: 구획 3rem, 카드 안 1.125rem, 목록 줄 0.875rem. */
 
-@font-face{font-family:"Pretendard";src:url("fonts/PretendardVariable.woff2") format("woff2");font-weight:100 900;font-style:normal;font-display:swap}
+/* Pretendard Unicode subsets are loaded by fonts/pretendard.css. */
 @font-face{font-family:"Manrope";src:url("fonts/ManropeLatin.woff2") format("woff2");font-weight:400 800;font-style:normal;font-display:swap}
 
 /* 색: 흰 바탕과 회색 칸, 푸른 기가 도는 먹색 글자. 강조색은 연초록 하나만 버튼과 선택 표시에 쓰고, 분류 아이콘은 무채색으로 맞춘다. */
@@ -24,8 +24,8 @@
   --scrim:rgba(25,31,40,.42); --ring:rgba(46,170,104,.24);
   --page-glass:rgba(255,255,255,.88);
   --logo-plate:transparent;
-  --sans:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
-  --num:"Manrope","Pretendard",system-ui,sans-serif;
+  --sans:"Pretendard","Petnote Supplemental","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --num:"Manrope","Pretendard","Petnote Supplemental",system-ui,sans-serif;
   --r-control:0.5625rem; --r-panel:0.875rem; --r-dialog:1.125rem;
   --topbar-h:3.5rem; --sidebar-w:248px; --sticky-top:1.75rem;
   --shadow-pop:0 1.5rem 3.75rem -24px rgba(25,31,40,.32),0 0 0 1px rgba(25,31,40,.06);

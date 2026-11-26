@@ -1,13 +1,11 @@
 """Room settings, shared supplies and retained event/permission semantics."""
-from datetime import datetime,time,timedelta
+from datetime import datetime,timedelta
 from decimal import Decimal
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
-import json,uuid
+import uuid
 
-from django.core.exceptions import PermissionDenied,ValidationError
-from django.db import OperationalError
-from django.test import override_settings
+from django.core.exceptions import ValidationError
 from django.urls import reverse
 from django.utils import timezone
 
@@ -15,9 +13,9 @@ from care import record_actions, inventory_ledger, services, supplies
 from care.reporting import module_reports
 from care.breeds import catalogue,suggest_size
 from care.forms import RecordForm
-from care.models import Activity,ActivityRevision,ActionReceipt,AuditEvent,Product,RecordPreset,Room
+from care.models import Activity,ActivityRevision,ActionReceipt,AuditEvent,Product,Room
 from care.presets import PresetForm,save_preset
-from care.profile_settings import PetProfileForm,SpacePreferencesForm,save_pet,save_preferences
+from care.profile_settings import PetProfileForm,save_pet
 from .test_functional import CareCase
 
 HEADERS={'HTTP_X_TAILY_DIALOG':'1'}
@@ -307,7 +305,7 @@ class UnifiedSuppliesTests(WorkspaceCase):
 
     def test_private_item_and_stock_hidden_in_every_read_path(self):
         p=self.supply('medicine',name='비공개검증약',track_stock='on',stock_unit='piece');opening=self.stock(p)
-        a=self.use(p,'medication','1','piece');c=self.client_for(self.guest)
+        self.use(p,'medication','1','piece');c=self.client_for(self.guest)
         for name,args,query in [('supplies',[self.room.pk],{}),('supplies',[self.room.pk],{'tab':'stock'}),('records',[self.room.pk],{}),
                                 ('module',[self.room.pk,'inventory'],{}),('statistics',[self.room.pk,'inventory'],{}),('overview',[self.room.pk],{}),('today',[self.room.pk],{})]:
             r=c.get(reverse(name,args=args),query);self.assertEqual(r.status_code,200,(name,r.status_code));self.assertNotContains(r,p.name)

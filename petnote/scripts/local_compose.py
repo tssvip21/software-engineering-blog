@@ -12,19 +12,23 @@ import secrets
 import shutil
 import socket
 import subprocess
-import sys
 
-ROOT=Path(__file__).resolve().parents[1]
+ROOT=next(parent for parent in Path(__file__).resolve().parents if (parent / "manage.py").is_file())
 
 
 def main(argv=None):
-    parser=argparse.ArgumentParser(description='테일리 로컬 Docker 실행 · 운영 DB와 별도')
+    parser=argparse.ArgumentParser(description='펫노트 로컬 Docker 실행 · 운영 DB와 별도')
     parser.add_argument('action',choices=('up','stop','down','status','check','test'))
-    parser.add_argument('--project',default='taily-local-review')
+    parser.add_argument('--project')
     parser.add_argument('--port',type=int,default=8096)
     args=parser.parse_args(argv)
-    if not re.fullmatch(r'taily-local-[a-z0-9-]{1,32}',args.project):
-        parser.error('다른 컨테이너를 건드리지 않도록 프로젝트 이름은 taily-local-로 시작해야 해요.')
+    if args.project is None:
+        environments = ROOT / 'tmp/local-docker'
+        legacy = environments / 'taily-local-review/runtime.env'
+        current = environments / 'petnote-local-review/runtime.env'
+        args.project = 'taily-local-review' if legacy.is_file() and not current.exists() else 'petnote-local-review'
+    if not re.fullmatch(r'(?:petnote|taily)-local-[a-z0-9-]{1,32}',args.project):
+        parser.error('다른 컨테이너를 건드리지 않도록 프로젝트 이름은 petnote-local-로 시작해야 해요.')
     if not 1024<=args.port<=64000:parser.error('1024~64000 범위의 로컬 포트를 사용해 주세요.')
     docker=shutil.which('docker')
     if not docker:parser.error('Docker Desktop을 설치·실행한 뒤 다시 실행해 주세요.')
@@ -39,7 +43,7 @@ def main(argv=None):
         folder.mkdir(parents=True,exist_ok=True)
         settings={'DJANGO_DEBUG':'1','DJANGO_SECRET_KEY':secrets.token_urlsafe(48),
             'DJANGO_ALLOWED_HOSTS':'localhost,127.0.0.1,testserver','APP_ORIGIN':f'http://127.0.0.1:{args.port}',
-            'POSTGRES_DB':'taily','POSTGRES_USER':'taily','POSTGRES_PASSWORD':secrets.token_urlsafe(40),
+            'POSTGRES_DB':'petnote','POSTGRES_USER':'petnote','POSTGRES_PASSWORD':secrets.token_urlsafe(40),
             'SITE_ADDRESS':'http://:80','HTTP_BIND':'127.0.0.1','HTTP_PORT':str(args.port),
             'HTTPS_BIND':'127.0.0.1','HTTPS_PORT':str(args.port+1000),'GOOGLE_CLIENT_ID':'','GOOGLE_CLIENT_SECRET':''}
         with envfile.open('x',encoding='utf8',newline='\n') as out:out.write('\n'.join(k+'='+v for k,v in settings.items())+'\n')

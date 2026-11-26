@@ -10,4 +10,4 @@
 - Docker Compose로 프런트엔드·백엔드·DB를 함께 실행합니다. SQLite와 Docker PostgreSQL에서 자동 테스트가 각각 486개 통과했습니다.
 - 실제 사용자 테스트는 아직 진행하지 않았습니다. [브라우저 검사 및 성능 측정 결과](./petnote/docs/28_실사용_점검.md)
 
-개인정보가 포함된 기존 프로젝트 저장소를 삭제하고, 개인정보와 개인 작업 파일을 제외한 소스를 이 블로그 저장소의 `main` 브랜치로 옮겼습니다. [이전 개발 이력](https://github.com/tssvip21/software-engineering-blog/commits/petnote/)
+[이전 개발 이력](https://github.com/tssvip21/software-engineering-blog/commits/petnote/)

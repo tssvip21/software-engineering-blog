@@ -1,2 +1,1 @@
 -r requirements.lock
-psycopg[binary]==3.3.9

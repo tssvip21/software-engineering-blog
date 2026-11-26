@@ -4,7 +4,6 @@ This is descriptive software, not a diagnostic model. Design choices and sources
 are kept in docs/15_테일리_4차설계근거.md; user-facing language is a separate adapter.
 """
 from collections import Counter
-from datetime import timedelta
 from statistics import median
 from zoneinfo import ZoneInfo
 from .patterns import analyze, canonical_records

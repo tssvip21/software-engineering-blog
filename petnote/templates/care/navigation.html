@@ -1,0 +1,45 @@
+{% extends 'care/base.html' %}{% load care_tags %}
+{% block content %}{% navigation as navigation %}
+  <div class="navigation-hub" data-page-navigation>
+    <header class="page-heading">
+      <div><p class="eyebrow">{{ room.name }}의 돌봄 공간</p><h1>전체 메뉴</h1><p class="meta">하고 싶은 일에 맞춰 이동해 보세요.</p></div>
+    </header>
+    <a class="navigation-link navigation-today" href="{{ navigation.today.url }}">
+      <span class="navigation-link-icon">{% icon 'today' %}</span>
+      <span><strong>오늘</strong><small>오늘의 돌봄과 할 일 한눈에 보기</small></span>
+      {% icon 'arrow' %}
+    </a>
+    <div class="navigation-grid">
+      {% for group in navigation.groups %}
+        <section class="navigation-group" data-nav-group="{{ group.key }}" aria-labelledby="menu-group-{{ group.key }}">
+          <div class="navigation-group-heading"><h2 id="menu-group-{{ group.key }}">{{ group.label }}</h2><p class="meta">{{ group.description }}</p></div>
+          <nav class="navigation-links" aria-label="{{ group.label }} 메뉴">
+            {% for item in group.items %}
+              <a class="navigation-link" href="{{ item.url }}">
+                <span class="navigation-link-icon">{% icon item.icon %}</span>
+                <span><strong>{{ item.label }}</strong></span>
+                {% icon 'arrow' %}
+              </a>
+            {% endfor %}
+          </nav>
+        </section>
+      {% endfor %}
+    </div>
+    <section class="navigation-spaces" aria-labelledby="navigation-spaces-title">
+      <h2 id="navigation-spaces-title">돌봄 공간 바꾸기</h2>
+      <nav class="navigation-links" aria-label="내 돌봄 공간">
+        {% for m in nav_memberships %}
+          <a class="navigation-link" href="{% url 'today' m.room_id %}">
+            <span class="navigation-link-icon">{% icon 'paw' %}</span>
+            <span><strong>{{ m.room.name }}</strong><small>{{ m.room.get_species_display }}{% if m.room_id == room.id %} · 현재 공간{% endif %}</small></span>
+            {% icon 'arrow' %}
+          </a>
+        {% endfor %}
+      </nav>
+    </section>
+    <footer class="navigation-footer">
+      <a class="quiet-link" href="{% url 'home' %}">모든 돌봄 공간</a>
+      <form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="text-button">로그아웃</button></form>
+    </footer>
+  </div>
+{% endblock %}

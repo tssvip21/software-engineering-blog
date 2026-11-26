@@ -1,6 +1,5 @@
 """Reusable record settings with explicit defaults and frozen per-event provenance."""
 from copy import deepcopy
-from datetime import timedelta
 import uuid
 
 from django import forms

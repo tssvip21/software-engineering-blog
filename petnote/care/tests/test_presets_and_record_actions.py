@@ -2,22 +2,20 @@
 from datetime import datetime, time, timedelta
 from decimal import Decimal
 from unittest.mock import patch
-from urllib.parse import urlparse, parse_qs
 from zoneinfo import ZoneInfo
 import json
 import uuid
 
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ValidationError
 from django.db import OperationalError
-from django.test import SimpleTestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from care import record_actions, inventory_ledger, schedule, services
 from care.reporting import module_reports
 from care.forms import RecordForm, RoutineForm
-from care.models import Activity, ActivityRevision, ActionReceipt, AuditEvent, RecordPreset, Product, RoutineRun, NoticeDismissal, CareCadence
-from care.modules import MODULES, SELECTABLE_MODULES, RETIRED_MODULES
+from care.models import Activity, ActivityRevision, ActionReceipt, AuditEvent, RecordPreset, Product, RoutineRun, CareCadence
+from care.modules import MODULES, SELECTABLE_MODULES
 from care.presets import PresetForm, save_preset
 from .test_functional import CareCase
 
@@ -166,7 +164,7 @@ class TypedComparisonTests(RecordActionCase):
 
     def test_new_note_combines_legacy_history_without_retyping(self):
         old=self.make_at('reproduction',2,kind='food_change',detail='이전 사료 변경')
-        current=self.make_at('observation',1,detail='지금 메모')
+        self.make_at('observation',1,detail='지금 메모')
         notes=self.report()['notes'];self.assertEqual(len(notes),2)
         self.assertIn('이전 생활 변화',{n['source'] for n in notes});old.refresh_from_db();self.assertEqual(old.module,'reproduction')
         self.assertContains(self.client.get(reverse('module',args=[self.room.pk,'observation'])),'이전 사료 변경')
@@ -339,7 +337,7 @@ class FoodStockLedgerTests(RecordActionCase):
         self.assertEqual(report['items'][0]['unknown_ids'],[str(a.pk)])
 
     def test_stocktake_resets_balance_and_prior_unknown_coverage(self):
-        self.bind();a=self.make('meal',product=str(self.product.pk),quantity='100')
+        self.bind();self.make('meal',product=str(self.product.pk),quantity='100')
         now=timezone.localtime();self.make('inventory',item='사료',movement='set',quantity='2',unit='kg',minimum='0.1',occurred_at=now.isoformat())
         self.assertEqual(self.balance(),2000)
 
@@ -378,7 +376,7 @@ class ScheduleAndScopeTests(RecordActionCase):
         run=RoutineRun.objects.get(item=item,date=day);self.assertIsNone(run.skipped_at);self.assertIsNotNone(run.activity)
 
     def test_period_ends_without_inventing_future_opportunities(self):
-        r=self.routine7();day=services.local_date(self.room)
+        self.routine7();day=services.local_date(self.room)
         rows=schedule.opportunities(self.owner,day,day+timedelta(days=6),now=timezone.now()+timedelta(days=7))
         self.assertEqual(len(rows),3)
 

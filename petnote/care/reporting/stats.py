@@ -7,7 +7,7 @@ from dateutil.relativedelta import relativedelta
 from django.utils import timezone
 from ..models import Activity, Reference, RoutineRun
 from ..modules import MODULES, UNIT_LABELS, compact, decimal
-from ..services import inventory_value, local_date, visible_modules
+from ..services import local_date, visible_modules
 
 ZERO = Decimal(0)
 
@@ -84,7 +84,14 @@ def get_statistics(room, module, start, end, all_records=None, *, member=None):
     tz = ZoneInfo(room.timezone)
     lower, upper = bounds(room, start, end)
     if all_records is None:
-        all_records = list(Activity.objects.filter(room=room, module=module, voided=False, occurred_at__lt=upper).order_by("occurred_at", "created_at", "id"))
+        query = Activity.objects.filter(room=room, module=module, voided=False, occurred_at__lt=upper)
+        # These summaries depend only on events inside the requested period.
+        # Last-known measurements, interval overlap and stock balances retain
+        # their complete history below.
+        if module in ("meal", "treat", "water", "toilet", "walk", "play", "training",
+                      "medication", "observation", "environment", "reproduction", "expense"):
+            query = query.filter(occurred_at__gte=lower)
+        all_records = list(query.order_by("occurred_at", "created_at", "id"))
     else:
         all_records = [a for a in all_records if a.module == module and not a.voided and a.occurred_at < upper]
         all_records.sort(key=lambda a: (a.occurred_at, a.created_at, str(a.pk)))
@@ -256,7 +263,7 @@ def get_statistics(room, module, start, end, all_records=None, *, member=None):
             convert = lambda a: decimal(a.payload["weight"]) * {"kg": Decimal(1), "g": Decimal("0.001"), "lb": Decimal("0.45359237")}[a.payload["unit"]]
             add("기간 내 첫·마지막 측정 차이", convert(rows[-1]) - convert(rows[0]), "kg")
         bcs_rows = [a for a in completed if a.payload.get("bcs")]
-        ref = Reference.objects.filter(species=room.species, module="weight", metric="bcs", size__in=("", room.size)).order_by("-size").first()
+        ref = Reference.objects.filter(species=room.species, module="weight", metric="bcs", size__in=("", room.size)).order_by("-size").first() if bcs_rows else None
         if bcs_rows and ref:
             latest_bcs = bcs_rows[-1]
             value = Decimal(latest_bcs.payload["bcs"])

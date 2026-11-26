@@ -9,8 +9,16 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: petnote-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUTF8: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
 jobs:
-  compose-and-test:
+  quality-and-browser:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     defaults:
@@ -22,35 +30,71 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-
-      - name: Check new commits for personal information and credentials
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            petnote/requirements.lock
+            petnote/requirements-dev.txt
+      - name: Check new commits and current repository files
         working-directory: .
         run: |
-          python3 .github/scripts/check_privacy.py
-          python3 .github/scripts/check_privacy.py --working-tree
-          python3 -m unittest discover -s .github/scripts -v
+          python .github/scripts/check_privacy.py
+          python .github/scripts/check_privacy.py --working-tree
+          python -m unittest discover -s .github/scripts -v
+      - name: Install tested dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Audit locked runtime dependencies
+        run: python -m pip_audit --no-deps --disable-pip -r requirements.lock
+      - name: Install browser engines
+        run: python -m playwright install --with-deps chromium firefox
+      - name: Run lint, migrations, SQLite, local tools, JavaScript and browser checks
+        run: python scripts/check.py --browser --browsers chromium firefox --output tmp/ci-checks
+      - name: Preserve synthetic test results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: petnote-checks-${{ github.run_id }}-${{ github.run_attempt }}
+          path: petnote/tmp/ci-checks/
+          retention-days: 7
+          if-no-files-found: ignore
 
-      - name: Build and start Caddy, Django and PostgreSQL
-        run: docker compose up --build --wait --wait-timeout 240 -d
-
-      - name: Check the app through Caddy
+  compose-and-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+        working-directory: petnote
+    env:
+      COMPOSE_PROJECT_NAME: petnote-ci-${{ github.run_id }}-${{ github.run_attempt }}
+      PETNOTE_PORT: "8096"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Validate local, production and optional demo configurations
+        working-directory: .
+        run: python3 .github/scripts/check_compose.py
+      - name: Check deployment shell syntax
         run: |
-          curl --fail --silent --show-error http://127.0.0.1:8096/health/ | jq -e '.status == "ok"'
-          curl --fail --silent --show-error http://127.0.0.1:8096/ > "$RUNNER_TEMP/petnote-home.html"
-          grep -q '펫노트' "$RUNNER_TEMP/petnote-home.html"
-
+          for script in deploy/*.sh; do bash -n "$script"; done
+      - name: Build and start the isolated Compose stack
+        run: docker compose -f compose.yaml up --build --wait --wait-timeout 240 -d
       - name: Run Django tests with PostgreSQL
         run: |
-          docker compose exec -T -e CARE_DEMO_MODE=0 backend sh -ec '
+          docker compose -f compose.yaml exec -T -e CARE_DEMO_MODE=0 backend sh -ec '
             export POSTGRES_PASSWORD="$(cat /run/dbkey/password)"
             python manage.py shell -c "from django.db import connection; connection.ensure_connection(); assert connection.vendor == \"postgresql\""
             exec python manage.py test care.tests --noinput
           '
-
+      - name: Verify HTTP, static files, restart persistence and backup restoration
+        working-directory: .
+        run: python3 .github/scripts/check_compose_runtime.py --project "$COMPOSE_PROJECT_NAME" --port "$PETNOTE_PORT"
       - name: Show container status on failure
         if: failure()
-        run: docker compose ps -a
-
-      - name: Stop the CI stack
+        run: docker compose -f compose.yaml ps -a
+      - name: Stop only the disposable CI stack
         if: always()
-        run: docker compose down --volumes
+        run: docker compose -f compose.yaml down --volumes

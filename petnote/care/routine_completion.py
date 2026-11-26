@@ -1,11 +1,10 @@
 """A routine click may need real input, never guessed observations or duplicate stock use."""
 from datetime import date, time
-import hmac
 import uuid
 from urllib.parse import urlencode
 
 from django import forms
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ValidationError
 from django.db import transaction, OperationalError
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
@@ -95,7 +94,7 @@ def save_completion(member,item_id,day,form):
     fingerprint=form_fingerprint(form)
     receipt=ActionReceipt.objects.filter(room=member.room,token=token).select_related('activity').first()
     if receipt:
-        if receipt.actor_id!=member.pk or receipt.operation!='routine.form' or not hmac.compare_digest(receipt.request_hash,fingerprint):
+        if not receipt.matches(member, 'routine.form', fingerprint):
             raise services.Conflict('이미 사용한 요청 번호의 내용과 달라요. 원래 기록을 확인해 주세요.')
         if receipt.activity_id:
             services.require_module(member,receipt.activity.module)

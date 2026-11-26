@@ -1,15 +1,17 @@
 """November 12 authorized UI scope; statistical computation remains unchanged."""
-import json,uuid
+import uuid
+import hashlib
+from types import SimpleNamespace
 from unittest.mock import patch
-from django.core.exceptions import ValidationError
 from django.db import OperationalError
 from django.test import override_settings
+from django.http import QueryDict
 from django.urls import reverse,path
-from django.utils import timezone
 from care import services
-from care.models import Activity,ActivityRevision,AuditEvent,Routine,Membership,Room,Invitation
+from care.models import Activity,ActivityRevision,Routine,Membership,Room
 from care.demo_fixtures import record_data
 from care import demo
+from care.idempotency import form_fingerprint
 from care.management.commands.seed_demo import upgrade_local_examples, upgrade_public_seed
 from .test_functional import CareCase
 
@@ -19,6 +21,13 @@ urlpatterns=[*care_urls.urlpatterns,path('demo/login/',auth.demo_login,name='dem
 HEADERS={'HTTP_X_TAILY_DIALOG':'1'}
 
 class InputDialogContractTests(CareCase):
+    def test_existing_receipts_keep_their_original_hashes(self):
+        form = SimpleNamespace(data=QueryDict("modules=walk&modules=water&csrfmiddlewaretoken=ignored"))
+        compact = b'{"modules":["walk","water"]}'
+        spaced = b'{"modules": ["walk", "water"]}'
+        self.assertEqual(form_fingerprint(form), hashlib.sha256(compact).hexdigest())
+        self.assertEqual(form_fingerprint(form, compact=False), hashlib.sha256(spaced).hexdigest())
+
     def input_url(self,key='observation'):
         return reverse('record_entry',args=[self.room.pk,key])
 
@@ -157,6 +166,17 @@ class MemberPresentationTests(CareCase):
         invitation.refresh_from_db();self.assertTrue(invitation.revoked);record.refresh_from_db();self.assertFalse(record.voided)
 
 class DemoRoomTests(CareCase):
+    @override_settings(DEBUG=True, DEMO_MODE=True, ROOT_URLCONF=__name__)
+    def test_demo_login_requires_an_explicit_active_identity(self):
+        self.client.logout()
+        url = reverse("demo_login")
+        self.assertEqual(self.client.post(url).status_code, 403)
+        self.assertNotIn("_auth_user_id", self.client.session)
+        self.admin_user.is_active = False
+        self.admin_user.save(update_fields=["is_active"])
+        self.assertEqual(self.client.post(url, {"identity": "admin"}).status_code, 503)
+        self.assertNotIn("_auth_user_id", self.client.session)
+
     def setUp(self):
         super().setUp()
         self.owner_user.username = 'demo_owner'

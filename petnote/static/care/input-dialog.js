@@ -121,7 +121,8 @@
   document.addEventListener('click',event=>{
     const a=event.target.closest('a[href]');
     if(!a||event.button!==0||event.ctrlKey||event.metaKey||event.altKey||event.shiftKey||a.target||a.hasAttribute('download'))return;
-    if(a.closest('dialog[open]'))return;
+    // Primary navigation changes the page; only in-page actions open an input dialog.
+    if(a.closest('dialog[open], [data-page-navigation]'))return;
     const url=new URL(a.href,location.href);
     if(url.origin===location.origin&&editablePath.test(url.pathname)){
       event.preventDefault();event.stopImmediatePropagation();open(a);

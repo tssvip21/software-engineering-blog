@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "django",
+  "regions": ["bom1"],
   "buildCommand": "python deploy/vercel_build.py"
 }

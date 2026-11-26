@@ -1,6 +1,5 @@
 """Atomic, permission-scoped one-tap actions with retry receipts and honest data meanings."""
 from datetime import date
-from decimal import Decimal, InvalidOperation
 import hashlib
 import hmac
 import json
@@ -47,7 +46,7 @@ def gps_metadata(data):
 
 @transaction.atomic
 def perform(member,request):
-    member=services.fresh_member(member)
+    member=services._lock_member(member)
     if not isinstance(request,dict) or set(request)-{'token','operation','module','preset_id','preset_version','activity_id','version','fields','routine_item','date','gps'}:
         raise ValidationError('실행 요청 형식을 확인해 주세요.')
     try:token=uuid.UUID(str(request.get('token','')))
@@ -158,7 +157,9 @@ def perform(member,request):
     if request.get('gps') is not None:
         if module!='walk' or operation!='finish':raise ValidationError('위치 측정 정보는 산책 종료에만 넣을 수 있어요.')
         form.server_metadata['_gps']=gps_metadata(request['gps'])
-    record,created=services.save_activity(member,module,form,record.pk if record else None)
+    # This operation owns the room lock until the receipt is committed. There is
+    # no inner error recovery: save or receipt failures roll back this whole action.
+    record,created=services._save_activity_locked(member,module,form,record.pk if record else None)
     result=response_for(member,record,created=created and operation!='finish')
     if item:
         from .routine_completion import safe_title

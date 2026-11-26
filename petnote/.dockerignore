@@ -13,8 +13,24 @@
 !deploy/
 !deploy/entrypoint-demo.sh
 !deploy/entrypoint.sh
+!deploy/start-local.sh
 !deploy/serve.py
 !deploy/healthcheck.py
+!deploy/source_files.py
 **/__pycache__
 **/*.pyc
 .env*
+
+# Local credentials and databases may exist inside an application directory.
+**/.env
+**/.env.*
+**/*.env
+**/.local_secret
+**/*.pem
+**/*.p12
+**/*.pfx
+**/*.key
+**/client_secret*.json
+**/*-firebase-adminsdk-*.json
+**/*.sqlite3
+**/*.dump

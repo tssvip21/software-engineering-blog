@@ -220,7 +220,7 @@ def field_measure(module,key,raw,payload):
 
 
 def display_payload(module,payload,*,status=None):
-    from ..modules import MODULES,UNIT_LABELS
+    from ..modules import MODULES
     # The weight card/record precision is explicitly outside the requested change.
     if module=='weight':
         from ..modules import _legacy_payload_display

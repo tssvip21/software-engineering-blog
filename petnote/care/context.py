@@ -1,5 +1,5 @@
 from django.conf import settings
-from .services import my_memberships
+from .services import request_memberships
 
 
 def layout_template(request):
@@ -14,7 +14,7 @@ def layout_template(request):
 
 
 def site_context(request):
-    memberships = list(my_memberships(request).order_by("room__name")) if hasattr(request, "session") else []
+    memberships = request_memberships(request) if hasattr(request, "session") else []
     room = getattr(request, "care_room", None)
     member = getattr(request, "care_member", None)
     if room and all(m.room_id != room.pk for m in memberships) and member:

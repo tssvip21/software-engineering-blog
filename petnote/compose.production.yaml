@@ -1,10 +1,11 @@
-name: taily
+name: petnote
 services:
   frontend:
     image: caddy:2-alpine@sha256:78bd35025c7ba85961dd149ae670315129954e77abe2383ac47c89106b35ade9
     restart: unless-stopped
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:?Set SITE_ADDRESS}
+      CARE_PUBLIC_DEMO_ENTRY: ${CARE_PUBLIC_DEMO_ENTRY:-0}
     ports:
       - "${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-80}:80"
       - "${HTTPS_BIND:-0.0.0.0}:${HTTPS_PORT:-443}:443"
@@ -17,7 +18,17 @@ services:
       backend:
         condition: service_healthy
     networks: [web]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
     mem_limit: 128m
+    healthcheck:
+      test: [CMD, wget, --quiet, -O, /dev/null, http://127.0.0.1:2019/config/]
+      interval: 20s
+      timeout: 5s
+      retries: 4
     logging: &logging
       driver: json-file
       options:
@@ -25,6 +36,7 @@ services:
         max-file: "3"
   backend:
     build: .
+    init: true
     restart: unless-stopped
     environment:
       DJANGO_DEBUG: ${DJANGO_DEBUG:-0}
@@ -34,8 +46,8 @@ services:
       CARE_DEMO_MODE: "0"
       CARE_PUBLIC_DEMO_ENTRY: ${CARE_PUBLIC_DEMO_ENTRY:-0}
       POSTGRES_HOST: db
-      POSTGRES_DB: ${POSTGRES_DB:-taily}
-      POSTGRES_USER: ${POSTGRES_USER:-taily}
+      POSTGRES_DB: ${POSTGRES_DB:-petnote}
+      POSTGRES_USER: ${POSTGRES_USER:-petnote}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
@@ -62,15 +74,15 @@ services:
     image: postgres:16-bookworm@sha256:5264710be20f409750ac6dc4e5706dcef929c87e241605463f0f9aefa932a8d9
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-taily}
-      POSTGRES_USER: ${POSTGRES_USER:-taily}
+      POSTGRES_DB: ${POSTGRES_DB:-petnote}
+      POSTGRES_USER: ${POSTGRES_USER:-petnote}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks: [database]
     mem_limit: 512m
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 5s
       timeout: 5s
       retries: 20

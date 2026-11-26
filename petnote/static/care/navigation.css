@@ -1,0 +1,304 @@
+/* Mobile-only navigation styles; the original desktop sidebar is unchanged. */
+:root {
+  --nav-muted: #6b7684;
+  --nav-shadow: 0 8px 32px rgba(25, 31, 40, .10), 0 2px 6px rgba(25, 31, 40, .04);
+}
+
+/* Keep a full navigation page available when scripts or dialogs are unavailable. */
+.navigation-hub {max-width: 62rem}
+.navigation-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+.navigation-group {
+  min-width: 0;
+  padding: 1.25rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 1.25rem;
+  background: var(--fill-2);
+}
+.navigation-group h2 {
+  margin: 0 0 .375rem;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.navigation-group > p,
+.navigation-group-heading > p {
+  margin: 0 0 1rem;
+  color: var(--nav-muted);
+  font-size: .8125rem;
+  line-height: 1.6;
+}
+.navigation-links {display: grid; gap: .375rem; margin-top: .875rem}
+.navigation-link {
+  display: flex;
+  align-items: center;
+  gap: .875rem;
+  min-height: 3.5rem;
+  min-width: 0;
+  padding: .75rem;
+  border-radius: .875rem;
+  color: var(--ink-2);
+  background: var(--surface);
+}
+.navigation-link:hover {background: var(--select); color: var(--select-ink)}
+.navigation-link > .icon {
+  width: 1.375rem;
+  height: 1.375rem;
+  flex: none;
+  color: var(--nav-muted);
+}
+.navigation-link > span {min-width: 0}
+.navigation-link strong {display: block; color: var(--ink); font-size: .875rem; font-weight: 650}
+.navigation-link small {display: block; margin-top: .125rem; color: var(--nav-muted); font-size: .75rem}
+.navigation-link[aria-current="page"] {background: var(--select); color: var(--select-ink)}
+.navigation-link[aria-current="page"] .icon {color: var(--select-icon)}
+.navigation-link > .navigation-link-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 2.25rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: .75rem;
+  background: var(--fill);
+  color: var(--ink-2);
+}
+.navigation-link-icon .icon {width: 1.25rem; height: 1.25rem}
+.navigation-link > span:nth-child(2) {flex: 1}
+.navigation-link > .icon:last-child {width: 1rem; height: 1rem; margin-left: auto; color: var(--nav-muted)}
+.navigation-today {margin-bottom: 1.25rem; padding: 1.125rem; background: var(--select)}
+.navigation-today > .navigation-link-icon {background: var(--surface); color: var(--select-ink)}
+.navigation-spaces {margin-top: 2.25rem}
+.navigation-spaces h2 {font-size: 1.0625rem}
+.navigation-spaces .navigation-links {grid-template-columns: repeat(2, minmax(0, 1fr))}
+.navigation-spaces .navigation-link {border: 1px solid var(--line-soft)}
+.navigation-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line-soft);
+}
+.navigation-footer a,
+.navigation-footer button {display: inline-flex; align-items: center; min-height: 44px; color: var(--ink-2)}
+
+/* Phone menu is a native dialog; its trigger remains a normal link without JS. */
+.phone-header {gap: .75rem}
+.phone-menu-trigger {
+  min-width: 0;
+  max-width: calc(100% - 7rem);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .375rem;
+  padding-inline: .75rem;
+  border-radius: .875rem;
+}
+.phone-menu-trigger > span:not(.workspace-name) {flex: none; white-space: nowrap}
+.phone-menu-trigger .workspace-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#phone-menu {
+  width: min(32rem, calc(100% - 1rem));
+  max-height: calc(100dvh - 1rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  margin: auto auto max(.5rem, env(safe-area-inset-bottom, 0px));
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 1.5rem;
+  background: var(--surface);
+  box-shadow: var(--nav-shadow);
+  overscroll-behavior: contain;
+  overflow-y: auto;
+}
+#phone-menu::backdrop {background: var(--scrim)}
+#phone-menu header {gap: 1rem; margin-bottom: .875rem}
+#phone-menu header h2 {font-size: 1.125rem; line-height: 1.4}
+#phone-menu .icon-button {width: 44px; height: 44px; flex: none; border-radius: 50%}
+#phone-menu label {font-size: .8125rem; color: var(--ink-2)}
+#phone-menu select {min-height: 44px; margin-top: .375rem}
+#phone-menu .phone-menu-home {margin-top: 1rem}
+#phone-menu .phone-menu-group {margin-top: 1.25rem}
+#phone-menu .phone-menu-group h2,
+#phone-menu .phone-menu-group h3 {
+  margin: 0 0 .5rem;
+  font-size: .75rem;
+  font-weight: 650;
+  color: var(--nav-muted);
+}
+#phone-menu nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .375rem;
+  margin: 0;
+}
+#phone-menu nav a {
+  min-width: 0;
+  min-height: 48px;
+  padding: .75rem;
+  gap: .625rem;
+  border-radius: .875rem;
+  background: var(--fill-2);
+  font-size: .875rem;
+  color: var(--ink-2);
+}
+#phone-menu nav a[aria-current="page"] {background: var(--select); color: var(--select-ink)}
+#phone-menu footer {
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line-soft);
+}
+#phone-menu footer a,
+#phone-menu footer button {min-height: 44px; display: inline-flex; align-items: center}
+body.phone-menu-open {overflow: hidden}
+
+/* The global bar meets the screen edge; section bars float above it. */
+.mobile-dock {
+  display: none;
+  position: fixed;
+  z-index: 30;
+  inset: auto 0 0;
+  grid-template-columns: none;
+  align-items: center;
+  gap: .375rem;
+  min-height: 4.5rem;
+  padding: .5rem max(.5rem, env(safe-area-inset-right, 0px))
+    calc(.5rem + env(safe-area-inset-bottom, 0px))
+    max(.5rem, env(safe-area-inset-left, 0px));
+  border: 1px solid var(--line-soft);
+  border-bottom: 0;
+  border-radius: 1.5rem 1.5rem 0 0;
+  background: var(--surface);
+  box-shadow: 0 -3px 20px rgba(25, 31, 40, .035);
+  backdrop-filter: none;
+}
+.dock-items {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+}
+.mobile-dock .dock-link {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: .1875rem;
+  min-width: 0;
+  min-height: 3.5rem;
+  padding: .1875rem .125rem;
+  border-radius: 1rem;
+  color: var(--nav-muted);
+  text-align: center;
+  font-size: .6875rem;
+  font-weight: 650;
+  line-height: 1.35;
+  -webkit-tap-highlight-color: transparent;
+}
+.dock-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 1.875rem;
+  border-radius: .75rem;
+}
+.mobile-dock .dock-icon .icon {width: 1.375rem; height: 1.375rem; color: currentColor}
+.dock-label {white-space: nowrap}
+.mobile-dock .dock-link[aria-current="page"] {color: var(--select-ink)}
+.mobile-dock .dock-link[aria-current="page"] .dock-icon {color: var(--select-ink); background: var(--select)}
+.mobile-dock .dock-link[aria-current="page"] .icon {color: var(--select-ink)}
+.mobile-dock .dock-link:hover {color: var(--ink)}
+.mobile-dock .dock-link[aria-current="page"]:hover {color: var(--select-ink)}
+.mobile-dock .dock-link:focus-visible,
+.mobile-dock .mobile-dock-back:focus-visible {outline-offset: 0}
+.mobile-dock.is-context {
+  inset: auto max(.75rem, env(safe-area-inset-right, 0px))
+    calc(.875rem + env(safe-area-inset-bottom, 0px))
+    max(.75rem, env(safe-area-inset-left, 0px));
+  width: auto;
+  max-width: 31rem;
+  min-height: 4.5rem;
+  margin-inline: auto;
+  padding: .5rem;
+  gap: .375rem;
+  border: 1px solid var(--line-soft);
+  border-radius: 2.5rem;
+  box-shadow: var(--nav-shadow);
+}
+.mobile-dock .mobile-dock-back {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  flex: 0 0 3rem;
+  width: 3rem;
+  min-width: 3rem;
+  min-height: 3rem;
+  height: 3rem;
+  padding: 0;
+  margin-left: .125rem;
+  border-radius: 50%;
+  background: var(--fill);
+  color: var(--ink-2);
+}
+.mobile-dock .mobile-dock-back .icon {width: 1.25rem; height: 1.25rem}
+.mobile-dock .mobile-dock-back:hover {background: var(--line); color: var(--ink)}
+.mobile-dock.is-context .dock-link {border-radius: 1.5rem}
+.app-shell {
+  --navigation-space: 0px;
+  --navigation-feedback-bottom: 1.75rem;
+}
+.app-shell .main {padding-bottom: max(6rem, var(--navigation-space))}
+.app-shell .main :is(input, textarea, select, button, a, [tabindex]) {
+  scroll-margin-block: calc(var(--sticky-top) + .5rem) var(--navigation-space);
+}
+.app-shell :is(.flow-toast7, .action-feedback) {bottom: var(--navigation-feedback-bottom)}
+
+/* Explicit mobile layout also works on wider screens and tablets. */
+:is(body.layout-mobile, body[data-layout="mobile"]).app-shell {
+  display: block;
+  background: var(--page);
+  --navigation-space: calc(7.5rem + env(safe-area-inset-bottom, 0px));
+  --navigation-feedback-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
+}
+:is(body.layout-mobile, body[data-layout="mobile"]) .mobile-dock {display: flex}
+@media (max-width: 1023px) {
+  .app-shell {
+    --navigation-space: calc(7.5rem + env(safe-area-inset-bottom, 0px));
+    --navigation-feedback-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
+  }
+  .mobile-dock {display: flex}
+  .navigation-grid {grid-template-columns: repeat(2, minmax(0, 1fr))}
+}
+@media (max-width: 640px) {
+  .navigation-grid {grid-template-columns: minmax(0, 1fr); gap: 1rem}
+  .navigation-group {padding: 1.125rem}
+  .navigation-spaces .navigation-links {grid-template-columns: minmax(0, 1fr)}
+  .navigation-link {min-height: 3.75rem}
+  .phone-header .brand {font-size: 1.0625rem}
+  .phone-menu-trigger {font-size: .8125rem}
+  .phone-menu-trigger .workspace-name {font-size: .875rem}
+  #phone-menu {padding: 1rem}
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mobile-dock.is-context {animation: dock-arrive .18s ease-out}
+  .mobile-dock .dock-icon {transition: background-color .15s ease, color .15s ease}
+  @keyframes dock-arrive {
+    from {opacity: .65; translate: 0 .375rem}
+    to {opacity: 1; translate: 0 0}
+  }
+}
+@media (forced-colors: active) {
+  .mobile-dock,
+  .mobile-dock.is-context {border: 1px solid CanvasText}
+  .mobile-dock .dock-link[aria-current="page"] {outline: 2px solid Highlight}
+  .mobile-dock .mobile-dock-back {border: 1px solid ButtonText}
+}

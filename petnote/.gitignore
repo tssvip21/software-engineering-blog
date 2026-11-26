@@ -24,3 +24,7 @@ test-results/
 
 # Locally retained course submissions with student IDs.
 /output/[0-9]*_*.pptx
+
+# Course originals are retained locally.
+/학기프로젝트_안내.pdf
+/docs/수업자료/*.pdf

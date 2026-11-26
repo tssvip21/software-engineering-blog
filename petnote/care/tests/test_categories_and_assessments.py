@@ -6,10 +6,7 @@ import json
 from django.db import OperationalError
 from django.test import Client, SimpleTestCase
 from django.urls import reverse
-from django.utils import timezone
 from care.reporting.assessment import assess
-from care.browsing import apply_category
-from care.models import Activity
 from care import services
 from care.reporting.status_view import context_for
 from .test_functional import CareCase
