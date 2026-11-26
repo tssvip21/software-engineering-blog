@@ -1,3 +1,4 @@
+import hmac
 import uuid
 from django.conf import settings
 from django.db import models
@@ -300,6 +301,10 @@ class ActionReceipt(models.Model):
     activity = models.ForeignKey(Activity, null=True, blank=True, on_delete=models.SET_NULL, related_name="action_receipts")
     result = models.JSONField(default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def matches(self, member, operation, digest):
+        return (self.actor_id == member.pk and self.operation == operation
+                and hmac.compare_digest(self.request_hash, digest))
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["room", "token"], name="one_action_per_room_token")]

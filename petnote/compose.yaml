@@ -2,6 +2,7 @@ name: petnote-local
 services:
   frontend:
     image: caddy:2-alpine@sha256:78bd35025c7ba85961dd149ae670315129954e77abe2383ac47c89106b35ade9
+    restart: unless-stopped
     ports:
       - "127.0.0.1:${PETNOTE_PORT:-8096}:80"
     volumes:
@@ -10,8 +11,27 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    networks: [web]
+    read_only: true
+    tmpfs: [/tmp, /data, /config]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    mem_limit: 128m
+    healthcheck:
+      test: [CMD, wget, --quiet, --spider, http://127.0.0.1/health/]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
   backend:
     build: .
+    init: true
+    restart: unless-stopped
     environment:
       CARE_DEMO_MODE: "1"
       PETNOTE_LOCAL_POSTGRES: "1"
@@ -26,7 +46,13 @@ services:
       - localdata:/app/data
       - staticfiles:/app/staticfiles
       - dbkey:/run/dbkey:ro
-      - ./deploy/start-local.sh:/app/deploy/start-local.sh:ro
+    tmpfs:
+      - /tmp:size=64m
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    networks: [web, database]
+    mem_limit: 768m
     depends_on:
       db:
         condition: service_healthy
@@ -36,8 +62,10 @@ services:
       timeout: 5s
       retries: 20
       start_period: 90s
+    logging: *logging
   db:
     image: postgres:16-bookworm@sha256:5264710be20f409750ac6dc4e5706dcef929c87e241605463f0f9aefa932a8d9
+    restart: unless-stopped
     environment:
       POSTGRES_DB: petnote_demo
       POSTGRES_USER: petnote
@@ -47,6 +75,7 @@ services:
       - -ec
       - |
         if [ ! -s /run/dbkey/password ]; then
+          umask 077
           head -c 48 /dev/urandom | base64 > /run/dbkey/password.tmp
           chmod 0444 /run/dbkey/password.tmp
           mv /run/dbkey/password.tmp /run/dbkey/password
@@ -55,11 +84,18 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - dbkey:/run/dbkey
+    networks: [database]
+    mem_limit: 512m
     healthcheck:
       test: [CMD, pg_isready, -h, 127.0.0.1, -U, petnote, -d, petnote_demo]
       interval: 5s
       timeout: 5s
       retries: 20
+    logging: *logging
+networks:
+  web:
+  database:
+    internal: true
 volumes:
   postgres_data:
   dbkey:

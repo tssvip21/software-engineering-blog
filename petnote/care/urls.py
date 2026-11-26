@@ -29,6 +29,7 @@ urlpatterns = [
     path("join/confirm/", views.join_confirm, name="join_confirm"),
     path("rooms/new/", views.room_new, name="room_new"),
     path("rooms/<uuid:room_id>/", care_views.today, name="today"),
+    path("rooms/<uuid:room_id>/navigation/", care_views.navigation, name="navigation"),
     path("rooms/<uuid:room_id>/state/", views.room_state, name="room_state"),
     path("rooms/<uuid:room_id>/modules/", care_views.modules, name="modules"),
     path("rooms/<uuid:room_id>/modules/config/", interactions.module_config, name="module_config"),

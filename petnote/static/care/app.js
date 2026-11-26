@@ -72,7 +72,7 @@
     try {
       const response = await fetch(form.action || location.href, {
         method: "POST", body: payload, credentials: "same-origin", mode: "same-origin",
-        signal: controller.signal, headers: { "X-Requested-With": "fetch" },
+        signal: controller.signal, headers: { "X-Requested-With": "fetch", "X-Petnote-Response": "redirect-json" },
       });
       if (response.redirected) {
         const destination = new URL(response.url);
@@ -83,6 +83,16 @@
         return;
       }
       const contentType = response.headers.get("Content-Type") || "";
+      if (contentType.includes("application/json")) {
+        const result = await response.json();
+        if (!response.ok || result.ok !== true || typeof result.redirect_url !== "string") throw new Error("Unexpected response");
+        const destination = new URL(result.redirect_url, location.href);
+        if (destination.origin !== location.origin || destination.username || destination.password) throw new Error("Unexpected redirect");
+        dirtyForms.delete(form);
+        navigating = true;
+        location.assign(destination.href);
+        return;
+      }
       if (!contentType.includes("text/html")) throw new Error("Unexpected response");
       const html = await response.text();
       const parsed = new DOMParser().parseFromString(html, "text/html");

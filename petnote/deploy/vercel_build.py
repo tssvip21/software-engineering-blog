@@ -1,11 +1,20 @@
-"""Initialize the new database only on an explicitly requested production build."""
+"""Validate the existing runtime and schema without modifying production data."""
 import os
 import subprocess
 import sys
 
 
-if os.environ.get("PETNOTE_INITIALIZE_DB") == "1":
-    if os.environ.get("VERCEL_ENV") != "production":
-        sys.exit("Database initialization requires the production environment.")
-    subprocess.run([sys.executable, "manage.py", "migrate", "--noinput"], check=True)
-    subprocess.run([sys.executable, "manage.py", "seed_references"], check=True)
+def main():
+    if os.environ.get("VERCEL") != "1":
+        raise SystemExit("Run this validation in the Vercel build environment.")
+    # A failed or retried build must never apply schema or reference-data changes.
+    # Apply planned migrations separately after checking a current backup.
+    for arguments in (
+        ("check", "--deploy", "--fail-level", "ERROR"),
+        ("migrate", "--check", "--noinput"),
+    ):
+        subprocess.run([sys.executable, "manage.py", *arguments], check=True)
+
+
+if __name__ == "__main__":
+    main()

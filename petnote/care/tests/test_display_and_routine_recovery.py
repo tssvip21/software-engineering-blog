@@ -3,7 +3,6 @@ from copy import deepcopy
 from datetime import timedelta
 from decimal import Decimal as D
 from unittest.mock import patch
-from urllib.parse import parse_qs,urlparse
 import json,uuid
 
 from django.core.exceptions import PermissionDenied,ValidationError
@@ -14,9 +13,9 @@ from django.utils import timezone
 
 from care import record_actions, services, routine_completion
 from care.reporting import module_reports
-from care.reporting.display_values import measure,number,duration,common_unit,decorate_report,rounded_originals
-from care.forms import RecordForm,RoutineForm
-from care.models import Activity,ActivityRevision,ActionReceipt,AuditEvent,Product,RecordPreset,RoutineRun
+from care.reporting.display_values import measure,number,duration,common_unit,rounded_originals
+from care.forms import RecordForm
+from care.models import Activity,ActivityRevision,ActionReceipt,AuditEvent,Product,RoutineRun
 from care.modules import compact,payload_display,record_summary
 from care.presets import PresetForm,save_preset
 from care.reporting.stats import chart

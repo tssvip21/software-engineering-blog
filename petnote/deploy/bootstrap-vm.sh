@@ -13,5 +13,5 @@ if ! command -v docker >/dev/null || ! docker compose version >/dev/null 2>&1; t
     apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 fi
 systemctl enable --now docker
-install -d -m 0700 /opt/taily /var/backups/taily
-touch /opt/taily/bootstrap-ready
+install -d -m 0700 /opt/petnote /var/backups/petnote
+touch /opt/petnote/bootstrap-ready

@@ -3,7 +3,7 @@ from collections import defaultdict
 from datetime import timedelta
 from urllib.parse import urlencode
 
-from django.db.models import F, Window
+from django.db.models import F, Q, Subquery, Window
 from django.db.models.functions import RowNumber
 from django.urls import reverse
 from django.utils import timezone
@@ -12,6 +12,47 @@ from .models import Activity
 from .modules import record_summary, compact, decimal
 from .services import local_date, visible_modules
 from .reporting.stats import bounds, get_statistics, label_choice
+
+
+def board_records(member, day=None, *, module=None):
+    """Load the histories that can affect today's board and its recent records.
+
+    Sleep intervals can cross midnight and weight uses the last measured BCS.
+    Inventory visibility depends on historical private supply links, so keep its
+    history until visibility has been checked. Other modules need today's rows,
+    active timers, their last completion and the latest six visible candidates.
+    Full reports and inventory balances use their own complete history queries.
+    """
+    from .schedule import logical_module
+    from .supplies import filter_rows
+
+    day = day or local_date(member.room)
+    allowed = set(visible_modules(member))
+    if module is not None:
+        allowed = {key for key in allowed if logical_module(key) == logical_module(module)}
+    base = Activity.objects.filter(
+        room_id=member.room_id, module__in=allowed, voided=False, occurred_at__lte=timezone.now(),
+    )
+    retained = ("weight", "sleep", "inventory")
+    other = base.exclude(module__in=retained)
+    recent = other.order_by("-occurred_at", "-created_at", "-id").values("pk")[:6]
+    latest = (
+        other.filter(status="done").order_by()
+        .annotate(board_rank=Window(
+            expression=RowNumber(), partition_by=[F("module")],
+            order_by=[F("occurred_at").desc(), F("created_at").desc(), F("id").desc()],
+        ))
+        .filter(board_rank=1).values("pk")
+    )
+    lower, _ = bounds(member.room, day, day)
+    needed = (
+        Q(occurred_at__gte=lower) | Q(status="active") | Q(module__in=retained)
+        | Q(pk__in=Subquery(recent)) | Q(pk__in=Subquery(latest))
+    )
+    return filter_rows(
+        member,
+        base.filter(needed).select_related("author", "performer").order_by("-occurred_at", "-created_at", "-id"),
+    )
 
 
 def today_tiles(member, cards, records, day=None):
@@ -98,6 +139,6 @@ def statistics_periods(room,module,selected_start,selected_end):
 
 
 def module_board_tiles(member,rows):
-    allowed=set(visible_modules(member));day=local_date(member.room)
-    records=list(Activity.objects.filter(room_id=member.room_id,module__in=allowed,voided=False,occurred_at__lte=timezone.now()).order_by('-occurred_at','-created_at'))
+    day=local_date(member.room)
+    records=board_records(member,day)
     return {card['spec'].key:card['tile'] for card in today_tiles(member,rows,records,day)}

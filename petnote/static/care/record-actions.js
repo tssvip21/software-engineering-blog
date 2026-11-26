@@ -6,6 +6,7 @@
   const csrf = () => document.querySelector('#flow-csrf7 [name=csrfmiddlewaretoken]')?.value || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
   const pending = new Map(), busy = new Set(), gps = new Map();
   let pageRequest = 0, lastPageRetry = null, memberTrigger = null;
+  let memberGeneration = 0, memberController = null;
   const token = () => crypto.randomUUID();
   const stored = key => { try { return JSON.parse(sessionStorage.getItem('taily7:' + key)); } catch (_) { return null; } };
   const persist = (key, value) => { try { value === null ? sessionStorage.removeItem('taily7:' + key) : sessionStorage.setItem('taily7:' + key, JSON.stringify(value)); } catch (_) { /* In-memory idempotence remains available. */ } };
@@ -71,13 +72,13 @@
     if(previous.agendaScroll!==undefined){const panel=document.querySelector('.schedule-panel-content');if(panel)panel.scrollTop=previous.agendaScroll;}
     if(previous.scroll!==undefined)requestAnimationFrame(()=>window.scrollTo({top:previous.scroll,behavior:'instant'}));
     tick();
+    return parsed;
   }
   async function refreshSurface() {
     const response = await fetch(location.href, {credentials:'same-origin',cache:'no-store'});
     if (!response.ok) throw new Error('기록은 저장됐지만 화면 갱신에 실패했어요. 새로고침하거나 원기록을 확인해 주세요.');
     const html=await response.text();
-    replaceMain(html);
-    const updated=new DOMParser().parseFromString(html,'text/html');
+    const updated=replaceMain(html);
     const sidebar=updated.querySelector('.sidebar-members'),current=document.querySelector('.sidebar-members');
     if(sidebar&&current)current.replaceWith(sidebar);
     for(const selector of ['.workspace-name','.topbar-role','.room-switch>.meta']){
@@ -197,10 +198,14 @@
   async function openMember(anchor) {
     if(!memberDialog){location.href=anchor.href;return;}
     memberTrigger=anchor;memberDialog.dataset.url=anchor.href;
+    const generation=++memberGeneration;memberController?.abort();
+    const controller=new AbortController();memberController=controller;
+    const timeout=setTimeout(()=>controller.abort(),15000);
     const content=memberDialog.querySelector('[data-member-content7]');content.innerHTML='<h2 id="member-panel-title7">구성원 정보</h2><p role="status">불러오는 중이에요.</p>';
     memberDialog.showModal();body.classList.add('has-member-panel7');memberDialog.querySelector('[data-member-close7]').focus();
-    try{const response=await fetch(anchor.href,{credentials:'same-origin',headers:{'X-Taily-Panel':'1'}});if(!response.ok)throw new Error('구성원 정보를 불러오지 못했어요. 권한과 연결을 확인해 주세요.');const html=await response.text();if(memberDialog.open){content.innerHTML=html;memberDialog.dataset.initial=memberFormState()||'';delete memberDialog.dataset.dirty;}}
-    catch(e){content.innerHTML='';const h=document.createElement('h2');h.id='member-panel-title7';h.textContent='구성원 정보';const p=document.createElement('p');p.setAttribute('role','alert');p.textContent=e.message;const retry=document.createElement('a');retry.href=anchor.href;retry.className='button secondary';retry.textContent='전체 화면으로 다시 열기';content.append(h,p,retry);}
+    try{const response=await fetch(anchor.href,{credentials:'same-origin',headers:{'X-Taily-Panel':'1'},signal:controller.signal});if(!response.ok)throw new Error('구성원 정보를 불러오지 못했어요. 권한과 연결을 확인해 주세요.');const html=await response.text();if(generation===memberGeneration&&memberDialog.open){content.innerHTML=html;memberDialog.dataset.initial=memberFormState()||'';delete memberDialog.dataset.dirty;}}
+    catch(e){if(generation!==memberGeneration||!memberDialog.open)return;content.innerHTML='';const h=document.createElement('h2');h.id='member-panel-title7';h.textContent='구성원 정보';const p=document.createElement('p');p.setAttribute('role','alert');p.textContent=e.name==='AbortError'?'응답이 늦어요. 다시 열어 주세요.':e.message;const retry=document.createElement('a');retry.href=anchor.href;retry.className='button secondary';retry.textContent='전체 화면으로 다시 열기';content.append(h,p,retry);}
+    finally{clearTimeout(timeout);if(memberController===controller)memberController=null;}
   }
   function memberFormState(){
     const form=memberDialog?.querySelector('[data-member-form7]');
@@ -226,7 +231,7 @@
     if(event.shiftKey&&(active===first||!memberDialog.contains(active))){event.preventDefault();last.focus();}
     else if(!event.shiftKey&&(active===last||!memberDialog.contains(active))){event.preventDefault();first.focus();}
   });
-  memberDialog?.addEventListener('close',()=>{delete memberDialog.dataset.dirty;body.classList.remove('has-member-panel7');if(memberTrigger?.isConnected)memberTrigger.focus({preventScroll:true});else{const next=[...document.querySelectorAll('[data-member-open7]')].find(a=>a.href===memberDialog.dataset.url);next?.focus({preventScroll:true});}});
+  memberDialog?.addEventListener('close',()=>{++memberGeneration;memberController?.abort();memberController=null;delete memberDialog.dataset.dirty;body.classList.remove('has-member-panel7');if(memberTrigger?.isConnected)memberTrigger.focus({preventScroll:true});else{const next=[...document.querySelectorAll('[data-member-open7]')].find(a=>a.href===memberDialog.dataset.url);next?.focus({preventScroll:true});}});
   document.addEventListener('visibilitychange',()=>{if(document.hidden)gps.forEach((s,id)=>{if(s.watch!==null){s.hidden=true;s.gaps++;s.last=null;persist('gps:'+id,{metres:s.metres,samples:s.samples,gaps:s.gaps,hidden:true});}});});
   document.addEventListener('input',e=>{if(e.target.matches('[data-distance7]')){const s=gps.get(e.target.closest('[data-timer-id]')?.dataset.timerId);if(s)s.manuallyEdited=true;}});
   document.addEventListener('click',async e=>{

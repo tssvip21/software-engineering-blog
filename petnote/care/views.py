@@ -5,15 +5,16 @@ from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 import json
 import uuid
+from .json_inputs import load_json
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import connection, OperationalError
+from django.db import connection, DatabaseError, InterfaceError, OperationalError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_GET, require_POST, require_http_methods
+from django.views.decorators.http import require_GET, require_POST, require_http_methods, require_safe
 from . import services, ui_forms
 from .interactions import config_state
 from .forms import RecordForm, InvitationForm, JoinForm, CancelForm, RoutineForm
@@ -31,11 +32,13 @@ def add_form_error(form, exc):
         form.add_error(None, message)
 
 
-def record_card(activity, member):
-    from .supplies import require_record_access
-    require_record_access(member, activity)
+def record_card(activity, member, *, hidden_names=None):
+    from .supplies import hidden_stock_names, require_record_access
+    if activity.module == "inventory" and hidden_names is None:
+        hidden_names = hidden_stock_names(member)
+    require_record_access(member, activity, hidden_names=hidden_names)
     activity.spec = MODULES[activity.module]
-    activity.can_edit = services.can_edit_record(member, activity) and not activity.voided
+    activity.can_edit = services.can_edit_record(member, activity, hidden_names=hidden_names) and not activity.voided
     activity.brief = record_summary(activity.module, activity.payload)
     if activity.module == "medication" and activity.status == "planned" and activity.payload.get("result") == "given":
         activity.brief = activity.brief.removesuffix("투약함") + "투약 예정"
@@ -43,9 +46,16 @@ def record_card(activity, member):
     return activity
 
 
-@require_GET
+def record_cards(activities, member):
+    activities = list(activities)
+    from .supplies import hidden_stock_names
+    hidden = hidden_stock_names(member) if any(row.module == "inventory" for row in activities) else set()
+    return [record_card(row, member, hidden_names=hidden) for row in activities]
+
+
+@require_safe
 def home(request):
-    memberships = list(services.my_memberships(request).order_by("room__name"))
+    memberships = services.request_memberships(request)
     return render(request, "care/home.html", {"memberships": memberships, "has_identity": bool(memberships or request.user.is_authenticated)})
 
 
@@ -83,7 +93,7 @@ def module_settings(request, room_id):
     if request.method == "POST":
         try:
             enabled = request.POST.getlist("enabled")
-            order = json.loads(request.POST.get("order", "[]"))
+            order = load_json(request.POST.get("order", "[]"))
             version = int(request.POST.get("version", "0"))
             services.update_modules(member, enabled, order, version, request.POST.getlist("pinned") if "pin_config" in request.POST else None)
             messages.success(request, "사용할 기능을 저장했어요. 사용하지 않는 기능의 기록도 그대로 남아 있어요.")
@@ -100,25 +110,24 @@ def module_settings(request, room_id):
 
 @require_http_methods(["GET", "POST"])
 def record_new(request, room_id, module):
-    return record_form_view(request, room_id, module)
+    room, member = services.get_room(request, room_id)
+    return record_form_view(request, room, member, module)
 
 
 @require_http_methods(["GET", "POST"])
 def record_edit(request, room_id, activity_id):
     room, member = services.get_room(request, room_id)
     activity = get_object_or_404(Activity, pk=activity_id, room=room)
-    services.require_module(member, activity.module)
-    if not services.can_edit_record(member, activity):
-        raise PermissionDenied("자신의 기록만 수정할 수 있어요.")
-    return record_form_view(request, room_id, activity.module, activity)
+    return record_form_view(request, room, member, activity.module, activity)
 
 
-def record_form_view(request, room_id, module, activity=None):
-    room, member = services.get_room(request, room_id)
+def record_form_view(request, room, member, module, activity=None):
     try:
         services.require_module(member, module, adding=activity is None)
     except ValidationError as exc:
         return error(request, "사용하지 않는 기능이에요", " ".join(exc.messages), 409)
+    if activity and not services.can_edit_record(member, activity):
+        raise PermissionDenied("자신의 기록만 수정할 수 있어요.")
     if activity and activity.voided:
         return error(request, "취소한 기록이에요", "기존 이력은 상세 화면에서 확인하고, 필요한 경우 새로 기록해 주세요.", 409)
     initial = {}
@@ -335,6 +344,8 @@ def routine_edit(request, room_id, routine_id=None):
         except ValidationError as exc:
             add_form_error(form, exc)
             status = 409 if isinstance(exc, services.Conflict) else 400
+    elif request.method == "POST":
+        status = 422
     return ui_forms.render_input(request, "care/form.html", {"title": "루틴 수정" if instance else "새 루틴", "intro": "같은 시간에 확인할 활동을 묶어 주세요. 돌봄 기록을 남기면 완료로 표시해요.",
                   "form": form, "submit_label": "루틴 저장", "back_url": reverse("routines", args=[room.pk]), "active_tab": "routines", "routine_form": True}, status=status)
 
@@ -362,7 +373,7 @@ def routine_link(request, room_id, item_id):
             return redirect(reverse("routines", args=[room.pk]) + "?" + urlencode({"date": day.isoformat()}))
         except (ValueError, ValidationError) as exc:
             problem = " ".join(exc.messages) if isinstance(exc, ValidationError) else "연결할 기록을 선택해 주세요."
-    return render(request, "care/routine_link.html", {"title": "기존 기록 연결", "item": item, "day": day, "candidates": [record_card(a, member) for a in candidates], "problem": problem, "active_tab": "routines"})
+    return render(request, "care/routine_link.html", {"title": "기존 기록 연결", "item": item, "day": day, "candidates": record_cards(candidates, member), "problem": problem, "active_tab": "routines"})
 
 
 @require_GET
@@ -371,11 +382,14 @@ def room_state(request, room_id):
     return JsonResponse({"revision": room.revision})
 
 
-@require_GET
+@require_safe
 def health(request):
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT 1")
-        cursor.fetchone()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+    except (DatabaseError, InterfaceError):
+        return JsonResponse({"status": "unavailable"}, status=503)
     return JsonResponse({"status": "ok"})
 
 

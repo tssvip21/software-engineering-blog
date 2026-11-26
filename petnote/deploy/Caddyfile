@@ -1,9 +1,12 @@
 {$SITE_ADDRESS} {
     encode zstd gzip
     handle_path /try/* {
-        reverse_proxy demo:8000 {
-            header_up X-Forwarded-Proto {scheme}
-            header_up X-Forwarded-For {remote_host}
+        @enabled expression `{$CARE_PUBLIC_DEMO_ENTRY:0} == 1`
+        handle @enabled {
+            reverse_proxy demo:8000
+        }
+        handle {
+            respond 404
         }
     }
     handle_path /static/* {
@@ -12,9 +15,6 @@
         header X-Content-Type-Options nosniff
     }
     handle {
-        reverse_proxy backend:8000 {
-            header_up X-Forwarded-Proto {scheme}
-            header_up X-Forwarded-For {remote_host}
-        }
+        reverse_proxy backend:8000
     }
 }

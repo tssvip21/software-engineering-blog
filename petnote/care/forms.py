@@ -2,14 +2,14 @@ from datetime import timezone as utc_timezone
 from datetime import timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-import json
 import uuid
+from .json_inputs import load_json
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.utils import timezone
 from .models import Room, Product, Membership
-from .modules import MODULES, MODULE_CHOICES, DEFAULT_MODULES
+from .modules import MODULES
 
 TIMEZONES = [(x, x) for x in ("Asia/Seoul", "Asia/Tokyo", "UTC", "America/New_York", "America/Los_Angeles", "Europe/London", "Australia/Sydney")]
 WEEKDAYS = [(str(i), label) for i, label in enumerate(("월", "화", "수", "목", "금", "토", "일"))]
@@ -426,7 +426,7 @@ class RoutineForm(forms.Form):
     modules = forms.MultipleChoiceField(label="함께 확인할 활동", choices=(), widget=forms.CheckboxSelectMultiple)
     active = forms.BooleanField(label="이 루틴 사용", required=False, initial=True)
     version = forms.IntegerField(widget=forms.HiddenInput, required=False)
-    module_order = forms.CharField(widget=forms.HiddenInput, required=False)
+    module_order = forms.CharField(widget=forms.HiddenInput, required=False, max_length=2048)
     def __init__(self, *args, room, visible_keys, instance=None, **kwargs):
         self.room, self.instance = room, instance
         if instance:
@@ -457,7 +457,7 @@ class RoutineForm(forms.Form):
         raw = data.get("module_order")
         if raw:
             try:
-                order = json.loads(raw)
+                order = load_json(raw)
                 if not isinstance(order, list) or len(order) != len(values) or set(order) != set(values):
                     raise ValueError()
                 data["modules"] = order
@@ -480,6 +480,9 @@ class StatsFilterForm(forms.Form):
     def clean(self):
         data = super().clean()
         start, end = data.get("start"), data.get("end")
+        for field, value in (("start", start), ("end", end)):
+            if value and value.year < 1970:
+                self.add_error(field, "통계 날짜는 1970년 이후로 선택해 주세요.")
         if start and end:
             if end < start:
                 self.add_error("end", "종료일을 시작일과 같거나 뒤의 날짜로 선택해 주세요.")

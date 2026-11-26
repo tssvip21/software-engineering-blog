@@ -148,7 +148,7 @@ class DiscoveryPresentationTests(CareCase):
 
     def test_mobile_navigation_and_direct_position_controls_exist(self):
         for name in ["today", "modules", "records", "routines", "overview"]:
-            response = self.client.get(reverse(name, args=[self.room.pk]))
+            response = self.client.get(reverse(name, args=[self.room.pk]), {"layout": "desktop"})
             self.assertContains(response, 'aria-label="모바일 주요 화면"')
             self.assertContains(response, "care/petnote.css")
         config = self.client.get(reverse("module_settings", args=[self.room.pk]))

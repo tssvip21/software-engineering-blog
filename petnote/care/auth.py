@@ -1,18 +1,16 @@
-from datetime import timedelta
 from urllib.parse import urlencode
 import base64
 import hashlib
 import hmac
 import secrets
 import time
-import uuid
 import requests
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login, logout
 from django.core.exceptions import PermissionDenied
-from django.db import transaction
-from django.http import HttpResponse, Http404
+from django.db import IntegrityError, transaction
+from django.http import Http404
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET, require_POST
 from google.auth.transport.requests import Request as GoogleRequest
@@ -62,10 +60,21 @@ def account_for_claims(claims):
         return linked.user
     User = get_user_model()
     username = "g_" + hashlib.sha256(subject.encode()).hexdigest()
-    user = User.objects.create_user(username=username, password=None,
-                                   first_name=str(claims.get("name") or "보호자")[:150],
-                                   email=str(claims.get("email") or "")[:254])
-    GoogleAccount.objects.create(user=user, subject=subject)
+    try:
+        # A second device may finish the same first login at the same time.
+        # Keep the failed insert inside a savepoint so this transaction remains usable.
+        with transaction.atomic():
+            user = User.objects.create_user(username=username, password=None,
+                                           first_name=str(claims.get("name") or "보호자")[:150],
+                                           email=str(claims.get("email") or "")[:254])
+            GoogleAccount.objects.create(user=user, subject=subject)
+    except IntegrityError:
+        linked = GoogleAccount.objects.select_related("user").filter(subject=subject).first()
+        if linked is None:
+            raise
+        if not linked.user.is_active:
+            raise ValueError("Inactive account")
+        return linked.user
     return user
 
 
@@ -73,7 +82,7 @@ def account_for_claims(claims):
 def google_callback(request):
     attempt = request.session.pop("google_login", None)
     state = request.GET.get("state", "")
-    if not attempt or not isinstance(state, str) or len(state) > 200 or not hmac.compare_digest(state, attempt.get("state", "")):
+    if not attempt or not state.isascii() or len(state) > 200 or not hmac.compare_digest(state, attempt.get("state", "")):
         return render(request, "care/error.html", {"title": "로그인을 다시 시작해 주세요", "detail": "로그인을 시작한 화면을 확인하지 못했어요. 처음 화면에서 다시 로그인해 주세요."}, status=400)
     if time.time() - attempt.get("created", 0) > 600 or not settings.GOOGLE_CONFIGURED:
         return render(request, "care/error.html", {"title": "로그인할 수 있는 시간이 지났어요", "detail": "처음 화면으로 돌아가 구글 로그인을 다시 눌러 주세요."}, status=400)
@@ -124,10 +133,10 @@ def demo_login(request):
     local_request = request.META.get("REMOTE_ADDR") in ("127.0.0.1", "::1", "testserver")
     if not settings.DEMO_MODE or not settings.DEBUG or not (local_request or settings.LOCAL_DEMO_POSTGRES):
         raise Http404()
-    role = request.POST.get("identity", "owner")
+    role = request.POST.get("identity")
     if role not in ("owner", "admin", "member", "outsider"):
         raise PermissionDenied()
-    user = get_user_model().objects.filter(username="demo_" + role).first()
+    user = get_user_model().objects.filter(username="demo_" + role, is_active=True).first()
     if not user:
         return render(request, "care/error.html", {"title": "시연 데이터를 준비해 주세요", "detail": "로컬 실행 스크립트를 --demo 옵션으로 다시 실행해 주세요."}, status=503)
     logout(request)

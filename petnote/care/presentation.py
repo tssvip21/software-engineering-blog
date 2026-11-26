@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from django.urls import reverse
 from .models import Activity
 from .modules import MODULES, compact, decimal
-from .services import local_date, visible_modules
+from .services import visible_modules
 from .reporting.stats import bounds, overview
 
 GROUPS = {

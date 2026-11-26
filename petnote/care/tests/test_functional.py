@@ -3,8 +3,6 @@ from decimal import Decimal
 from unittest.mock import patch, Mock
 from urllib.parse import parse_qs, urlparse
 from zoneinfo import ZoneInfo
-import hashlib
-import secrets
 import time as clock
 import uuid
 from django.conf import settings
@@ -12,13 +10,13 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.management import call_command
 from django.db import IntegrityError, transaction
-from django.test import Client, RequestFactory, TestCase, override_settings
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from care import services
 from care.demo_fixtures import record_data
-from care.forms import RoomForm, RecordForm, ProductForm, RoutineForm
-from care.models import Activity, ActivityRevision, AuditEvent, GoogleAccount, Invitation, Membership, Product, Reference, Room, RoutineRun
+from care.forms import RoomForm, RecordForm, RoutineForm
+from care.models import Activity, GoogleAccount, Invitation, Membership, Product, Reference, Room, RoutineRun
 from care.modules import MODULES
 from care.reporting.stats import get_statistics, overview, routine_schedule
 

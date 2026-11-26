@@ -27,6 +27,8 @@ def can_see_private(member):return 'medication' in services.visible_modules(memb
 
 def visible_products(member):
     q=Product.objects.filter(room=member.room)
+    if not member.active:
+        return q.none()
     return q if can_see_private(member) else q.exclude(category__in=PRIVATE)
 
 
@@ -39,42 +41,52 @@ def hidden_stock_names(member):
         if row['module']=='medication' and (p.get('_stock') or {}).get('item'):names.add(p['_stock']['item'])
         if row['module']=='inventory' and (p.get('_supply_private') or p.get('_supply',{}).get('category') in PRIVATE):
             if p.get('item'):names.add(p['item'])
-    return names
+    return {inventory_ledger.normalized_item(name) for name in names}
 
 
-def record_visible(member,record,names=None):
-    if record.module not in services.visible_modules(member):return False
-    if record.module!='inventory':return True
-    names=names if names is not None else {inventory_ledger.normalized_item(s) for s in hidden_stock_names(member)}
-    return inventory_ledger.normalized_item(record.payload.get('item')) not in names
+def record_visible(member, record, *, hidden_names=None):
+    if not member.active or record.room_id != member.room_id:
+        return False
+    if record.module not in services.visible_modules(member):
+        return False
+    if record.module != "inventory":
+        return True
+    if hidden_names is None:
+        hidden_names = hidden_stock_names(member)
+    return inventory_ledger.normalized_item(record.payload.get("item")) not in hidden_names
 
 
-def visible_records(member,query):
-    names={inventory_ledger.normalized_item(s) for s in hidden_stock_names(member)}
-    if not names:return query
+def visible_records(member, query, *, hidden_names=None):
+    if not member.active:
+        return query.none()
+    query = query.filter(room_id=member.room_id, module__in=services.visible_modules(member))
+    names = hidden_stock_names(member) if hidden_names is None else hidden_names
+    if not names:
+        return query
     hidden=[row['pk'] for row in query.filter(module='inventory').values('pk','payload')
             if inventory_ledger.normalized_item(row['payload'].get('item')) in names]
     return query.exclude(pk__in=hidden)
 
 
-def filter_rows(member,rows):
+def filter_rows(member, rows, *, hidden_names=None):
     allowed = set(services.visible_modules(member))
-    hidden = None
+    hidden = hidden_names
     visible = []
     for row in rows:
-        if row.module not in allowed:
+        if row.room_id != member.room_id or row.module not in allowed:
             continue
         if row.module == "inventory":
             if hidden is None:
-                hidden = {inventory_ledger.normalized_item(name) for name in hidden_stock_names(member)}
+                hidden = hidden_stock_names(member)
             if inventory_ledger.normalized_item(row.payload.get("item")) in hidden:
                 continue
         visible.append(row)
     return visible
 
 
-def require_record_access(member,record):
-    if not record_visible(member,record):raise PermissionDenied('이 물품 기록을 볼 수 있는 권한이 없어요.')
+def require_record_access(member, record, *, hidden_names=None):
+    if not record_visible(member, record, hidden_names=hidden_names):
+        raise PermissionDenied('이 물품 기록을 볼 수 있는 권한이 없어요.')
 
 
 class SupplyForm(ProductForm):
@@ -268,7 +280,7 @@ def clean_record(form,data):
                 if data.get('unit') not in allowed:form.add_error('unit','연결된 재고와 같은 종류의 단위를 선택해 주세요.')
     if key=='inventory':
         if data.get('unit')=='package' and not product:form.add_error('product','포장 용량을 등록한 물품을 선택해 주세요.')
-        names={inventory_ledger.normalized_item(s) for s in hidden_stock_names(form.member)}
+        names = hidden_stock_names(form.member)
         if inventory_ledger.normalized_item(data.get('item')) in names:raise PermissionDenied()
     if key in USES:
         amount=data.get('used_quantity')
@@ -321,11 +333,16 @@ def apply_usage(member,module,data,payload,activity):
 
 
 def stock_view(member):
-    rows=inventory_ledger.records_for(member.room)
-    result=inventory_ledger.ledger(rows)
-    hidden={inventory_ledger.normalized_item(s) for s in hidden_stock_names(member)}
-    result['items']=[x for x in result['items'] if x['key'][0] not in hidden]
-    result['issues']=[x for x in result['issues'] if visible_records(member,Activity.objects.filter(pk=x['id'])).exists()]
+    if not member.active:
+        return {"items": [], "issues": [], "events": []}
+    rows = list(inventory_ledger.records_for(member.room))
+    result = inventory_ledger.ledger(rows)
+    hidden = hidden_stock_names(member)
+    visible_ids = {str(row.pk) for row in filter_rows(member, rows, hidden_names=hidden)}
+    result['items'] = [item for item in result['items'] if item['key'][0] not in hidden]
+    result['issues'] = [issue for issue in result['issues'] if issue['id'] in visible_ids]
+    result['events'] = [event for event in result['events']
+                        if event['id'] in visible_ids and event['key'][0] not in hidden]
     visible=set(services.visible_modules(member))
     products=list(visible_products(member).exclude(stock_item=''))
     for item in result['items']:

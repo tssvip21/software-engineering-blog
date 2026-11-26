@@ -131,7 +131,7 @@ def state(cadence, room, *, today=None, records=None, enabled=None):
 
 def schedule(member, *, include_paused=False):
     room = member.room
-    enabled = set(room.module_settings.filter(enabled=True).values_list("key", flat=True))
+    enabled = {setting.key for setting in services.read_module_settings(room) if setting.enabled}
     visible = set(services.visible_modules(member))
     cadences = list(room.cadences.filter(module__in=visible))
     records = list(Activity.objects.filter(room=room, module__in={c.module for c in cadences}, voided=False, status="done").select_related("author")) if cadences else []

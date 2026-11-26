@@ -46,7 +46,7 @@ WSAVA Global Nutrition Committee의 Body Condition Score 자료에서 적용 대
 
 앞서 명시한 Unslop 스킬과 Signs 기준을 실제 화면 정돈에 다시 사용했다. 사용자의 기능 요구와 결과 내용을 우선하고, 같은 곳으로 가는 중복 링크·반복 안내를 줄였다. 한글 어절 줄바꿈, 글자 위계·대비·선택 상태·조작 간격을 맞추고, 결과를 이해하는 데 꼭 필요하지 않은 반복 그림은 덜어냈다. 기존 브랜드의 절제된 강조색과 한글 시스템 글꼴은 유지했다. 원본 스킬은 수정하지 않았으며 기존 제작자·저장소·커밋·CC BY 4.0 표기를 그대로 적용한다.
 
-4차에서 사용한 개인 기록 연구·설계 평가 지침·통계적 근거와 한국어 조판·접근성 기준은 [4차 설계 근거](docs/15_테일리_4차설계근거.md)에 출처와 적용 한계를 구분해 적었다. 외부 폰트·유료 에셋을 새로 포함하지 않았다.
+4차에서 사용한 개인 기록 연구·설계 평가 지침·통계적 근거와 한국어 조판·접근성 기준은 [4차 설계 근거](docs/history/15_테일리_4차설계근거.md)에 출처와 적용 한계를 구분해 적었다. 외부 폰트·유료 에셋을 새로 포함하지 않았다.
 
 
 ### 5차 개선 적용 — 2026-11-09
@@ -65,4 +65,4 @@ WSAVA Global Nutrition Committee의 Body Condition Score 자료에서 적용 대
 - **Pretendard Variable v1.3.9** — Copyright (c) 2021, Kil Hyung-jin. Reserved Font Name: Pretendard. SIL Open Font License 1.1. https://github.com/orioncactus/pretendard/tree/v1.3.9
 - **Manrope (Google Fonts OFL 배포본, Latin 웹폰트)** — Copyright 2018 The Manrope Project Authors. SIL Open Font License 1.1. https://github.com/google/fonts/tree/main/ofl/manrope
 
-공식 배포 파일을 수정하지 않고 같은 서버에서 제공한다. 각 저작권·OFL 원문과 파일별 배포 출처는 [서체 출처](static/care/fonts/README.md), `Pretendard-OFL.txt`, `Manrope-OFL.txt`에 유지한다. 별도의 유료 서체 버전이나 운영체제의 폰트 파일을 복제한 것이 아니다. 본문은 Pretendard, 숫자 강조는 Manrope, 로드 실패 시 시스템 산세리프를 사용한다.
+Pretendard의 공식 동적 서브셋 92개와 Manrope는 수정하지 않고 같은 서버에서 제공한다. 공식 동적 서브셋에서 빠지는 기존 글자는 원본 v1.3.9에서 추출한 **Petnote Supplemental**로 보완한다. 이 수정 배포본은 SIL OFL 1.1을 따르며 내부 글꼴·인스턴스 이름을 바꾸고 원저작권·상표·제작자·라이선스 표기를 유지했다. 각 저작권·OFL 원문, 파일별 출처·해시·재생성 방법은 [서체 출처](static/care/fonts/README.md), `Pretendard-OFL.txt`, `Manrope-OFL.txt`에서 확인할 수 있다. 본문은 Pretendard와 보완 서체, 숫자 강조는 Manrope, 로드 실패 시 시스템 산세리프를 사용한다.

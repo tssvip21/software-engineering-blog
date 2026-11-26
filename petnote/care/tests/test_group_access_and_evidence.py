@@ -1,6 +1,6 @@
 """Authorization, evidence, time and failure boundaries for grouped records."""
 import json
-from datetime import datetime, timedelta, timezone as utc
+from datetime import datetime, timedelta
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 from django.test import Client
@@ -11,8 +11,7 @@ from care import services
 from care.forms import RecordForm
 from care.demo_fixtures import record_data
 from care.reporting.insights import context_for
-from care.models import Activity, ModuleGroup
-from care.reporting.patterns import analyze
+from care.models import ModuleGroup
 from .test_functional import CareCase
 
 UI={"HTTP_X_TAILY_UI":"1"}

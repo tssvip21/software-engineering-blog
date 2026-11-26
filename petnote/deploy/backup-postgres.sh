@@ -1,10 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 umask 077
-cd /opt/taily/app
-install -d -m 0700 /var/backups/taily
-backup="/var/backups/taily/taily-$(date -u +%Y%m%dT%H%M%SZ).dump"
-docker compose --env-file /opt/taily/production.env -p taily exec -T db \
+cd "$(dirname "$0")/.."
+project_dir=$(dirname "$PWD")
+project=$(basename "$project_dir")
+backup_dir="/var/backups/$project"
+install -d -m 0700 "$backup_dir"
+backup="$backup_dir/$project-$(date -u +%Y%m%dT%H%M%SZ).dump"
+docker compose -f compose.production.yaml --env-file "$project_dir/production.env" -p "$project" exec -T db \
     sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$backup.partial"
 test -s "$backup.partial"
 mv "$backup.partial" "$backup"

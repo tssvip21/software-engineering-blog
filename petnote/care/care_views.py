@@ -1,7 +1,6 @@
 """Purpose-specific views for phase7; all mutations reuse room-scoped services."""
 from collections import defaultdict
 from datetime import timedelta
-import json
 import uuid
 
 from django.contrib import messages
@@ -15,13 +14,14 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 
 from . import record_actions, cadences, organization, schedule, services, ui_forms
 from .reporting import module_reports
-from .dashboard import today_tiles
+from .dashboard import board_records, today_tiles
 from .forms import RecordForm, StatsFilterForm
+from .json_inputs import InvalidJSON, load_json
 from .models import Activity, Membership, RecordPreset
 from .modules import MODULES, SELECTABLE_MODULES, RETIRED_MODULES, record_summary
 from .presets import PRESET_MODULES, PresetForm, save_preset
-from .reporting.stats import bounds, get_statistics
-from .views import record_card
+from .reporting.stats import get_statistics
+from .views import record_cards
 from .workspace import schedule_context
 
 
@@ -30,10 +30,10 @@ def action(request,room_id):
     room,member=services.get_room(request,room_id)
     from .routine_completion import NeedsInput
     try:
-        data=json.loads(request.body)
+        data=load_json(request.body)
         result=record_actions.perform(member,data)
         return JsonResponse(result)
-    except (json.JSONDecodeError,UnicodeDecodeError):
+    except (InvalidJSON,UnicodeDecodeError):
         return JsonResponse({'ok':False,'message':'요청 내용을 읽을 수 없어요. 입력을 확인해 주세요.'},status=400)
     except NeedsInput as exc:
         return JsonResponse({'ok':False,'requires_input':True,'message':' '.join(exc.messages),'fields':exc.fields,'form_url':exc.form_url},status=422)
@@ -47,61 +47,109 @@ def action(request,room_id):
         return JsonResponse({'ok':False,'message':'지금은 저장할 수 없어요. 같은 요청으로 다시 시도해 주세요. 중복으로 저장하지 않아요.'},status=503)
 
 
-def board_data(member):
-    room=member.room;allowed=set(services.visible_modules(member));today=services.local_date(room);now=timezone.now()
-    settings=list(room.module_settings.all());canonical_enabled={s.key for s in settings if s.enabled and s.key in allowed and s.key in SELECTABLE_MODULES}
-    presets=list(RecordPreset.objects.filter(room=room,active=True,module__in=allowed).select_related('product'))
-    grouped=defaultdict(list)
-    for p in presets:grouped[p.module].append(p)
-    records=list(Activity.objects.filter(room=room,module__in=allowed,voided=False,occurred_at__lte=now).prefetch_related('author','performer').order_by('-occurred_at','-created_at','-id'))
-    from .supplies import filter_rows
-    records=filter_rows(member,records)
-    basic=[{'spec':MODULES[s.key],'enabled':s.key in canonical_enabled,'pinned':s.pinned,'category':organization.CATEGORY_OF[s.key]}
-           for s in settings if s.key in allowed and s.key in SELECTABLE_MODULES]
-    cards=today_tiles(member,basic,records,today)
+def board_data(member, *, module=None, enabled_only=False, pinned_only=False):
+    from .reporting.display_values import decorate_tile
+
+    room = member.room
+    allowed = set(services.visible_modules(member))
+    if module is not None:
+        allowed = {key for key in allowed if schedule.logical_module(key) == schedule.logical_module(module)}
+    day = services.local_date(room)
+    settings_rows = [
+        {
+            'spec': MODULES[setting.key], 'enabled': setting.enabled, 'pinned': setting.pinned,
+            'category': organization.CATEGORY_OF[setting.key],
+        }
+        for setting in services.read_module_settings(room)
+        if setting.key in allowed and setting.key in SELECTABLE_MODULES
+        and (not (enabled_only or pinned_only) or setting.enabled)
+        and (not pinned_only or setting.pinned)
+    ]
+    presets_by_module = defaultdict(list)
+    presets = RecordPreset.objects.filter(room=room, active=True, module__in=[row['spec'].key for row in settings_rows]).select_related('product')
+    for preset in presets:
+        presets_by_module[preset.module].append(preset)
+
+    records = board_records(member, day, module=module)
     completed = defaultdict(list)
     for record in records:
         if record.status == 'done':
             completed[schedule.logical_module(record.module)].append(record)
+
+    cards = today_tiles(member, settings_rows, records, day)
     for card in cards:
-        key=card['spec'].key;card['presets']=grouped[key];card['default_preset']=next((p for p in grouped[key] if p.is_default),None)
-        same = completed[key]
-        if key in ('hygiene','observation'):
-            current=[a for a in same if a.occurred_at.astimezone(timezone.get_current_timezone()).date()==today]
-            if current:card['tile'].update(value=str(len(current)),_raw_value=len(current),unit='건',caption='오늘 남긴 기록 · 이전 통합 유형 포함',empty=False)
-        card['latest']={'text':record_summary(same[0].module,same[0].payload),'at':same[0].occurred_at} if same else None
-        if key in ('toilet','shedding','hygiene','cleaning') and card['tile']['empty']:
-            card['tile'].update(value='0',_raw_value=0,unit='건',caption='오늘 남긴 관찰·완료 기록 · 실제 발생 여부와 구분',empty=False)
-        card['is_timer']=key in record_actions.TIMERS;card['has_presets']=key in PRESET_MODULES
-        card['instant']=bool(card['default_preset']) or key in record_actions.QUICK_WITHOUT_PRESET or card['is_timer']
-        card['action_label']='시작' if card['is_timer'] else '물 교체' if key=='water' and not card['default_preset'] else '관찰 +1' if key in ('toilet','shedding') else '기록'
-        card['quick_url']=reverse('record_entry',args=[room.pk,key]);card['preset_url']=reverse('record_presets',args=[room.pk,key]) if card['has_presets'] else None
-    from .reporting.display_values import decorate_tile
-    for card in cards:decorate_tile(card['tile'],card['spec'].key)
-    return cards,records
+        key = card['spec'].key
+        history = completed[key]
+        latest = history[0] if history else None
+        card['latest'] = {'text': record_summary(latest.module, latest.payload), 'at': latest.occurred_at} if latest else None
+        tile = card['tile']
+        if key in ('hygiene', 'observation'):
+            count = sum(timezone.localdate(record.occurred_at) == day for record in history)
+            if count:
+                tile.update(value=str(count), _raw_value=count, unit='건', caption='오늘 남긴 기록 · 이전 통합 유형 포함', empty=False)
+        if tile['empty'] and key in ('toilet', 'shedding', 'hygiene', 'cleaning'):
+            tile.update(value='0', _raw_value=0, unit='건', caption='오늘 남긴 관찰·완료 기록 · 실제 발생 여부와 구분', empty=False)
+        decorate_tile(tile, key)
+
+        presets = presets_by_module[key]
+        default = next((preset for preset in presets if preset.is_default), None)
+        timer = key in record_actions.TIMERS
+        has_presets = key in PRESET_MODULES
+        label = '기록'
+        if timer:
+            label = '시작'
+        elif key == 'water' and default is None:
+            label = '물 교체'
+        elif key in ('toilet', 'shedding'):
+            label = '관찰 +1'
+        card.update(
+            presets=presets, default_preset=default, is_timer=timer, has_presets=has_presets,
+            instant=bool(default) or key in record_actions.QUICK_WITHOUT_PRESET or timer,
+            action_label=label, quick_url=reverse('record_entry', args=[room.pk, key]),
+            preset_url=reverse('record_presets', args=[room.pk, key]) if has_presets else None,
+        )
+    return cards, records
+
+
+@require_GET
+def navigation(request, room_id):
+    services.get_room(request, room_id)
+    from .context import layout_template
+    if layout_template(request) != "care/layout_mobile.html":
+        return redirect("today", room_id=room_id)
+    return render(request, "care/navigation.html", {
+        "title": "전체 메뉴", "active_tab": "navigation",
+    })
 
 
 @require_GET
 def modules(request,room_id):
-    room,member=services.get_room(request,room_id);cards,records=board_data(member)
+    room,member=services.get_room(request,room_id);cards,records=board_data(member,enabled_only=True)
     enabled=[x for x in cards if x['enabled']]
     sections=[{'key':key,'name':label,'rows':[x for x in enabled if x['category']==key]} for key,(label,_) in organization.CATEGORIES.items()]
     allowed=set(services.visible_modules(member))
-    history=[{'spec':MODULES[s.key]} for s in room.module_settings.all() if s.key in allowed and (not s.enabled or s.key in RETIRED_MODULES)]
+    history=[{'spec':MODULES[s.key]} for s in services.read_module_settings(room) if s.key in allowed and (not s.enabled or s.key in RETIRED_MODULES)]
     return render(request,'care/dashboard/modules.html',{'title':'돌봄 기능','active_tab':'modules','sections':sections,'enabled_modules':enabled,
-        'inactive_modules':history,'ongoing':[record_card(a,member) for a in records if a.status=='active'],'live_page':True,**organization.browse_context(member),**schedule_context(member)})
+        'inactive_modules':history,'ongoing':record_cards((a for a in records if a.status=='active'), member),'live_page':True,**organization.browse_context(member),**schedule_context(member)})
 
 
 @require_GET
 def today(request,room_id):
-    room,member=services.get_room(request,room_id);day=services.local_date(room);cards,records=board_data(member)
+    room,member=services.get_room(request,room_id);day=services.local_date(room);cards,records=board_data(member,pinned_only=True)
     chosen=[c for c in cards if c['enabled'] and c['pinned']]
-    ongoing=[record_card(a,member) for a in records if a.status=='active']
-    entries=schedule.opportunities(member,day,day)
-    return render(request,'care/dashboard/today.html',{'title':room.name+'의 오늘','active_tab':'today','day':day,'cards':chosen,
-        'ongoing':ongoing,'schedule_entries':entries,'notices':schedule.notices(member),
-        'recent':[record_card(a,member) for a in records[:6]],'today_count':sum(a.status=='done' and day==a.occurred_at.astimezone(timezone.get_current_timezone()).date() for a in records),
-        'routine_total':sum(not r['paused'] for r in entries),'routine_done':sum(r['done'] for r in entries),'routine_progress':round(sum(r['done'] for r in entries)/sum(not r['paused'] for r in entries)*100,2) if any(not r['paused'] for r in entries) else 0,'live_page':True,**schedule_context(member,entries)})
+    ongoing=record_cards((a for a in records if a.status=='active'), member)
+    agenda = schedule_context(member, day=day)
+    total = agenda['schedule_total']
+    done = len(agenda['schedule_completed'])
+    return render(request, 'care/dashboard/today.html', {
+        **agenda,
+        'title': room.name + '의 오늘', 'active_tab': 'today', 'day': day,
+        'cards': chosen, 'ongoing': ongoing, 'live_page': True,
+        'recent': record_cards(records[:6], member),
+        'today_count': sum(record.status == 'done' and timezone.localdate(record.occurred_at) == day for record in records),
+        'routine_total': total, 'routine_done': done,
+        'routine_progress': round(done / total * 100, 2) if total else 0,
+    })
 
 
 @require_GET
@@ -114,7 +162,7 @@ def overview(request,room_id):
 @require_GET
 def module_page(request,room_id,module):
     room,member=services.get_room(request,room_id);services.require_module(member,module)
-    cards,records=board_data(member);canonical=schedule.logical_module(module)
+    cards,records=board_data(member,module=module);canonical=schedule.logical_module(module)
     card=next((c for c in cards if c['spec'].key==canonical),None)
     report=module_reports.build_report(member,request.GET.get('days',7))
     current=next((c for c in report['module_cards'] if c['key']==canonical),None)
@@ -124,11 +172,10 @@ def module_page(request,room_id,module):
     query=visible_records(member,query)
     if request.GET.get('include_cancelled')!='1':query=query.filter(voided=False)
     page=Paginator(query,20).get_page(request.GET.get('page'))
-    page.object_list=[record_card(a,member) for a in page.object_list]
+    page.object_list=record_cards(page.object_list, member)
     matching=page.object_list
-    end=services.local_date(room);stats=get_statistics(room,module,end-timedelta(days=6),end,member=member)
     return render(request,'care/dashboard/module.html',{'title':MODULES[module].name,'spec':MODULES[module],'active_tab':'modules',
-        'card':card,'comparison':current,'report':report,'ongoing':[record_card(a,member) for a in records if a.status=='active' and schedule.logical_module(a.module)==canonical],'records':matching,'page_obj':page,'include_cancelled':request.GET.get('include_cancelled')=='1','stats':stats,'retired_module':module in RETIRED_MODULES,
+        'card':card,'comparison':current,'report':report,'ongoing':record_cards((a for a in records if a.status=='active' and schedule.logical_module(a.module)==canonical), member),'records':matching,'page_obj':page,'include_cancelled':request.GET.get('include_cancelled')=='1','retired_module':module in RETIRED_MODULES,
         'canonical_name':MODULES[canonical].name,'canonical_url':reverse('module',args=[room.pk,canonical]),'live_page':True})
 
 
@@ -159,12 +206,20 @@ def entry(request,room_id,module):
     initial={'client_key':str(uuid.uuid4()),'occurred_at':timezone.localtime(),'status':'done'}
     preset=None
     if request.GET.get('preset'):
-        preset=get_object_or_404(RecordPreset,pk=request.GET['preset'],room=room,module=module,active=True)
+        try:
+            preset_id = uuid.UUID(request.GET['preset'])
+        except ValueError:
+            raise Http404()
+        preset=get_object_or_404(RecordPreset,pk=preset_id,room=room,module=module,active=True)
         initial.update(preset.data)
         if preset.product_id:initial['product']=str(preset.product_id)
     if request.method=='GET' and request.GET.get('product'):
         from .supplies import visible_products
-        product=get_object_or_404(visible_products(member),pk=request.GET['product'],active=True)
+        try:
+            product_id = uuid.UUID(request.GET['product'])
+        except ValueError:
+            raise Http404()
+        product=get_object_or_404(visible_products(member),pk=product_id,active=True)
         initial['product']=str(product.pk)
         if module=='medication':initial['routine_title']=product.name
     form=RecordForm(request.POST or None,room=room,module=module,member=member,simple=True,initial=initial)
@@ -237,9 +292,9 @@ def routines(request,room_id):
 def dismiss_notice(request,room_id):
     room,member=services.get_room(request,room_id)
     try:
-        data=json.loads(request.body);changed=schedule.dismiss(member,str(data.get('key','')),str(data.get('stage','')))
+        data=load_json(request.body);changed=schedule.dismiss(member,str(data.get('key','')),str(data.get('stage','')))
         return JsonResponse({'ok':True,'changed':changed,'message':'이 안내만 닫았어요. 일정 자체는 관리 목록에 그대로 있어요.'})
-    except (json.JSONDecodeError,AttributeError):return JsonResponse({'ok':False,'message':'안내 요청을 확인해 주세요.'},status=400)
+    except (InvalidJSON,AttributeError):return JsonResponse({'ok':False,'message':'안내 요청을 확인해 주세요.'},status=400)
     except ValidationError as exc:return JsonResponse({'ok':False,'message':' '.join(exc.messages)},status=409)
 
 
@@ -304,4 +359,4 @@ def evidence(request,room_id):
     ids=list(dict.fromkeys(i for k in ('before','recent') if side=='all' or side==k for i in selected[k]['ids']))
     rows=Activity.objects.filter(room=room,pk__in=ids,module__in=services.visible_modules(member),voided=False).select_related('author','performer').order_by('-occurred_at')
     return render(request,'care/statistics/evidence.html',{'title':selected['name']+' · 비교 근거','active_tab':'overview','metric':selected,'report':report,
-        'side':side,'records':[record_card(a,member) for a in rows],'evidence_count':len(ids)})
+        'side':side,'records':record_cards(rows, member),'evidence_count':len(ids)})

@@ -1,4 +1,5 @@
 *
+!.python-version
 !care/
 !care/**
 !config/
@@ -9,9 +10,26 @@
 !static/**
 !manage.py
 !requirements.txt
+!requirements.lock
 !vercel.json
 !deploy/
 deploy/*
 !deploy/vercel_build.py
+care/tests/
+config/tests/
 **/__pycache__/
 **/*.pyc
+
+# Local credentials and databases may exist inside an application directory.
+**/.env
+**/.env.*
+**/*.env
+**/.local_secret
+**/*.pem
+**/*.p12
+**/*.pfx
+**/*.key
+**/client_secret*.json
+**/*-firebase-adminsdk-*.json
+**/*.sqlite3
+**/*.dump

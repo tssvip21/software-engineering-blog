@@ -1,6 +1,6 @@
 """Connected workspace panels, separate settings and a unified supplies entry point."""
-import json
 
+from .json_inputs import load_json
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import OperationalError
@@ -14,9 +14,9 @@ from . import organization, schedule, services, supplies, ui_forms
 from .profile_settings import PetProfileForm, SpacePreferencesForm, save_pet, save_preferences
 
 
-def schedule_context(member,entries=None):
-    day=services.local_date(member.room)
-    entries=schedule.opportunities(member,day,day) if entries is None else entries
+def schedule_context(member, *, day=None):
+    day = day or services.local_date(member.room)
+    entries = schedule.opportunities(member, day, day)
     rows=sorted(entries,key=lambda x:(x['done'] or x['skipped'],x['at'],x['name']))
     active=[x for x in rows if not x['paused']]
     return {'schedule_entries':rows,'schedule_pending':[x for x in rows if not x['done']],
@@ -135,7 +135,7 @@ def group_config(request,room_id):
     services.require_manager(member)
     if request.method=="GET":return JsonResponse({"ok":True,**organization.state(room)})
     try:
-        data=json.loads(request.body)
+        data=load_json(request.body)
         result=organization.save_groups(member,data)
         return JsonResponse({"ok":True,**result})
     except services.Conflict as exc:

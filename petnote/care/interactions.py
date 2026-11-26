@@ -15,6 +15,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 from . import services, cadences
 from .forms import RecordForm, LocalDateTimeInput
+from .json_inputs import load_json
 from .models import Activity, CareCadence, Room
 from .modules import MODULES, record_summary
 
@@ -235,7 +236,7 @@ def module_config(request, room_id):
     if request.method == "GET":
         return JsonResponse({"ok": True, **config_state(room)})
     try:
-        data = json.loads(request.body)
+        data = load_json(request.body)
         if not isinstance(data, dict):
             raise ValueError()
         enabled, pinned, order, version = (data.get(k) for k in ("enabled", "pinned", "order", "version"))

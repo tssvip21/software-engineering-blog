@@ -1,5 +1,5 @@
 """Explicit schedule opportunities and personal notices, not inferred care compliance."""
-from datetime import date, datetime, time, timedelta
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from django.core.exceptions import ValidationError
@@ -27,7 +27,7 @@ def opportunities(member, start, end, *, now=None):
         raise ValueError("Schedule range must be between 0 and 366 days")
     routines = list(room.routines.filter(start_date__lte=end).prefetch_related('versions'))
     versions = list(room.module_versions.filter(effective_at__lt=datetime.combine(end+timedelta(days=1), time.min, tz)).order_by('-effective_at','-id'))
-    current_enabled = set(room.module_settings.filter(enabled=True).values_list('key',flat=True))
+    current_enabled = {setting.key for setting in services.read_module_settings(room) if setting.enabled}
     runs = { (str(r.item_id), r.date):r for r in RoutineRun.objects.filter(item__routine__room=room,date__gte=start,date__lte=end).select_related('activity') }
     entries = []
     for offset in range((end-start).days+1):
@@ -106,8 +106,10 @@ def notice_stage(delta):
 
 def notices(member,*,include_dismissed=False):
     """In-app heads-up only. Closing does not complete, snooze, or delete a schedule."""
+    if not include_dismissed and not member.notices_enabled:
+        return []
     today=services.local_date(member.room)
-    hidden={(r.notice_key,r.stage) for r in member.notice_dismissals.all()}
+    hidden={(r.notice_key,r.stage) for r in member.notice_dismissals.all()} if not include_dismissed else set()
     rows=[]
     for state in cadences.schedule(member):
         due=state['next_due'];delta=(due-today).days

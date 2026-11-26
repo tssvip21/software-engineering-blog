@@ -4,7 +4,6 @@ A linked meal is itself the consumption event. No second inventory Activity is
 created, so retries, corrections and soft cancellation cannot double-deduct it.
 Old food records without an explicit binding are never retroactively consumed.
 """
-from collections import defaultdict
 from decimal import Decimal, InvalidOperation
 import hashlib
 

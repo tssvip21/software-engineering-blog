@@ -14,7 +14,7 @@ from care import cadences, services
 from care.demo_fixtures import record_data
 from care.forms import RecordForm
 from care.interactions import config_state
-from care.models import Activity, ActivityRevision, CareCadence, Room
+from care.models import Activity, CareCadence
 from care.modules import MODULES
 from care.presentation import integrated_context
 from .test_functional import CareCase
