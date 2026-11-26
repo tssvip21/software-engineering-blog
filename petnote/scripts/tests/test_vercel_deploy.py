@@ -225,7 +225,7 @@ class DiagnosticTests(unittest.TestCase):
             self.assertEqual(len(entries), 1)
             saved = entries[0].read_text(encoding="utf-8")
             self.assertIn("Error: cannot resolve project settings", saved)
-            self.assertIn(str(entries[0]), str(raised.exception))
+            self.assertEqual(Path(str(raised.exception).split("Local diagnostic: ", 1)[1]), entries[0])
             for value in ("fixture-db", "fixture-client", "fixture-auth", "fixture-cookie", "fixture-code", "fixture-state"):
                 self.assertNotIn(value, saved)
                 self.assertNotIn(value, str(raised.exception))
