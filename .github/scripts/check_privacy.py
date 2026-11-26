@@ -1,16 +1,15 @@
-"""Check new Git history for common personal identifiers and exposed credentials."""
+"""Check new commits or current application files without echoing matching values."""
 import argparse
 import json
 import os
+from pathlib import Path
 import re
 import subprocess
-from pathlib import Path
 
 
 TEXT_RULES = {
     "personal email": re.compile(
-        r"[\w.+%-]+@(?:gmail\.com|naver\.com|daum\.net|hanmail\.net|outlook\.com|hotmail\.com|icloud\.com)\b",
-        re.IGNORECASE,
+        r"[\w.+%-]+@(?:gmail\.com|naver\.com|daum\.net|hanmail\.net|outlook\.com|hotmail\.com|icloud\.com)\b", re.I
     ),
     "Korean mobile number": re.compile(
         r"(?<![a-zA-Z0-9])(?:0|\+82[- .]?)1[016789][- .]?\d{3,4}[- .]?\d{4}(?![a-zA-Z0-9])"
@@ -24,17 +23,37 @@ TEXT_RULES = {
     "personal home directory": re.compile(r"(?:[A-Z]:[\\/]+Users[\\/]+|/Users/)[\w.][^/\\\s<>\"']+", re.I),
     "private key or access token": re.compile(
         r"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----|\b(?:AKIA|ASIA)[A-Z0-9]{16}\b|"
+        r"(?i:\bvc[piark]_?[a-z0-9_-]{24,}\b|\bsb_secret_[a-z0-9_-]{20,})|"
         r"(?:gh[pousr]_|github_pat_|GOCSPX-|sk-(?:proj-)?)[A-Za-z0-9_-]{20,}|AIza[\w-]{35}"
     ),
+    "excluded public wording": re.compile(
+        r"\b\u0052\u0045\u0041\b|\uc2dc\ubc1c|\uc528\ubc1c|\ubcd1\uc2e0|\uc886", re.I
+    ),
 }
+TEXT_SUFFIXES = {".example", ".svg", ".service", ".timer", ".local", ".py", ".md", ".txt", ".html", ".css", ".js", ".json", ".toml", ".yaml", ".yml", ".sh", ".cmd", ".ps1", ".lock"}
 
 
 def git(*args):
     return subprocess.check_output(["git", *args])
 
 
+def private_filename(filename):
+    name = Path(filename).name.lower()
+    return (
+        name in {".env", "id_rsa", "id_ed25519", "credentials.json", ".local_secret"}
+        or (name.startswith(".env.") and not name.endswith((".example", ".sample")))
+        or name.endswith((".env", ".sqlite3", ".sqlite", ".dump", ".p12", ".pfx", ".key", ".pem"))
+    )
+
+
+def text_findings(text, filenames=()):
+    findings = {name for name, rule in TEXT_RULES.items() if rule.search(text)}
+    if any(private_filename(filename) for filename in filenames):
+        findings.add("private configuration or database file")
+    return findings
+
+
 def commit_findings(commit):
-    """Report categories only so a failing CI log never echoes a matching value."""
     info = git("show", "-s", "--format=%an <%ae>%n%cn <%ce>%n%B", commit)
     parent_ids = git("show", "-s", "--format=%P", commit).split()
     base = parent_ids[0].decode() if parent_ids else subprocess.check_output(
@@ -43,34 +62,62 @@ def commit_findings(commit):
     diff_args = ["diff", "--no-ext-diff", "--no-textconv", "--no-renames", "--diff-filter=AMT"]
     filenames = git(*diff_args, "--name-only", "-z", base, commit, "--").decode("utf-8", "replace").split("\0")
     patch = git(*diff_args, "--unified=0", base, commit, "--")
-    lines = [line[1:] for line in patch.splitlines() if line.startswith(b"+")]
-    text = "\n".join(filenames) + "\n" + (info + b"\n".join(lines)).decode("utf-8", "replace")
-    findings = {name for name, rule in TEXT_RULES.items() if rule.search(text)}
-    for filename in filenames:
-        name = Path(filename).name.lower()
-        if name in {".env", "id_rsa", "id_ed25519", "credentials.json"} or name.endswith((".sqlite3", ".p12", ".pfx")):
-            findings.add("private configuration or database file")
-    return findings
+    additions = [line[1:] for line in patch.splitlines() if line.startswith(b"+") and not line.startswith(b"+++")]
+    text = "\n".join(filenames) + "\n" + (info + b"\n".join(additions)).decode("utf-8", "replace")
+    return text_findings(text, filenames)
 
 
-def main():
+def check_working_tree():
+    """Inspect tracked and non-ignored files throughout the repository."""
+    names = git("ls-files", "--cached", "--others", "--exclude-standard", "-z").decode("utf-8", "replace").split("\0")
+    failures, checked = 0, 0
+    for filename in sorted(set(names)):
+        if not filename:
+            continue
+        path = Path(filename)
+        if not path.is_file() or path.is_symlink():
+            continue
+        checked += 1
+        text = filename
+        if path.suffix.lower() in TEXT_SUFFIXES or path.name in {"Dockerfile", "Caddyfile", ".gitignore", ".dockerignore", ".vercelignore"}:
+            text += "\n" + path.read_text(encoding="utf-8", errors="replace")
+        for finding in sorted(text_findings(text, [filename])):
+            safe_name = "[redacted filename]" if text_findings(filename) else filename
+            print(f"{safe_name}: {finding}")
+            failures += 1
+    print(f"Checked {checked} repository files; {failures} findings.")
+    return int(bool(failures))
+
+
+def revision_range(event, head):
+    if "pull_request" in event:
+        return event["pull_request"]["base"]["sha"], event["pull_request"]["head"]["sha"]
+    base = event.get("before")
+    if not base:
+        # Manual runs inspect the selected commit without rescanning old history.
+        parents = git("show", "-s", "--format=%P", head).decode().split()
+        base = parents[0] if parents else None
+    return base, head
+
+
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("base", nargs="?")
     parser.add_argument("head", nargs="?")
-    args = parser.parse_args()
+    parser.add_argument("--working-tree", action="store_true")
+    args = parser.parse_args(argv)
+    if args.working_tree:
+        return check_working_tree()
     base, head = args.base, args.head
     if not head:
-        event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8"))
-        if "pull_request" in event:
-            base, head = event["pull_request"]["base"]["sha"], event["pull_request"]["head"]["sha"]
-        else:
-            base, head = event.get("before"), os.environ["GITHUB_SHA"]
+        event_path = os.environ.get("GITHUB_EVENT_PATH")
+        if not event_path:
+            parser.error("provide base and head commit IDs, or use --working-tree")
+        event = json.loads(Path(event_path).read_text(encoding="utf-8"))
+        base, head = revision_range(event, os.environ["GITHUB_SHA"])
     if not re.fullmatch(r"[0-9a-f]{40}", head) or (base and not re.fullmatch(r"[0-9a-f]{40}", base)):
         parser.error("expected full commit IDs")
-    if base and base != "0" * 40:
-        commits = git("rev-list", "--reverse", f"{base}..{head}").decode().split()
-    else:
-        commits = git("rev-list", "--reverse", head).decode().split()
+    commits = git("rev-list", "--reverse", f"{base}..{head}" if base and base != "0" * 40 else head).decode().split()
     failures = 0
     for commit in commits:
         for finding in sorted(commit_findings(commit)):
