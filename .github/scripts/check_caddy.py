@@ -85,7 +85,11 @@ with result:
         )
         created.append(upstream)
         with tempfile.TemporaryDirectory(prefix="petnote-caddy-static-") as folder:
-            (Path(folder) / "probe.css").write_text("body { color: #111; }\n", encoding="utf-8")
+            # The capability-restricted container must traverse the read-only fixture on Linux.
+            Path(folder).chmod(0o755)
+            fixture = Path(folder) / "probe.css"
+            fixture.write_text("body { color: #111; }\n", encoding="utf-8")
+            fixture.chmod(0o644)
             for enabled in (False, True):
                 frontend = prefix + ("-on" if enabled else "-off")
                 docker(
@@ -117,7 +121,7 @@ with result:
                 assert echo["proto"] == "http", "Caddy trusted a forged protocol header"
                 assert echo["client"] and "203.0.113.55" not in echo["client"]
                 status, headers, body = response(frontend, "/static/probe.css")
-                assert status == 200 and body.startswith(b"body")
+                assert status == 200 and body.startswith(b"body"), f"Static fixture returned HTTP {status}"
                 assert headers.get("x-content-type-options") == "nosniff"
                 status, _, body = response(frontend, "/try/health/?probe=1")
                 if enabled:
