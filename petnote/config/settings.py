@@ -116,7 +116,7 @@ X_FRAME_OPTIONS = "DENY"
 DATA_UPLOAD_MAX_MEMORY_SIZE = 256 * 1024
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 200
 FILE_UPLOAD_MAX_MEMORY_SIZE = 0
-CSRF_FAILURE_VIEW = "care.views.csrf_failure"
+CSRF_FAILURE_VIEW = "care.views.system.csrf_failure"
 LOGIN_URL = "/"
 LOGGING = {"version": 1, "disable_existing_loggers": False, "filters": {"redact": {"()": "config.logfilter.RedactQuery"}}, "handlers": {"console": {"class": "logging.StreamHandler", "filters": ["redact"]}}, "loggers": {"django": {"handlers": ["console"], "level": "WARNING", "propagate": False}, "django.server": {"handlers": ["console"], "level": "INFO", "propagate": False}}}
 

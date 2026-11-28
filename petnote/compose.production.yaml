@@ -10,7 +10,7 @@ services:
       - "${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-80}:80"
       - "${HTTPS_BIND:-0.0.0.0}:${HTTPS_PORT:-443}:443"
     volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/docker/Caddyfile:/etc/caddy/Caddyfile:ro
       - staticfiles:/srv/static:ro
       - caddy_data:/data
       - caddy_config:/config
@@ -64,7 +64,7 @@ services:
     networks: [web, database]
     mem_limit: 768m
     healthcheck:
-      test: ["CMD", "python", "/app/deploy/healthcheck.py"]
+      test: ["CMD", "python", "/app/deploy/docker/healthcheck.py"]
       interval: 20s
       timeout: 5s
       start_period: 60s

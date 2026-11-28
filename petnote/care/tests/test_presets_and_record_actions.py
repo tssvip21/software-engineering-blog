@@ -1,22 +1,34 @@
 """Record action contracts: values/denominators, provenance, transactions, scope and compatibility."""
+import json
+import uuid
 from datetime import datetime, time, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
-import json
-import uuid
 
 from django.core.exceptions import ValidationError
 from django.db import OperationalError
 from django.urls import reverse
 from django.utils import timezone
 
-from care import record_actions, inventory_ledger, schedule, services
-from care.reporting import module_reports
+from care import services
 from care.forms import RecordForm, RoutineForm
-from care.models import Activity, ActivityRevision, ActionReceipt, AuditEvent, RecordPreset, Product, RoutineRun, CareCadence
+from care.inventory import ledger as inventory_ledger
+from care.models import (
+    ActionReceipt,
+    Activity,
+    ActivityRevision,
+    AuditEvent,
+    CareCadence,
+    Product,
+    RecordPreset,
+    RoutineRun,
+)
 from care.modules import MODULES, SELECTABLE_MODULES
-from care.presets import PresetForm, save_preset
+from care.reporting import module_reports
+from care.services import record_actions, schedule
+from care.services.presets import PresetForm, save_preset
+
 from .test_functional import CareCase
 
 
@@ -425,6 +437,6 @@ class ScheduleAndScopeTests(RecordActionCase):
 
     def test_busy_action_returns_retryable_failure_not_false_success(self):
         url=reverse('record_action',args=[self.room.pk]);data={'token':str(uuid.uuid4()),'operation':'quick','module':'toilet'}
-        with patch('care.record_actions.perform',side_effect=OperationalError('busy')):
+        with patch('care.services.record_actions.perform',side_effect=OperationalError('busy')):
             response=self.client.post(url,json.dumps(data),content_type='application/json')
         self.assertEqual(response.status_code,503);self.assertFalse(response.json()['ok']);self.assertEqual(Activity.objects.count(),0)

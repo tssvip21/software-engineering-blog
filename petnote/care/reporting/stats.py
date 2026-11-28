@@ -1,10 +1,13 @@
 """Statistics never treat absent measurements as zero or sum incompatible units."""
 from collections import Counter, defaultdict
-from datetime import datetime, time, timedelta, timezone as dt_timezone
+from datetime import datetime, time, timedelta
+from datetime import timezone as dt_timezone
 from decimal import Decimal
 from zoneinfo import ZoneInfo
+
 from dateutil.relativedelta import relativedelta
 from django.utils import timezone
+
 from ..models import Activity, Reference, RoutineRun
 from ..modules import MODULES, UNIT_LABELS, compact, decimal
 from ..services import local_date, visible_modules
@@ -97,7 +100,7 @@ def get_statistics(room, module, start, end, all_records=None, *, member=None):
         all_records.sort(key=lambda a: (a.occurred_at, a.created_at, str(a.pk)))
     all_records = [a for a in all_records if a.room_id == room.pk and (a.status == "planned" or a.occurred_at <= timezone.now())]
     if member is not None:
-        from ..supplies import filter_rows
+        from care.inventory.supplies import filter_rows
         all_records = filter_rows(member, all_records)
     completed = [a for a in all_records if a.status == "done" and (not a.ended_at or a.ended_at <= timezone.now())]
     rows = [a for a in completed if lower <= a.occurred_at < upper]
@@ -383,12 +386,17 @@ def get_statistics(room, module, start, end, all_records=None, *, member=None):
         add("종료 기록 평균 기간", sum(durations, ZERO) / len(durations) if durations else None, "일", "시작과 종료 시각이 모두 있는 기록만 사용")
         groups("kind")
     elif module == "inventory":
-        from ..inventory_ledger import records_for, ledger, period_movement, display_quantity
+        from care.inventory.ledger import (
+            display_quantity,
+            ledger,
+            period_movement,
+            records_for,
+        )
         # The stock read model includes explicitly linked food consumption as well as manual movements.
         cutoff = min(upper - timedelta(microseconds=1), timezone.now())
         stock_rows = records_for(room, until=cutoff)
         if member is not None:
-            from ..supplies import filter_rows
+            from care.inventory.supplies import filter_rows
             stock_rows = filter_rows(member, list(stock_rows))
         result = ledger(stock_rows, until=cutoff)
         low = 0

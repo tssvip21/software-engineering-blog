@@ -2,22 +2,22 @@
 from __future__ import annotations
 
 import argparse
-from contextlib import contextmanager
-from dataclasses import asdict, dataclass
 import json
 import os
 import re
-from pathlib import Path
 import shutil
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
+from dataclasses import asdict, dataclass
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from deploy.deploy_vercel import CLI_VERSION, cli_command
+from deploy.vercel.deploy import CLI_VERSION, cli_command
 
 PROJECT_NAME = SCOPE = "petnote"
 PUBLIC_ORIGIN = "https://petnote.duckdns.org"

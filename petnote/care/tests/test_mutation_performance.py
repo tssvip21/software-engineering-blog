@@ -10,8 +10,17 @@ from django.test import SimpleTestCase
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
-from care import record_actions, services
-from care.models import ActionReceipt, Activity, ActivityRevision, AuditEvent, Membership, RoutineRun
+from care import services
+from care.models import (
+    ActionReceipt,
+    Activity,
+    ActivityRevision,
+    AuditEvent,
+    Membership,
+    RoutineRun,
+)
+from care.services import record_actions
+
 from .test_functional import CareCase
 
 

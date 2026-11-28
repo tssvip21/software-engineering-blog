@@ -1,12 +1,14 @@
 """Permission-scoped adapter for the offline pattern engine and transparent evidence."""
 from datetime import timedelta
 from urllib.parse import urlencode
+
 from dateutil.relativedelta import relativedelta
 from django.urls import reverse
-from ..models import Activity
-from .patterns import analyze
+
 from ..breeds import reference_for
-from ..services import local_date, visible_modules, fresh_member
+from ..models import Activity
+from ..services import fresh_member, local_date, visible_modules
+from .patterns import analyze
 from .stats import bounds, get_statistics
 
 

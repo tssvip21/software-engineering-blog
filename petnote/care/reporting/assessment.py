@@ -6,6 +6,7 @@ are kept in docs/15_테일리_4차설계근거.md; user-facing language is a sep
 from collections import Counter
 from statistics import median
 from zoneinfo import ZoneInfo
+
 from .patterns import analyze, canonical_records
 
 VERSION = "personal-patterns-2"

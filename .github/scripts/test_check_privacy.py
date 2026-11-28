@@ -61,6 +61,23 @@ class TextRulesTests(unittest.TestCase):
         self.assertEqual(guard.revision_range({'before': '0' * 40}, 'head'), ('0' * 40, 'head'))
 
 
+    def test_explicit_history_modes_require_a_complete_clone(self):
+        for arguments in (['--history', 'a' * 40], ['--all']):
+            with self.subTest(arguments=arguments), patch.object(guard, 'git', return_value=b'true\n'):
+                with contextlib.redirect_stderr(io.StringIO()) as error:
+                    with self.assertRaises(SystemExit) as result:
+                        guard.main(arguments)
+                self.assertEqual(result.exception.code, 2)
+                self.assertIn('full history is required', error.getvalue())
+
+    def test_history_mode_requires_full_sha_and_rejects_ambiguous_modes(self):
+        for arguments in (['--history', 'HEAD'], ['--history', 'a' * 40, 'b' * 40], ['--all', '--working-tree']):
+            with self.subTest(arguments=arguments), contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as result:
+                    guard.main(arguments)
+                self.assertEqual(result.exception.code, 2)
+
+
 class GitHistoryTests(unittest.TestCase):
     def setUp(self):
         self.folder = TemporaryDirectory()
@@ -91,6 +108,46 @@ class GitHistoryTests(unittest.TestCase):
         self.assertIn('private key or access token', guard.commit_findings(first))
         second = self.commit('petnote/settings.txt', 'safe')
         self.assertEqual(guard.commit_findings(second), set())
+
+    def test_full_history_finds_a_secret_removed_from_current_tree(self):
+        token = 'gh' + 'p_' + 'a' * 36
+        first = self.commit('petnote/settings.txt', token)
+        head = self.commit('petnote/settings.txt', 'safe')
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(guard.main(['--history', head]), 1)
+        self.assertIn(first[:12], output.getvalue())
+        self.assertIn('Checked 2 commits', output.getvalue())
+        self.assertNotIn(token, output.getvalue())
+
+    def test_all_refs_includes_unmerged_history_but_one_head_does_not(self):
+        safe = self.commit('petnote/settings.txt', 'safe')
+        self.run_git('checkout', '-qb', 'unmerged')
+        token = 'gh' + 'p_' + 'b' * 36
+        self.commit('petnote/settings.txt', token)
+        self.run_git('checkout', '--detach', safe)
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(guard.main(['--history', safe]), 0)
+            self.assertEqual(guard.main(['--all']), 1)
+        self.assertNotIn(token, output.getvalue())
+
+    def test_working_tree_checks_csv_extensionless_and_utf16_text(self):
+        self.commit('petnote/safe.py', 'value = 1\n')
+        email = 'person@' + 'gmail.com'
+        for filename, encoding in [('contacts.csv', 'utf-8'), ('credentials', 'utf-8'), ('export.txt', 'utf-16')]:
+            path = Path(filename)
+            with self.subTest(filename=filename):
+                path.write_text(email, encoding=encoding)
+                with contextlib.redirect_stdout(io.StringIO()) as output:
+                    self.assertEqual(guard.check_working_tree(), 1)
+                self.assertIn(filename, output.getvalue())
+                self.assertNotIn(email, output.getvalue())
+                path.unlink()
+
+    def test_binary_assets_are_not_decoded_as_text(self):
+        self.commit('petnote/safe.py', 'value = 1\n')
+        Path('image.png').write_bytes(b'\x89PNG\0person@' + b'gmail.com')
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(guard.check_working_tree(), 0)
 
     def test_binary_database_filename_is_rejected(self):
         commit = self.commit('petnote/data/session.sqlite3', '')

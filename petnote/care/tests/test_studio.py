@@ -1,12 +1,15 @@
 """Presentation boundaries for the card board and library; no replacement of care rules."""
 from datetime import timedelta
+
 from django.urls import reverse
 from django.utils import timezone
+
 from care import services
-from care.dashboard import module_board_tiles, today_tiles
 from care.models import Activity
 from care.modules import MODULES
+from care.presentation.dashboard import module_board_tiles, today_tiles
 from care.reporting.status_view import context_for
+
 from .test_functional import CareCase
 
 

@@ -1,27 +1,36 @@
 """Module selection, typed comparisons, and preserved historical record contracts."""
+import json
+import uuid
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
-import json
-import uuid
 
 from django.core.exceptions import ValidationError
 from django.test import SimpleTestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from care import cadences, services
+from care import services
 from care.breeds import catalogue, reference_for
-from care.reporting.comparisons import change, compare_metric, daily_values, measurement, recent_statistics, reference_geometry
-from care.dashboard import module_board_tiles
 from care.forms import RecordForm, RoutineForm
-from care.interactions import config_state
 from care.models import Activity, ActivityRevision, CareCadence, ModuleGroup
-from care.modules import MODULES, SELECTABLE_MODULES, RETIRED_MODULES, MAX_MODULES
-from care.organization import browse_context
+from care.modules import MAX_MODULES, MODULES, RETIRED_MODULES, SELECTABLE_MODULES
+from care.presentation.dashboard import module_board_tiles
+from care.reporting.comparisons import (
+    change,
+    compare_metric,
+    daily_values,
+    measurement,
+    recent_statistics,
+    reference_geometry,
+)
 from care.reporting.stats import get_statistics
+from care.services import cadences
+from care.services.organization import browse_context
+from care.views.interactions import config_state
+
 from .test_functional import CareCase
 
 END = date(2026, 11, 8)

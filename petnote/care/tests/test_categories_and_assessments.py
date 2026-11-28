@@ -1,14 +1,17 @@
 """Category boundaries and independent, synthetic analysis scenarios."""
+import json
 from datetime import timedelta
 from unittest.mock import patch
 from urllib.parse import urlencode
-import json
+
 from django.db import OperationalError
 from django.test import Client, SimpleTestCase
 from django.urls import reverse
-from care.reporting.assessment import assess
+
 from care import services
+from care.reporting.assessment import assess
 from care.reporting.status_view import context_for
+
 from .test_functional import CareCase
 from .test_patterns import END, record, scenario
 
@@ -65,7 +68,7 @@ class CategoryConfigurationTests(CareCase):
         data = self.values(["hygiene", "cleaning", "environment", "inventory", "expense"])
         result = self.post(data).json()
         self.assertEqual(result["version"], data["version"])
-        with patch("care.browsing.apply_category", side_effect=OperationalError("locked")):
+        with patch("care.views.browsing.apply_category", side_effect=OperationalError("locked")):
             self.assertEqual(self.post(data).status_code, 503)
 
 
@@ -182,7 +185,7 @@ class StatusContextTests(CareCase):
         self.assertEqual(before, after)
 
     def test_group_layout_never_changes_status(self):
-        from care.organization import save_groups
+        from care.services.organization import save_groups
         before = context_for(self.owner)
         self.room.refresh_from_db()
         save_groups(self.owner, {"version": self.room.groups_version, "groups": [{"name": "아침", "keys": ["meal", "walk"]}]})

@@ -3,10 +3,10 @@
 Mathematical sources and application choices are documented in docs/12_종합상태_분석방법.md.
 Inputs must already be permission-scoped. Display groups and population references are not inputs.
 """
-from collections import defaultdict, Counter
+from collections import Counter, defaultdict
 from datetime import datetime, time, timedelta
+from math import ceil, isfinite
 from statistics import median
-from math import isfinite, ceil
 from zoneinfo import ZoneInfo
 
 VERSION = "personal-patterns-1"

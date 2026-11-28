@@ -1,7 +1,9 @@
 from django import template
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
+
 from care.modules import compact
+
 register = template.Library()
 
 # 펫노트 아이콘: 24 격자, 선 1.75, 둥근 끝. 점은 채움만 쓴다.
@@ -52,7 +54,7 @@ PATHS = {
 
 @register.simple_tag(takes_context=True)
 def navigation(context):
-    from care.navigation import build_navigation
+    from care.presentation.navigation import build_navigation
     return build_navigation(context.get("room"), context.get("active_tab", ""))
 
 
@@ -76,7 +78,7 @@ def record_status(value):
 
 @register.filter
 def module_category(value):
-    from care.organization import CATEGORY_OF
+    from care.services.organization import CATEGORY_OF
     return CATEGORY_OF.get(value, "default")
 
 
@@ -115,6 +117,7 @@ def history_time(value,zone='Asia/Seoul'):
 def pet_profile(room, day=None):
     """'비숑 프리제 · 4살'처럼 품종과 나이를 한 줄로."""
     from datetime import date
+
     from care.breeds import catalogue
     parts = []
     breed = catalogue().get(room.breed_key or "") if getattr(room, "breed_key", "") else None

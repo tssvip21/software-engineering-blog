@@ -1,6 +1,7 @@
 from django.apps import AppConfig
 from django.db.backends.signals import connection_created
 
+
 def configure_sqlite(sender, connection, **kwargs):
     if connection.vendor == "sqlite" and "memory" not in str(connection.settings_dict["NAME"]):
         with connection.cursor() as cursor:

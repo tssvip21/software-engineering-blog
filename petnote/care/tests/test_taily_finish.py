@@ -2,13 +2,16 @@
 from datetime import timedelta
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
+
 from django.db import OperationalError
 from django.urls import reverse
+
 from care import services
 from care.models import CareCadence
-from care.presentation import integrated_context
+from care.presentation.overview import integrated_context
 from care.reporting.status_view import context_for
-from .test_taily import TailyCase, UI
+
+from .test_taily import UI, TailyCase
 
 
 class OverviewDisclosureTests(TailyCase):
@@ -79,7 +82,7 @@ class CadenceFailureRecoveryTests(TailyCase):
         data = {"activity": "hygiene:task:teeth", "title": "재시도 양치", "interval": 2,
                 "unit": "days", "first_due": services.local_date(self.room).isoformat(), "active": "on"}
         url = reverse("cadence_new", args=[self.room.pk])
-        with patch("care.interactions.cadences.save", side_effect=OperationalError("busy")):
+        with patch("care.views.interactions.cadences.save", side_effect=OperationalError("busy")):
             response = self.client.post(url, data)
         self.assertEqual(response.status_code, 503)
         self.assertContains(response, '재시도 양치', status_code=503)
@@ -93,7 +96,7 @@ class CadenceFailureRecoveryTests(TailyCase):
         old_version = cadence.version
         data = {"version": cadence.version, "until": (services.local_date(self.room)+timedelta(days=2)).isoformat()}
         url = reverse("cadence_snooze", args=[self.room.pk, cadence.pk])
-        with patch("care.interactions.cadences.snooze", side_effect=OperationalError("busy")):
+        with patch("care.views.interactions.cadences.snooze", side_effect=OperationalError("busy")):
             response = self.client.post(url, data, **UI)
         self.assertEqual(response.status_code, 503)
         self.assertFalse(response.json()["ok"])

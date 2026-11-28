@@ -1,4 +1,4 @@
-"""Check new commits or current application files without echoing matching values."""
+"""Check commit history or repository files without echoing matching values."""
 import argparse
 import json
 import os
@@ -30,7 +30,6 @@ TEXT_RULES = {
         r"\b\u0052\u0045\u0041\b|\uc2dc\ubc1c|\uc528\ubc1c|\ubcd1\uc2e0|\uc886", re.I
     ),
 }
-TEXT_SUFFIXES = {".example", ".svg", ".service", ".timer", ".local", ".py", ".md", ".txt", ".html", ".css", ".js", ".json", ".toml", ".yaml", ".yml", ".sh", ".cmd", ".ps1", ".lock"}
 
 
 def git(*args):
@@ -79,8 +78,13 @@ def check_working_tree():
             continue
         checked += 1
         text = filename
-        if path.suffix.lower() in TEXT_SUFFIXES or path.name in {"Dockerfile", "Caddyfile", ".gitignore", ".dockerignore", ".vercelignore"}:
-            text += "\n" + path.read_text(encoding="utf-8", errors="replace")
+        # Private data can appear in CSV, config, or extensionless files too.
+        # Read UTF-16 exports explicitly; avoid treating binary assets as text.
+        data = path.read_bytes()
+        if data.startswith((b"\xff\xfe", b"\xfe\xff")):
+            text += "\n" + data.decode("utf-16", errors="replace")
+        elif b"\0" not in data:
+            text += "\n" + data.decode("utf-8-sig", errors="replace")
         for finding in sorted(text_findings(text, [filename])):
             safe_name = "[redacted filename]" if text_findings(filename) else filename
             print(f"{safe_name}: {finding}")
@@ -104,11 +108,25 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("base", nargs="?")
     parser.add_argument("head", nargs="?")
-    parser.add_argument("--working-tree", action="store_true")
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument("--working-tree", action="store_true")
+    modes.add_argument("--history", metavar="SHA", help="check every ancestor of one full commit ID")
+    modes.add_argument("--all", action="store_true", help="check commits reachable from all local refs")
     args = parser.parse_args(argv)
+    if (args.working_tree or args.history or args.all) and (args.base or args.head):
+        parser.error("explicit scan modes cannot be combined with base/head arguments")
     if args.working_tree:
         return check_working_tree()
+    if args.history and not re.fullmatch(r"[0-9a-f]{40}", args.history):
+        parser.error("expected a full commit ID for --history")
+    if (args.all or args.history) and git("rev-parse", "--is-shallow-repository").strip() == b"true":
+        parser.error("full history is required; fetch the missing history before scanning")
+    if args.all:
+        commits = git("rev-list", "--reverse", "--all").decode().split()
+        return check_commits(commits)
     base, head = args.base, args.head
+    if args.history:
+        base, head = None, args.history
     if not head:
         event_path = os.environ.get("GITHUB_EVENT_PATH")
         if not event_path:
@@ -118,6 +136,11 @@ def main(argv=None):
     if not re.fullmatch(r"[0-9a-f]{40}", head) or (base and not re.fullmatch(r"[0-9a-f]{40}", base)):
         parser.error("expected full commit IDs")
     commits = git("rev-list", "--reverse", f"{base}..{head}" if base and base != "0" * 40 else head).decode().split()
+    return check_commits(commits)
+
+
+def check_commits(commits):
+    """Report only classifications and commit IDs, including removed old data."""
     failures = 0
     for commit in commits:
         for finding in sorted(commit_findings(commit)):

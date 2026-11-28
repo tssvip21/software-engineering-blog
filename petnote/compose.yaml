@@ -6,7 +6,7 @@ services:
     ports:
       - "127.0.0.1:${PETNOTE_PORT:-8096}:80"
     volumes:
-      - ./deploy/Caddyfile.local:/etc/caddy/Caddyfile:ro
+      - ./deploy/docker/Caddyfile.local:/etc/caddy/Caddyfile:ro
       - staticfiles:/srv/static:ro
     depends_on:
       backend:
@@ -41,7 +41,7 @@ services:
       POSTGRES_DB: petnote_demo
       POSTGRES_USER: petnote
       APP_ORIGIN: http://127.0.0.1:${PETNOTE_PORT:-8096}
-    entrypoint: [sh, /app/deploy/start-local.sh]
+    entrypoint: [sh, /app/deploy/docker/start-local.sh]
     volumes:
       - localdata:/app/data
       - staticfiles:/app/staticfiles
@@ -57,7 +57,7 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      test: [CMD, python, /app/deploy/healthcheck.py]
+      test: [CMD, python, /app/deploy/docker/healthcheck.py]
       interval: 5s
       timeout: 5s
       retries: 20

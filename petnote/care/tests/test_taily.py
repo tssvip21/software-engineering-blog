@@ -1,22 +1,26 @@
 """Regression coverage for inline entry, configuration, cadence and preserved history."""
+import json
+import uuid
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
-import json
-import uuid
+
 from django.core.exceptions import ValidationError
 from django.db import OperationalError
 from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
-from care import cadences, services
+
+from care import services
 from care.demo_fixtures import record_data
 from care.forms import RecordForm
-from care.interactions import config_state
 from care.models import Activity, CareCadence
 from care.modules import MODULES
-from care.presentation import integrated_context
+from care.presentation.overview import integrated_context
+from care.services import cadences
+from care.views.interactions import config_state
+
 from .test_functional import CareCase
 
 UI = {"HTTP_X_TAILY_UI": "1"}
@@ -116,7 +120,7 @@ class QuickEntryTests(TailyCase):
 
     def test_database_failure_returns_retryable_form(self):
         values = record_data("meal")
-        with patch("care.interactions.save_quick", side_effect=OperationalError("locked")):
+        with patch("care.views.interactions.save_quick", side_effect=OperationalError("locked")):
             response = self.quick("meal", data=values)
         self.assertEqual(response.status_code, 503)
         self.assertIn(values["client_key"], response.json()["html"])

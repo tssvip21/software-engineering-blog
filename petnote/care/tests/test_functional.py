@@ -1,10 +1,11 @@
-from datetime import date, datetime, time, timedelta
-from decimal import Decimal
-from unittest.mock import patch, Mock
-from urllib.parse import parse_qs, urlparse
-from zoneinfo import ZoneInfo
 import time as clock
 import uuid
+from datetime import date, datetime, time, timedelta
+from decimal import Decimal
+from unittest.mock import Mock, patch
+from urllib.parse import parse_qs, urlparse
+from zoneinfo import ZoneInfo
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -13,10 +14,20 @@ from django.db import IntegrityError, transaction
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
+
 from care import services
 from care.demo_fixtures import record_data
-from care.forms import RoomForm, RecordForm, RoutineForm
-from care.models import Activity, GoogleAccount, Invitation, Membership, Product, Reference, Room, RoutineRun
+from care.forms import RecordForm, RoomForm, RoutineForm
+from care.models import (
+    Activity,
+    GoogleAccount,
+    Invitation,
+    Membership,
+    Product,
+    Reference,
+    Room,
+    RoutineRun,
+)
 from care.modules import MODULES
 from care.reporting.stats import get_statistics, overview, routine_schedule
 
@@ -510,7 +521,7 @@ class GoogleAuthTests(CareCase):
         attempt=self.start(client)
         response=Mock();response.raise_for_status.return_value=None;response.json.return_value={"id_token":"signed-test-token"}
         claims={"sub":"verified-subject","email":"person@example.test","email_verified":True,"name":"실제 인증 테스트","nonce":attempt["nonce"],"iss":"https://accounts.google.com","iat":clock.time()-1,"exp":clock.time()+600,"azp":settings.GOOGLE_CLIENT_ID}
-        with patch("care.auth.requests.post",return_value=response),patch("care.auth.id_token.verify_oauth2_token",return_value=claims):
+        with patch("care.views.auth.requests.post",return_value=response),patch("care.views.auth.id_token.verify_oauth2_token",return_value=claims):
             result=client.get(reverse("google_callback"),{"code":"one-time-code","state":attempt["state"]})
         self.assertEqual(result.status_code,302)
         linked=GoogleAccount.objects.get(subject="verified-subject")
@@ -527,7 +538,7 @@ class GoogleAuthTests(CareCase):
     def test_wrong_nonce_rejected(self):
         client=Client();attempt=self.start(client)
         response=Mock();response.raise_for_status.return_value=None;response.json.return_value={"id_token":"signed-test-token"}
-        with patch("care.auth.requests.post",return_value=response),patch("care.auth.id_token.verify_oauth2_token",return_value={"nonce":"bad"}):
+        with patch("care.views.auth.requests.post",return_value=response),patch("care.views.auth.id_token.verify_oauth2_token",return_value={"nonce":"bad"}):
             result=client.get(reverse("google_callback"),{"code":"x","state":attempt["state"]})
         self.assertEqual(result.status_code,400)
         self.assertEqual(GoogleAccount.objects.count(),0)

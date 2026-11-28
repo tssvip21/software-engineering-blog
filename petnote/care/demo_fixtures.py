@@ -1,6 +1,7 @@
 """Synthetic inputs for local demo and automated tests; never imported by request handlers."""
-from datetime import timedelta
 import uuid
+from datetime import timedelta
+
 from django.utils import timezone
 
 SAMPLE_FIELDS = {

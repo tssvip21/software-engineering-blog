@@ -1,11 +1,11 @@
 """Server startup, health probes, and simultaneous first-login regressions."""
-from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import os
-from pathlib import Path
 import secrets
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from threading import Barrier
 from unittest.mock import patch
@@ -18,8 +18,8 @@ from django.db.models.query import QuerySet
 from django.test import SimpleTestCase, TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 
-from care.auth import account_for_claims
 from care.models import GoogleAccount
+from care.views.auth import account_for_claims
 from config.database import vercel_database
 
 
@@ -130,13 +130,13 @@ class HealthProbeTests(TestCase):
                 self.assertEqual(response.content, b"")
 
     def test_head_keeps_database_failure_status_without_details(self):
-        with patch("care.views.connection.cursor", side_effect=OperationalError("private-value")):
+        with patch("care.views.system.connection.cursor", side_effect=OperationalError("private-value")):
             response = self.client.head(reverse("health"))
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.content, b"")
 
     def test_mutation_methods_do_not_run_database_probe(self):
-        with patch("care.views.connection.cursor") as cursor:
+        with patch("care.views.system.connection.cursor") as cursor:
             response = self.client.post(reverse("health"))
         self.assertEqual(response.status_code, 405)
         cursor.assert_not_called()

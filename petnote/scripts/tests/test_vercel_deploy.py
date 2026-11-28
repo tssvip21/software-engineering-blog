@@ -1,17 +1,18 @@
 """Regression checks for deployment packaging and the staged release boundary."""
-from contextlib import ExitStack
 import hashlib
 import json
 import os
-from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
+from contextlib import ExitStack
+from pathlib import Path
 from unittest import mock
 
-from deploy import deploy_vercel, vercel_build
 from deploy.source_files import application_files, safe_source_file
-
+from deploy.vercel import build as vercel_build
+from deploy.vercel import deploy as deploy_vercel
 
 CSS = b"body { color: #111; background: #fff; }\n"
 HOME = '<!doctype html><title>펫노트</title><link rel="stylesheet" href="/static/care/app.css">'.encode()
@@ -34,7 +35,9 @@ def sources(root):
         "requirements.txt": b"-r requirements.lock\n",
         "requirements.lock": b"# fixture\n",
         "vercel.json": b'{"framework":"django"}',
-        "deploy/vercel_build.py": b"# validation\n",
+        "deploy/__init__.py": b"",
+        "deploy/vercel/__init__.py": b"",
+        "deploy/vercel/build.py": b"# validation\n",
         "care/models.py": b"# model\n",
         "care/data/breeds.json": b"{}",
         "config/settings.py": b"# settings\n",
@@ -64,6 +67,37 @@ def wire(result):
 
 
 class SourceTests(unittest.TestCase):
+    def test_entrypoint_packages_from_another_directory_without_runtime_values(self):
+        application = Path(__file__).resolve().parents[2]
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder) / "application"
+            sources(root)
+            for relative in ("deploy/vercel/deploy.py", "deploy/source_files.py"):
+                target = root / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes((application / relative).read_bytes())
+            (root / ".env").write_text("local fixture", encoding="utf-8")
+            environment = os.environ.copy()
+            environment.update({
+                "PYTHONUTF8": "1", "DATABASE_URL": "synthetic-runtime-value",
+                "GOOGLE_CLIENT_SECRET": "synthetic-runtime-value",
+            })
+            completed = subprocess.run(
+                [sys.executable, str(root / "deploy/vercel/deploy.py"), "--package-only"],
+                cwd=folder, env=environment, capture_output=True, text=True,
+                encoding="utf-8", timeout=30,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            manifest_path = next((root / "tmp/deploy/vercel").glob("*/release.json"))
+            manifest_text = manifest_path.read_text(encoding="utf-8")
+            manifest = json.loads(manifest_text)
+            self.assertEqual(manifest["status"], "packaged")
+            self.assertIn("deploy/vercel/build.py", manifest["sources"])
+            self.assertNotIn("deploy/vercel/deploy.py", manifest["sources"])
+            self.assertNotIn(".env", manifest["sources"])
+            self.assertNotIn("synthetic-runtime-value", manifest_text)
+            self.assertNotIn("synthetic-runtime-value", completed.stdout + completed.stderr)
+
     def test_package_contains_required_runtime_files_and_excludes_local_data_and_tests(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder) / "application"

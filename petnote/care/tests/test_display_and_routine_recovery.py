@@ -1,24 +1,41 @@
 """Display contracts and routine recovery are tested independently of visual preference."""
+import json
+import uuid
 from copy import deepcopy
 from datetime import timedelta
 from decimal import Decimal as D
 from unittest.mock import patch
-import json,uuid
 
-from django.core.exceptions import PermissionDenied,ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import OperationalError
 from django.test import SimpleTestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from care import record_actions, services, routine_completion
-from care.reporting import module_reports
-from care.reporting.display_values import measure,number,duration,common_unit,rounded_originals
+from care import services
 from care.forms import RecordForm
-from care.models import Activity,ActivityRevision,ActionReceipt,AuditEvent,Product,RoutineRun
-from care.modules import compact,payload_display,record_summary
-from care.presets import PresetForm,save_preset
+from care.models import (
+    ActionReceipt,
+    Activity,
+    ActivityRevision,
+    AuditEvent,
+    Product,
+    RoutineRun,
+)
+from care.modules import compact, payload_display, record_summary
+from care.reporting import module_reports
+from care.reporting.display_values import (
+    common_unit,
+    duration,
+    measure,
+    number,
+    rounded_originals,
+)
 from care.reporting.stats import chart
+from care.services import completion as routine_completion
+from care.services import record_actions
+from care.services.presets import PresetForm, save_preset
+
 from .test_functional import CareCase
 
 
@@ -101,6 +118,7 @@ class DisplayContractTests(SimpleTestCase):
 
     def test_summed_graph_geometry_is_unchanged_by_labels(self):
         from datetime import date
+
         from care.reporting.display_values import decorate_stats
         day=date(2026,11,1);raw=chart('시간','분',{day:D('1.234567')},day,day,'line')
         before=deepcopy(raw);stat={'key':'walk','charts':[raw]};decorate_stats(stat)
@@ -126,7 +144,7 @@ class DisplayIntegrationTests(CareCase):
         for query in ('','?tab=stock'):
             response=self.client.get(reverse('supplies',args=[self.room.pk])+query)
             self.assertContains(response,'55');self.assertNotContains(response,'0.055')
-        from care.inventory_ledger import ledger,records_for
+        from care.inventory.ledger import ledger, records_for
         self.assertEqual(ledger(records_for(self.room))['items'][0]['balance'],D(55))
 
     def test_raw_comparison_mean_and_selected_sources_stay_exact(self):
@@ -280,7 +298,7 @@ class RoutineRecoveryTests(CareCase):
         p=Product.objects.create(room=self.room,name='치약',category='hygiene',stock_item='치약',stock_unit='g')
         item=self.item('hygiene');data=self.data(item,task='teeth',product=str(p.pk),used_quantity='2.123',used_unit='g')
         a=self.post(item,data);self.assertEqual(a.status_code,200,a.content[:1000]);self.post(item,data)
-        from care.inventory_ledger import ledger,records_for
+        from care.inventory.ledger import ledger, records_for
         self.assertEqual(ledger(records_for(self.room))['items'][0]['balance'],D('97.877'))
         record=Activity.objects.get(pk=a.json()['id']);services.cancel_activity(self.owner,record.pk,record.version,'실행 취소')
         self.assertEqual(ledger(records_for(self.room))['items'][0]['balance'],D(100))
@@ -293,7 +311,7 @@ class RoutineRecoveryTests(CareCase):
 
     def test_database_error_is_retryable_not_false_success(self):
         item=self.item('hygiene');data=self.data(item,task='teeth')
-        with patch('care.routine_completion.save_completion',side_effect=OperationalError('busy')):r=self.post(item,data)
+        with patch('care.views.completion.save_completion',side_effect=OperationalError('busy')):r=self.post(item,data)
         self.assertEqual(r.status_code,503);self.assertEqual(Activity.objects.count(),0)
 
     def test_valid_configured_hygiene_is_still_one_click(self):
@@ -314,7 +332,7 @@ class RoutineRecoveryTests(CareCase):
 class RawValuePresentationTests(CareCase):
     def test_tiny_distance_survives_today_and_board(self):
         a=self.make('walk',minutes='1',distance='.001',distance_unit='m')
-        from care.care_views import board_data
+        from care.views.dashboard import board_data
         cards,_=board_data(self.owner)
         tile=next(c['tile'] for c in cards if c['spec'].key=='walk')
         shown=tile['secondary'][0]['display']
@@ -323,7 +341,7 @@ class RawValuePresentationTests(CareCase):
 
     def test_tiny_stock_is_not_zero_in_module_statistics_or_card(self):
         self.make('inventory',item='미량 물품',movement='set',quantity='.001',unit='g',minimum='')
-        from care.care_views import board_data
+        from care.views.dashboard import board_data
         stats=self.stats('inventory')
         self.assertEqual(stats['breakdown'][0]['display'].text,'1 mg')
         cards,_=board_data(self.owner);tile=next(c['tile'] for c in cards if c['spec'].key=='inventory')
@@ -344,9 +362,11 @@ class RawValuePresentationTests(CareCase):
 
 from django.test import TransactionTestCase
 
+
 class AutocommitReadCompatibilityTests(TransactionTestCase):
     def setUp(self):
         from django.contrib.auth import get_user_model
+
         from care.forms import RoomForm
         self.user=get_user_model().objects.create_user(username='read-autocommit')
         form=RoomForm({'name':'조회 검증','species':'dog','timezone':'Asia/Seoul','use_defaults':'on'})
@@ -370,7 +390,7 @@ class AutocommitReadCompatibilityTests(TransactionTestCase):
 
 class RoutineLocalDateTimeTests(CareCase):
     def test_completion_initial_timestamp_is_valid_for_native_datetime_local(self):
-        from care.routine_completion import request_context,completion_form
+        from care.services.completion import completion_form, request_context
         routine=self.routine(modules=('weight',));item=routine.items.get(active=True);day=services.local_date(self.room)
         item,snap,preset=request_context(self.owner,item.pk,day)
         form=completion_form(self.owner,item,snap,preset,day,uuid.uuid4())

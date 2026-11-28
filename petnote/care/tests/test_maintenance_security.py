@@ -10,8 +10,13 @@ from django.urls import reverse
 from django.utils import timezone
 
 from care.forms import StatsFilterForm
+from care.inventory.supplies import (
+    filter_rows,
+    record_visible,
+    stock_view,
+    visible_records,
+)
 from care.models import Activity, Product, RecordPreset
-from care.supplies import filter_rows, record_visible, stock_view, visible_records
 from care.tests.test_functional import CareCase
 
 
@@ -144,7 +149,7 @@ class RequestBoundaryTests(CareCase):
 
     @override_settings(DEBUG=False, SECURE_SSL_REDIRECT=False)
     def test_health_check_reports_unavailable_without_details(self):
-        with patch("care.views.connection.cursor", side_effect=OperationalError("private database credentials")):
+        with patch("care.views.system.connection.cursor", side_effect=OperationalError("private database credentials")):
             self.client.raise_request_exception = False
             response = self.client.get(reverse("health"))
         self.assertEqual(response.status_code, 503)
