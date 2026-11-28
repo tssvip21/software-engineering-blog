@@ -36,7 +36,8 @@
   window.addEventListener('resize',fitSchedule);
   function panel() {
     const node=document.querySelector('[data-schedule-panel]');
-    if(!node || node.dataset.initialized)return;
+    if(!node){scheduleObserver.disconnect();return;}
+    if(node.dataset.initialized)return;
     node.dataset.initialized='1';
     scheduleObserver.disconnect();
     scheduleObserver.observe(node.closest('.care-workspace'));

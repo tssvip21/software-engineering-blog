@@ -174,7 +174,7 @@ def module_page(request,room_id,module):
     room,member=services.get_room(request,room_id);services.require_module(member,module)
     cards,records=board_data(member,module=module);canonical=schedule.logical_module(module)
     card=next((c for c in cards if c['spec'].key==canonical),None)
-    report=module_reports.build_report(member,request.GET.get('days',7))
+    report=module_reports.build_report(member,request.GET.get('days',7),module=canonical)
     current=next((c for c in report['module_cards'] if c['key']==canonical),None)
     from django.core.paginator import Paginator
     query=Activity.objects.filter(room=room,module__in=[k for k in services.visible_modules(member) if schedule.logical_module(k)==canonical]).select_related('author','performer').order_by('-occurred_at','-created_at','-id')
@@ -198,7 +198,7 @@ def statistics(request,room_id,module):
     form=StatsFilterForm(submitted,initial=initial);chosen=initial if submitted is None else form.cleaned_data if form.is_valid() else {}
     stats=get_statistics(room,module,chosen['start'],chosen['end'],member=member) if chosen else None
     days=(chosen['end']-chosen['start']).days+1 if chosen else 7
-    report=module_reports.build_report(member,days,end=chosen.get('end')) if chosen and days in (7,30,90) and chosen['end']<today_date else None
+    report=module_reports.build_report(member,days,end=chosen.get('end'),module=module) if chosen and days in (7,30,90) and chosen['end']<today_date else None
     card=next((c for c in report['module_cards'] if c['key']==schedule.logical_module(module)),None) if report else None
     periods=[{'label':f'최근 {n}일','url':'?start='+(end-timedelta(days=n-1)).isoformat()+'&end='+end.isoformat(),
               'selected':bool(chosen and chosen['start']==end-timedelta(days=n-1) and chosen['end']==end)} for n in (7,30,90)]

@@ -6,7 +6,7 @@
   const formValue = (form) => JSON.stringify(Array.from(new FormData(form).entries()).filter(([key]) => key !== "csrfmiddlewaretoken"));
 
   function initialize(root = document) {
-    root.querySelectorAll("form[data-dirty-form]").forEach((form) => {
+    root.querySelectorAll("form[data-dirty-form], #main form[data-input-form]").forEach((form) => {
       if (form.dataset.initialized) return;
       form.dataset.initialized = "1";
       form.dataset.initialValue = formValue(form);
@@ -24,6 +24,12 @@
       firstError.scrollIntoView({ block: "center", behavior: "instant" });
     }
   }
+
+  function hasUnsavedChanges() {
+    for (const form of dirtyForms) if (!form.isConnected) dirtyForms.delete(form);
+    return dirtyForms.size > 0;
+  }
+  window.PetnoteForms = Object.freeze({hasUnsavedChanges});
 
   function setBusy(form, busy) {
     form.dataset.submitting = busy ? "1" : "0";
@@ -50,7 +56,7 @@
 
   document.addEventListener("submit", async (event) => {
     const form = event.target;
-    if (!(form instanceof HTMLFormElement)) return;
+    if (!(form instanceof HTMLFormElement) || event.defaultPrevented || form.method === "dialog") return;
     if (form.matches("[data-quick-form], [data-snooze], [data-module-config]")) return;
     if (form.dataset.submitting === "1") { event.preventDefault(); return; }
     if (form.dataset.confirm && !window.confirm(form.dataset.confirm)) { event.preventDefault(); return; }
@@ -58,6 +64,7 @@
     if (form.hasAttribute("data-routine-form")) updateRoutineOrder(form);
     if (!form.hasAttribute("data-dirty-form")) {
       navigating = true;
+      queueMicrotask(() => { if (event.defaultPrevented) navigating = false; });
       return;
     }
     event.preventDefault();
@@ -111,8 +118,7 @@
   });
 
   window.addEventListener("beforeunload", (event) => {
-    for (const form of dirtyForms) if (!document.contains(form)) dirtyForms.delete(form);
-    if (!navigating && dirtyForms.size) { event.preventDefault(); event.returnValue = ""; }
+    if (!navigating && hasUnsavedChanges()) { event.preventDefault(); event.returnValue = ""; }
   });
   window.addEventListener("pageshow", () => {
     navigating = false;

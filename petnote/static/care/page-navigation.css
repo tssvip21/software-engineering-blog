@@ -1,0 +1,25 @@
+/* Acknowledgement is immediate; the previous page remains visible until ready. */
+#page-navigation-progress {
+  position: fixed; inset: 0 0 auto; height: 3px; z-index: 500;
+  pointer-events: none; overflow: hidden; visibility: hidden;
+  background: var(--select);
+}
+body[data-navigation-pending] #page-navigation-progress {visibility: visible}
+#page-navigation-progress::after {
+  content: ""; display: block; width: 40%; height: 100%; background: var(--primary);
+}
+body[data-navigation-pending] #page-navigation-progress::after {
+  animation: page-progress 1s ease-in-out infinite;
+}
+a[data-navigation-pending] {cursor: progress}
+:is(.mobile-dock, #sidebar, #phone-menu) a[data-navigation-pending] {
+  color: var(--select-ink); background: var(--select); border-radius: .625rem;
+}
+@keyframes page-progress {from {transform: translateX(-100%)} to {transform: translateX(350%)}}
+@media (prefers-reduced-motion: reduce) {
+  body[data-navigation-pending] #page-navigation-progress::after {animation: none; width: 100%}
+}
+@media (forced-colors: active) {
+  #page-navigation-progress::after {background: Highlight}
+  a[data-navigation-pending] {outline: 2px solid Highlight}
+}

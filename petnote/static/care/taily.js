@@ -155,9 +155,13 @@
     }
   });
   async function refreshSurface() {
-    const response = await request(location.href);
+    const navigation = window.PetnoteNavigation?.snapshot();
+    const url = location.href;
+    const response = await request(url);
     if (!response.ok) throw new Error('저장은 처리됐지만 화면을 새로 불러오지 못했어요. 새로고침해 주세요.');
-    const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+    const html = await response.text();
+    if (url !== location.href || (navigation && !window.PetnoteNavigation.isCurrent(navigation))) return;
+    const page = new DOMParser().parseFromString(html, 'text/html');
     const next = page.getElementById('main');
     if (!next) throw new Error('새 화면을 확인하지 못했어요. 새로고침해 주세요.');
     const y = window.scrollY;
