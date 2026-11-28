@@ -25,6 +25,17 @@ docker compose -p petnote-local-review ps
 
 같은 환경을 종료할 때도 같은 `-p` 이름을 사용합니다. 기본 Compose는 localhost에만 연결되며, 운영 HTTPS 구성은 `compose.production.yaml`로 분리되어 있습니다. 운영 예시는 `deploy/production.env.example`에 있고 실제 비밀값을 담은 파일은 커밋하지 않습니다.
 
+운영 Compose 형식 자체를 별도 로컬 환경에서 검사하려면 다음 실행기를 사용합니다. 이 환경은 위 시연 프로젝트와 다른 이름·포트를 사용하며 외부 로그인에 연결하지 않습니다.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/local_compose.py up --project petnote-local-production-check --port 18098
+.\.venv\Scripts\python.exe scripts/local_compose.py check --project petnote-local-production-check --port 18098
+```
+
+실행기는 `tmp/local-docker/<프로젝트>/runtime.env`의 기존 값을 보존합니다. 셸에 남은 운영 DB·OAuth·공개 바인딩·Compose 설정은 전달하지 않고, 검증한 로컬 설정으로 실행합니다. HTTP·HTTPS 바인딩, 포트, DB 이름, 허용 호스트 등이 로컬 조건과 다르면 컨테이너를 변경하기 전에 중단합니다. 자동 생성된 비밀값도 그대로 재사용하며 인용부호·변수 치환이 필요한 수동 변경값을 임의로 해석하지 않습니다.
+
+Docker의 실제 연결 대상을 확인해 로컬 Unix socket·Windows named pipe에서만 실행합니다. 원격 TCP·SSH context에서는 중단합니다. 환경 파일이 없는데 같은 프로젝트의 컨테이너나 볼륨이 남아 있으면 비밀번호를 새로 만들지 않습니다. 원래 `runtime.env`를 복구하거나 별도 프로젝트 이름을 선택해야 합니다. `stop`·`down`도 같은 프로젝트와 포트를 지정하며, 볼륨을 삭제하는 옵션은 제공하지 않습니다.
+
 ## Docker 운영 구성과 공개 시연
 
 현재 공개 펫노트는 Vercel과 Supabase에서 실행하며 Docker 컨테이너를 Vercel에 올리는 방식은 아닙니다. `compose.production.yaml`은 별도 서버에 설치할 때 사용하는 HTTPS·PostgreSQL 구성입니다.

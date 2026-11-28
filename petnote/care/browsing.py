@@ -1,15 +1,18 @@
 """Category-first record browsing and narrowly scoped module configuration."""
+import uuid
 from datetime import date
 from urllib.parse import urlencode, urlsplit
-import uuid
+
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
-from django.db import transaction, OperationalError
-from django.db.models import Q, Count
+from django.db import OperationalError, transaction
+from django.db.models import Case, CharField, Count, F, Q, Value, When, Window
+from django.db.models.functions import RowNumber
 from django.http import Http404, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods
+
 from . import services
 from .json_inputs import load_json
 from .models import Activity, Room
@@ -35,6 +38,30 @@ def record_return(request, room):
 
 def with_return(path, return_to):
     return path + ("&" if "?" in path else "?") + urlencode({"return_to": return_to})
+
+
+def category_previews(query, categories):
+    """Read at most three already-authorized records per category in one query."""
+    populated = [entry for entry in categories if entry["count"] and entry["modules"]]
+    if not populated:
+        return {}
+    category = Case(*[
+        When(module__in=[item["key"] for item in entry["modules"]], then=Value(entry["key"]))
+        for entry in populated
+    ], output_field=CharField())
+    rows = (
+        query.annotate(browse_category=category)
+        .annotate(browse_position=Window(
+            expression=RowNumber(), partition_by=[F("browse_category")],
+            order_by=[F("occurred_at").desc(), F("created_at").desc(), F("id").desc()],
+        ))
+        .filter(browse_position__lte=3)
+        .order_by("-occurred_at", "-created_at", "-id")
+    )
+    previews = {}
+    for activity in rows:
+        previews.setdefault(activity.browse_category, []).append(activity)
+    return previews
 
 
 def category_state(room, category):
@@ -197,9 +224,9 @@ def records(request, room_id):
     page.object_list = [prepare(a) for a in page.object_list]
     sections = []
     if not category:
+        previews = category_previews(qs, categories)
         for entry in categories:
-            keys = [r["key"] for r in entry["modules"]]
-            recent = [prepare(a) for a in qs.filter(module__in=keys)[:3]] if entry["count"] else []
+            recent = [prepare(activity) for activity in previews.get(entry["key"], [])]
             sections.append({**entry, "recent": recent})
     params = request.GET.copy()
     params.pop("page", None)

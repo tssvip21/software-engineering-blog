@@ -1,0 +1,9 @@
+#!/bin/sh
+# Remote arguments and stdin are intentionally never echoed.
+set -eu
+python=$(git config --get petnote.checkPython) || {
+    printf '%s\n' '[pre-push] BLOCKED: Install the local gate and configure its Python executable.' >&2
+    exit 1
+}
+root=$(git rev-parse --show-toplevel) || exit 1
+exec "$python" "$root/.github/scripts/pre_push.py"
