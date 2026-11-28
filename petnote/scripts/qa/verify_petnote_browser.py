@@ -109,8 +109,38 @@ def fill(form, name, value):
         field.fill(value)
 
 
+def check_landing(page, passed):
+    # Verify the public example separately from authenticated care screens.
+    page.emulate_media(reduced_motion="reduce")
+    for width, layout in ((320, "mobile"), (390, "mobile"), (768, "mobile"), (1440, "desktop")):
+        page.set_viewport_size({"width": width, "height": 950})
+        go(page, "/?layout=" + layout)
+        expect(page.locator(".landing-hero")).to_be_visible()
+        expect(page.locator(".landing-stage")).to_be_visible()
+        expect(page.locator(".landing-phone")).to_be_visible()
+        expect(page.locator(".landing-people")).to_be_visible()
+        expect(page.locator("[data-landing-feed] > li")).to_have_count(4)
+        expect(page.locator("[data-landing-alert]")).to_contain_text("18:40")
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), width
+        assert page.locator(".landing-stage").evaluate("el => getComputedStyle(el).animationName") == "none"
+        copy, stage = (page.locator(selector).bounding_box() for selector in (".landing-copy", ".landing-stage"))
+        if width <= 640:
+            assert stage["y"] >= copy["y"] + copy["height"] - 1, (copy, stage)
+        elif width == 1440:
+            assert stage["x"] >= copy["x"] + copy["width"] - 1, (copy, stage)
+    passed("첫 화면 예시와 반응형 배치 및 동작 줄이기")
+    page.emulate_media(reduced_motion="no-preference")
+    go(page, "/?layout=desktop")
+    page.locator("[data-landing-feed]").scroll_into_view_if_needed()
+    expect(page.locator("[data-landing-feed] > li").first).to_contain_text("저녁밥을 줬어요", timeout=12000)
+    expect(page.locator("[data-landing-alert]")).to_contain_text("19:30")
+    expect(page.locator("[data-landing-feed] > li")).to_have_count(4)
+    passed("첫 화면 예시 기록과 다음 일정의 자동 갱신")
+    go(page, "/?layout=auto")
+
+
 def open_account(page, passed):
-    go(page, "/")
+    check_landing(page, passed)
     expect(page.locator(".landing-hero")).to_be_visible()
     passed("비로그인 첫 화면")
     go(page, "/rooms/new/")
