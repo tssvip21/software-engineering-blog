@@ -13,8 +13,8 @@ services:
     build: .
     init: true
     restart: unless-stopped
-    entrypoint: ["sh", "/app/deploy/entrypoint-demo.sh"]
-    command: ["python", "/app/deploy/serve.py"]
+    entrypoint: ["sh", "/app/deploy/docker/entrypoint-demo.sh"]
+    command: ["python", "/app/deploy/docker/serve.py"]
     environment:
       DJANGO_DEBUG: "0"
       CARE_DEMO_MODE: "1"
@@ -36,7 +36,7 @@ services:
     networks: [web]
     mem_limit: 384m
     healthcheck:
-      test: ["CMD", "python", "/app/deploy/healthcheck.py"]
+      test: ["CMD", "python", "/app/deploy/docker/healthcheck.py"]
       interval: 20s
       timeout: 5s
       start_period: 60s

@@ -114,3 +114,50 @@ PC의 `tmp/maintenance-20261126/`에 전체 로그와 결과를 보관한다. �
 이번 작업 폴더의 `tmp/review-20261128/`에 `full-checks/results.json`, `full-checks/browser-results.json`, `postgres-final-tests.log`, `compose-runtime.log`, `runtime-dependency-audit.json`, `cleanup-before.json`, `cleanup-after.json`을 보관한다. 추가 조회 비교는 `tmp/backend-review/record-query-comparison.json`에 있다. 이 폴더들은 커밋에서 제외한다. 로컬 업로드 검사는 설치 후 `.github/scripts/pre_push.py --check`로 업로드 없이 다시 실행할 수 있다.
 
 실제 Google OAuth 로그인, 실제 사용자와 가족·친구의 입력·조회 후기, 교수님의 저장소 열람 권한과 최종 검수는 별도 확인이 필요하다. 접근할 수 없는 과거 원격 저장소의 현재 공개 범위나 숨겨진 이력은 확인 완료로 표시하지 않는다.
+
+## 2026년 11월 28일 백엔드와 배포 구조 정리
+
+요청 처리와 업무 로직이 같은 폴더에 흩어져 있어 변경할 위치와 의존 관계를 찾기 어려웠다. `care/`의 최상위 Python 파일을 35개에서 11개로 줄이고 역할별 패키지로 정리했다.
+
+| 위치 | 맡는 일 |
+|---|---|
+| `care/views/` | 요청·입력·응답, 인증, 공간·기록·구성원·루틴 화면 |
+| `care/services/` | 권한, 트랜잭션, 공간·기록·제품·구성원·루틴 처리 |
+| `care/inventory/` | 물품 공개 범위, 단위·포장과 재고 원장 |
+| `care/presentation/` | 기록 카드·오늘 목록·타임라인·탐색의 화면 데이터 |
+| `care/reporting/` | 기존 통계·분석 코드 |
+
+기존 717줄의 `services.py`는 접근 권한, 공간, 기록, 제품, 구성원·초대, 루틴으로 나눴다. 기존 공개 함수는 `care.services`에서 명시적으로 제공하며 중복 래퍼를 만들지 않았다. 루틴 완료의 입력·저장은 업무 모듈에, 요청과 응답은 화면 모듈에 둔다. 기록 수정 권한을 접근 권한 모듈에 모아 기록과 루틴 사이의 순환 참조를 해소했다.
+
+운영 파일은 `deploy/docker/`, `deploy/vercel/`, `deploy/backup/`으로 구분했다. 공통 소스 선정은 `deploy/source_files.py`에 유지한다. 자주 쓰는 `scripts/run_local.py`, `scripts/check.py`, `scripts/backup.py`와 서버 관리 명령은 기존 위치를 유지했다.
+
+파일 이동에 맞춰 Docker COPY·Compose·Caddy·Vercel 빌드·백업·systemd·CI·실행 도구의 참조를 갱신했다. 새 Vercel 진입점 이름과 패키지 이름이 겹치는 문제는 명시적인 Python 패키지로 정리했다. 기존 서버 배포 압축에서 빠졌던 Docker 시작 스크립트도 포함하고, 압축 결과가 Dockerfile의 COPY 입력을 모두 제공하는지 검사한다.
+
+### 동작과 자료 보존
+
+- URL 61개의 경로·이름·경로 변수 종류가 기존과 같다.
+- 모델과 마이그레이션 10개 파일은 기존 바이트와 같다.
+- 블로그 46개, 화면 172개, DB 모델·이력 10개, 품종 자료 1개 등 보호 대상 229개 파일을 비교해 동일함을 확인했다.
+- 블로그에서 이동한 코드 파일로 연결하는 링크는 없었다.
+- 기존 바탕화면 서버 관리 바로가기와 원래 작업 폴더는 유지했다.
+- 과거 설계·배포 기록은 보존하고, 현재 코드 위치는 [프로젝트 딕셔너리](27_프로젝트_딕셔너리.md)와 현재 실행 문서에 반영했다.
+
+### 최종 소스의 로컬 통합 검증
+
+| 검사 | 실제 결과 |
+|---|---|
+| SQLite 서버 | 585개 실행, 579개 통과·PostgreSQL 전용 6개 제외 |
+| Docker PostgreSQL 서버 | 585개 모두 통과 |
+| Chromium·Firefox | 각각 115개, 합계 230개 통과 |
+| 실행·백업·배포 도구 | 99개 실행, 96개 통과·Windows 권한 및 symlink 제한 3개 제외 |
+| 공개·업로드 검사기 | 49개 실행, 48개 통과·POSIX 전용 1개 제외 |
+| 설정·코드 | Django·마이그레이션·Python·JavaScript 11개·셸 6개 통과 |
+| 배포 구성 | 로컬·운영·시연 Compose, 누락된 필수 값 거절, 외부 작업 폴더에서 Vercel 명령·패키징 통과 |
+| Docker 이미지 | 빌드·기동 성공, 이미지 안의 Python 113개 파일이 최종 PC 소스와 같은 해시 |
+| 운영 계약 | HTTP·정적 파일·보안 헤더·Caddy 경로·재시작 후 기록 보존·별도 DB로 백업 복원 통과 |
+
+이번 검사 전용 컨테이너 3개·볼륨 4개·네트워크 2개만 정리했다. 시작 전에 있던 컨테이너 21개·볼륨 46개·네트워크 14개의 식별자는 모두 보존했다. 실제 계정과 운영 DB에 검사 기록을 넣지 않았다.
+
+근거는 이번 작업 폴더의 `tmp/structure-review/`에 있다. `full-checks/results.json`, `full-checks/browser-results.json`, `publication-tests.log`, `url-and-migration-comparison.json`, `docker/results.json`, `docker/image-source-hashes.json`을 보관한다. 실행 도구 상세는 `tmp/structure-ops/tool-tests.log`에 있다. 이 결과와 로컬 환경 파일은 커밋 대상에서 제외한다.
+
+위 표는 로컬 통합 검사 결과다. GitHub Actions와 실제 운영 전환 결과는 해당 CI 실행 및 배포기의 `release.json` 기록으로 확인한다. 구조 정리 자체에 별도의 속도 향상률을 붙이지 않는다.

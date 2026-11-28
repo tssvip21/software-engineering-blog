@@ -1,9 +1,9 @@
 """Production startup rejects keys which fail Django's deployment check."""
 import os
-from pathlib import Path
 import secrets
 import subprocess
 import sys
+from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from django.conf import settings

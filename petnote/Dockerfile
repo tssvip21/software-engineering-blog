@@ -9,9 +9,10 @@ COPY config/ config/
 COPY care/ care/
 COPY templates/ templates/
 COPY static/ static/
-COPY deploy/entrypoint.sh deploy/entrypoint-demo.sh deploy/start-local.sh deploy/serve.py deploy/healthcheck.py deploy/source_files.py deploy/
+COPY deploy/docker/entrypoint.sh deploy/docker/entrypoint-demo.sh deploy/docker/start-local.sh deploy/docker/serve.py deploy/docker/healthcheck.py deploy/docker/
+COPY deploy/__init__.py deploy/source_files.py deploy/
 RUN mkdir -p /app/data /app/staticfiles && chown -R petnote:petnote /app
 USER petnote
 EXPOSE 8000
-ENTRYPOINT ["sh", "/app/deploy/entrypoint.sh"]
-CMD ["python", "/app/deploy/serve.py"]
+ENTRYPOINT ["sh", "/app/deploy/docker/entrypoint.sh"]
+CMD ["python", "/app/deploy/docker/serve.py"]

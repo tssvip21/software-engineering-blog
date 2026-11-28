@@ -1,14 +1,16 @@
 """Plain Korean results and short, permission-scoped supporting data."""
 from datetime import timedelta
+
 from dateutil.relativedelta import relativedelta
 from django.urls import reverse
 from django.utils import timezone
-from .assessment import assess
+
 from ..breeds import reference_for
-from .insights import evidence_url
 from ..models import Activity
 from ..modules import compact
 from ..services import fresh_member, local_date, visible_modules
+from .assessment import assess
+from .insights import evidence_url
 from .stats import bounds, get_statistics
 
 NAMES = {

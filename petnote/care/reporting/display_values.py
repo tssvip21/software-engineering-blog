@@ -5,7 +5,7 @@ zero, and an absent value is never treated as a measurement. Body-weight display
 uses the pre-existing formatter, as required by the current work order.
 """
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP, localcontext
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation, localcontext
 from typing import Iterable
 
 D = Decimal
@@ -227,7 +227,7 @@ def display_payload(module,payload,*,status=None):
         return _legacy_payload_display(module,payload,status=status)
     rows=[]
     if module=='inventory' and payload.get('_package'):
-        from ..packaging import receipt_text,description
+        from care.inventory.packaging import description, receipt_text
         rows.extend([('포장 수량',receipt_text(payload['_package'])),('포장 정보',description(payload['_package']))])
     supply=payload.get('_supply') or {}
     if supply.get('name'):rows.append(('사용한 물품',str(supply['name'])))
@@ -267,7 +267,7 @@ def rounded_originals(module,payload):
 
 
 def summary(module,payload):
-    from ..modules import MODULES,_legacy_record_summary
+    from ..modules import MODULES, _legacy_record_summary
     p=payload
     def fact(key):return field_measure(module,key,p.get(key),p).text
     def choice(key):
@@ -280,7 +280,7 @@ def summary(module,payload):
     if module in ('play','training'):return str(p.get('kind' if module=='play' else 'skill') or MODULES[module].name)+' · '+(fact('minutes') if p.get('minutes') is not None else '시간 미입력')
     if module=='sleep' and p.get('_entry_kind')!='schedule':return choice('kind')+' · 관찰 '+fact('minutes')
     if module=='inventory':
-        from ..packaging import receipt_text
+        from care.inventory.packaging import receipt_text
         pack=receipt_text(p.get('_package'))
         return f"{p.get('item','')} · {choice('movement')} "+(pack+' · 합계 ' if pack else '')+fact('quantity')
     if module=='expense':return f"{p.get('item','')} · {fact('amount')}"

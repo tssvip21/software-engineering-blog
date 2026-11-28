@@ -23,7 +23,7 @@ docker compose -p petnote-local-review up --build -d --wait
 docker compose -p petnote-local-review ps
 ```
 
-같은 환경을 종료할 때도 같은 `-p` 이름을 사용합니다. 기본 Compose는 localhost에만 연결되며, 운영 HTTPS 구성은 `compose.production.yaml`로 분리되어 있습니다. 운영 예시는 `deploy/production.env.example`에 있고 실제 비밀값을 담은 파일은 커밋하지 않습니다.
+같은 환경을 종료할 때도 같은 `-p` 이름을 사용합니다. 기본 Compose는 localhost에만 연결되며, 운영 HTTPS 구성은 `compose.production.yaml`로 분리되어 있습니다. 운영 예시는 `deploy/docker/production.env.example`에 있고 실제 비밀값을 담은 파일은 커밋하지 않습니다.
 
 운영 Compose 형식 자체를 별도 로컬 환경에서 검사하려면 다음 실행기를 사용합니다. 이 환경은 위 시연 프로젝트와 다른 이름·포트를 사용하며 외부 로그인에 연결하지 않습니다.
 
@@ -40,7 +40,7 @@ Docker의 실제 연결 대상을 확인해 로컬 Unix socket·Windows named pi
 
 현재 공개 펫노트는 Vercel과 Supabase에서 실행하며 Docker 컨테이너를 Vercel에 올리는 방식은 아닙니다. `compose.production.yaml`은 별도 서버에 설치할 때 사용하는 HTTPS·PostgreSQL 구성입니다.
 
-운영 환경 파일은 `deploy/production.env.example`을 복사해 저장소 밖이나 Git 제외 위치에 보관합니다. 공개 도메인·HTTPS 원본·허용 호스트를 같은 주소로 맞추고, Django 비밀키와 DB 비밀번호는 각각 새 무작위 값으로 설정합니다. 기존 서버를 갱신할 때는 원래 Compose 프로젝트명과 DB 볼륨·비밀값을 그대로 사용합니다.
+운영 환경 파일은 `deploy/docker/production.env.example`을 복사해 저장소 밖이나 Git 제외 위치에 보관합니다. 공개 도메인·HTTPS 원본·허용 호스트를 같은 주소로 맞추고, Django 비밀키와 DB 비밀번호는 각각 새 무작위 값으로 설정합니다. 기존 서버를 갱신할 때는 원래 Compose 프로젝트명과 DB 볼륨·비밀값을 그대로 사용합니다.
 
 ```sh
 docker compose -f compose.production.yaml --env-file /secure/path/petnote.env config --quiet
@@ -103,7 +103,7 @@ macOS·Linux에서는 `python3.13 -m venv .venv`와 `.venv/bin/python`을 사용
 
 복원 전에 파일 종류·SHA-256·SQLite 무결성을 확인합니다. 현재 DB가 있으면 복원 직전의 안전 백업과 검증 JSON도 만들고, 검증된 임시 복사본으로 교체합니다. 잘못된 백업은 현재 DB를 바꾸지 않습니다.
 
-PostgreSQL의 백업·복원 참고 도구는 `deploy/backup-postgres.sh`, `deploy/verify-backup.sh`에 있습니다. 자동 CI의 복원 검사는 실제 운영 DB와 분리된 검사 DB만 사용합니다.
+PostgreSQL의 백업·복원 참고 도구는 `deploy/backup/backup-postgres.sh`, `deploy/backup/verify-backup.sh`에 있습니다. 자동 CI의 복원 검사는 실제 운영 DB와 분리된 검사 DB만 사용합니다.
 
 ## 정리와 업데이트
 

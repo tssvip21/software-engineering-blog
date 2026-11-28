@@ -10,13 +10,14 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from care import services
-from care.care_views import board_data
-from care.dashboard import board_records, today_tiles
+from care.inventory.supplies import filter_rows
 from care.models import Activity, Membership, Product, Room
 from care.modules import MODULES
+from care.presentation.dashboard import board_records, today_tiles
 from care.reporting.module_reports import build_report
 from care.reporting.stats import bounds, get_statistics
-from care.supplies import filter_rows
+from care.views.dashboard import board_data
+
 from .test_functional import CareCase
 
 

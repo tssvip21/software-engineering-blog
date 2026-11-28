@@ -97,7 +97,7 @@ jobs:
         run: python3 .github/scripts/check_compose.py
       - name: Check deployment shell syntax
         run: |
-          for script in deploy/*.sh; do bash -n "$script"; done
+          while IFS= read -r -d "" script; do bash -n "$script"; done < <(find deploy -type f -name "*.sh" -print0)
       - name: Build and start the isolated Compose stack
         run: docker compose -f compose.yaml up --build --wait --wait-timeout 240 -d
       - name: Run Django tests with PostgreSQL

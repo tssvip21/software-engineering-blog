@@ -3,15 +3,18 @@ import json
 from datetime import datetime, timedelta
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
+
+from django.db import OperationalError
 from django.test import Client
 from django.urls import reverse
-from django.db import OperationalError
 from django.utils import timezone
+
 from care import services
-from care.forms import RecordForm
 from care.demo_fixtures import record_data
-from care.reporting.insights import context_for
+from care.forms import RecordForm
 from care.models import ModuleGroup
+from care.reporting.insights import context_for
+
 from .test_functional import CareCase
 
 UI={"HTTP_X_TAILY_UI":"1"}
@@ -44,7 +47,7 @@ class GroupAccessAndEvidenceTests(CareCase):
     def test_group_malformed_and_busy_are_not_false_success(self):
         for body in ('[]','null','{',json.dumps({"version":True,"groups":[]})):
             self.assertEqual(self.client.post(self.group_url(),body,content_type="application/json").status_code,400)
-        with patch("care.workspace.organization.save_groups",side_effect=OperationalError("locked")):
+        with patch("care.views.workspace.organization.save_groups",side_effect=OperationalError("locked")):
             response=self.client.post(self.group_url(),json.dumps(self.payload()),content_type="application/json")
         self.assertEqual(response.status_code,503)
         self.assertFalse(self.room.module_groups.exists())

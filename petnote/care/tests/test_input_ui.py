@@ -1,21 +1,27 @@
 """November 12 authorized UI scope; statistical computation remains unchanged."""
-import uuid
 import hashlib
+import uuid
 from types import SimpleNamespace
 from unittest.mock import patch
+
 from django.db import OperationalError
-from django.test import override_settings
 from django.http import QueryDict
-from django.urls import reverse,path
+from django.test import override_settings
+from django.urls import path, reverse
+
 from care import services
-from care.models import Activity,ActivityRevision,Routine,Membership,Room
+from care import urls as care_urls
 from care.demo_fixtures import record_data
-from care import demo
-from care.idempotency import form_fingerprint
-from care.management.commands.seed_demo import upgrade_local_examples, upgrade_public_seed
+from care.management.commands.seed_demo import (
+    upgrade_local_examples,
+    upgrade_public_seed,
+)
+from care.models import Activity, ActivityRevision, Membership, Room, Routine
+from care.services.idempotency import form_fingerprint
+from care.views import auth, demo
+
 from .test_functional import CareCase
 
-from care import urls as care_urls,auth
 urlpatterns=[*care_urls.urlpatterns,path('demo/login/',auth.demo_login,name='demo_login'),
              path('enter/', demo.enter, name='public_demo_enter')]
 HEADERS={'HTTP_X_TAILY_DIALOG':'1'}

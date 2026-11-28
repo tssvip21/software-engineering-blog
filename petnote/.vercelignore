@@ -14,7 +14,11 @@
 !vercel.json
 !deploy/
 deploy/*
-!deploy/vercel_build.py
+!deploy/__init__.py
+!deploy/vercel/
+deploy/vercel/*
+!deploy/vercel/__init__.py
+!deploy/vercel/build.py
 care/tests/
 config/tests/
 **/__pycache__/

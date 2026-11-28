@@ -101,7 +101,7 @@ with result:
                     "--memory", "128m", "--pids-limit", "64",
                     "-e", "SITE_ADDRESS=http://:80",
                     "-e", "CARE_PUBLIC_DEMO_ENTRY=" + str(int(enabled)),
-                    "-v", f"{ROOT / 'deploy/Caddyfile'}:/etc/caddy/Caddyfile:ro",
+                    "-v", f"{ROOT / 'deploy/docker/Caddyfile'}:/etc/caddy/Caddyfile:ro",
                     "-v", f"{folder}:/srv/static:ro", caddy_image,
                 )
                 created.append(frontend)

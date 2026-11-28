@@ -1,8 +1,8 @@
 """Local, versioned breed catalogue. Reference ranges are not individual targets."""
+import json
+from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
-from decimal import Decimal
-import json
 
 SPECIAL = (("", "나중에 선택"), ("mixed", "믹스 / Mixed breed"), ("unknown", "품종 미상 / Unknown"), ("custom", "목록에 없음 · 직접 입력"))
 SIZE_LABELS = {"small": "소형", "medium": "중형", "large": "대형"}

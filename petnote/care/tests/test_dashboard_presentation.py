@@ -7,13 +7,18 @@ from django.urls import reverse
 from django.utils import timezone
 
 from care import services
-from care.dashboard import latest_module_records, statistics_periods, today_tiles
 from care.demo_fixtures import record_data
 from care.forms import RecordForm
 from care.models import Activity, ActivityRevision
 from care.modules import MODULES
+from care.presentation.dashboard import (
+    latest_module_records,
+    statistics_periods,
+    today_tiles,
+)
 from care.reporting.status_view import context_for
 from care.templatetags.care_tags import module_category, result_category
+
 from .test_functional import CareCase
 
 
@@ -158,7 +163,7 @@ class DiscoveryPresentationTests(CareCase):
         self.assertEqual(self.client_for(self.guest).get(reverse("module_settings", args=[self.room.pk])).status_code, 403)
 
     def test_period_links_use_room_calendar_and_show_selected_range(self):
-        with patch("care.dashboard.local_date", return_value=date(2026, 1, 31)):
+        with patch("care.presentation.dashboard.local_date", return_value=date(2026, 1, 31)):
             result = statistics_periods(self.room, "walk", date(2026, 1, 25), date(2026, 1, 31))
         self.assertEqual([r["selected"] for r in result], [True, False, False])
         first = parse_qs(urlsplit(result[0]["url"]).query)

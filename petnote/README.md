@@ -34,9 +34,11 @@ Python 3.13 개발 환경과 브라우저 설치 방법은 [개발·실행·백�
 
 | 위치 | 내용 |
 |---|---|
-| `care/`, `config/` | 기록·권한·통계·루틴과 서버 설정·테스트 |
+| `care/views/`, `care/services/` | HTTP 요청 처리와 권한·기록·공간·루틴 업무 |
+| `care/inventory/`, `care/reporting/`, `care/presentation/` | 물품·재고, 통계, 화면에 전달할 데이터 |
+| `care/models.py`, `care/migrations/`, `care/tests/`, `config/` | DB 구조·서버 테스트·Django 설정 |
 | `templates/`, `static/` | 화면과 브라우저 동작 |
-| `deploy/`, `compose*.yaml` | Docker·운영 구성·백업·상태 검사 |
+| `deploy/docker/`, `deploy/vercel/`, `deploy/backup/`, `compose*.yaml` | 실행 환경별 배포와 백업·복원 |
 | `scripts/`, `scripts/qa/`, `scripts/tests/` | 실행·백업·자동 검사와 도구 회귀 테스트 |
 | `docs/`, `docs/history/` | 현재 사용 안내와 과거 설계 기록 |
 | `blog/` | 기존 개발 과정 초안과 블로그 연결 자료 |

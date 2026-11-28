@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from care.models import Activity, Product
-from care.organization import CATEGORIES
+from care.services.organization import CATEGORIES
 
 from .test_functional import CareCase
 

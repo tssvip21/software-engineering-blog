@@ -1,8 +1,8 @@
-from datetime import datetime, time, timedelta
-from decimal import Decimal
 import json
 import re
 import uuid
+from datetime import datetime, time, timedelta
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
@@ -11,13 +11,23 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
-from care import services, record_actions
-from care.demo import SHOWCASE_ROOMS
+from care import services
 from care.demo_fixtures import record_data
-from care.forms import RoomForm, RecordForm, RoutineForm
-from care.models import Activity, AuditEvent, CareCadence, Invitation, Membership, Product, Room, Routine
+from care.forms import RecordForm, RoomForm, RoutineForm
+from care.models import (
+    Activity,
+    AuditEvent,
+    CareCadence,
+    Invitation,
+    Membership,
+    Product,
+    Room,
+    Routine,
+)
 from care.modules import MODULES, SELECTABLE_MODULES
-from care.presets import PresetForm, save_preset
+from care.services import record_actions
+from care.services.presets import PresetForm, save_preset
+from care.views.demo import SHOWCASE_ROOMS
 
 
 def remove_examples(rooms):

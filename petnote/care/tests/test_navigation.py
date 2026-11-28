@@ -5,6 +5,7 @@ from django.test import Client
 from django.urls import reverse
 
 from care.models import ActionReceipt, Activity, AuditEvent, Product
+
 from .test_functional import CareCase
 
 

@@ -15,10 +15,16 @@
 
 | 위치 | 역할 |
 |---|---|
-| `care/` | 모델·권한·기록·루틴·통계와 서버 테스트 |
+| `care/views/` | 주소에서 호출하는 요청 처리와 응답 |
+| `care/services/` | 권한 확인, 공간·구성원·기록·물품·루틴·초대의 업무 처리 |
+| `care/inventory/`, `care/reporting/`, `care/presentation/` | 물품·재고, 통계 계산, 화면 데이터 구성 |
+| `care/models.py`, `care/migrations/`, `care/tests/` | DB 모델·변경 이력·서버 테스트 |
 | `config/` | Django 설정·주소·로그 필터 |
 | `templates/`, `static/` | 화면·스타일·브라우저 동작·사용 중인 이미지와 글꼴 |
-| `deploy/`, `compose*.yaml`, `Dockerfile` | 컨테이너 실행·상태 검사·백업·배포 패키징 |
+| `deploy/docker/`, `compose*.yaml`, `Dockerfile` | Caddy·컨테이너 실행·상태 검사·서버 초기 설정 |
+| `deploy/vercel/` | Vercel 소스 패키징·빌드 검사·단계 배포·공개 전환 |
+| `deploy/backup/` | PostgreSQL 백업·복원 검사·정기 실행 설정 |
+| `deploy/source_files.py` | 배포 방식이 함께 쓰는 애플리케이션 파일 선택 |
 | `scripts/` | 설치, 로컬 실행, 통합 검사, 백업 등 현재 사용하는 명령 |
 | `scripts/qa/` | 현재 브라우저 회귀 검사와 성능 측정 |
 | `scripts/qa/legacy/` | 이전 개발 단계의 개별 화면·시각 검사 참고 코드 |

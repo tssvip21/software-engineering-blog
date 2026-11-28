@@ -11,9 +11,8 @@ from django.test import RequestFactory, SimpleTestCase
 from psycopg.pq import TransactionStatus
 from psycopg_pool import PoolTimeout
 
-from care.views import health
+from care.views.system import health
 from config.database import vercel_database
-
 
 POOL_TEMPLATE = vercel_database(
     "postgresql://pool-test:fixture-only@db.example.invalid/petnote_pool_test"
@@ -50,7 +49,7 @@ class PooledHealthFailureTests(SimpleTestCase):
         }
         wrapper = pooled_wrapper(config)
         self.addCleanup(close_wrapper, wrapper)
-        with patch("care.views.connection", wrapper), patch.object(
+        with patch("care.views.system.connection", wrapper), patch.object(
             wrapper,
             "get_new_connection",
             side_effect=PoolTimeout("Pooled connection checkout timed out."),

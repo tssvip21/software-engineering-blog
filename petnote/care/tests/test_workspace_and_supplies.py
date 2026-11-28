@@ -1,21 +1,32 @@
 """Room settings, shared supplies and retained event/permission semantics."""
-from datetime import datetime,timedelta
+import uuid
+from datetime import datetime, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
-import uuid
 
 from django.core.exceptions import ValidationError
 from django.urls import reverse
 from django.utils import timezone
 
-from care import record_actions, inventory_ledger, services, supplies
-from care.reporting import module_reports
-from care.breeds import catalogue,suggest_size
+from care import services
+from care.breeds import catalogue, suggest_size
 from care.forms import RecordForm
-from care.models import Activity,ActivityRevision,ActionReceipt,AuditEvent,Product,Room
-from care.presets import PresetForm,save_preset
-from care.profile_settings import PetProfileForm,save_pet
+from care.inventory import ledger as inventory_ledger
+from care.inventory import supplies
+from care.models import (
+    ActionReceipt,
+    Activity,
+    ActivityRevision,
+    AuditEvent,
+    Product,
+    Room,
+)
+from care.reporting import module_reports
+from care.services import record_actions
+from care.services.presets import PresetForm, save_preset
+from care.services.profiles import PetProfileForm, save_pet
+
 from .test_functional import CareCase
 
 HEADERS={'HTTP_X_TAILY_DIALOG':'1'}
@@ -381,7 +392,7 @@ class WorkspaceScopeTests(WorkspaceCase):
         self.assertEqual(module_reports.differences(Decimal('8.45'),Decimal('8.4'))['delta'],Decimal('-.05'))
 
     def test_explicit_midnight_boundary_keeps_today_and_yesterday_separate(self):
-        from care.dashboard import today_tiles
+        from care.presentation.dashboard import today_tiles
         boundary=datetime(2026,11,14,0,15,tzinfo=ZoneInfo('Asia/Seoul'))
         with patch('django.utils.timezone.now',return_value=boundary):
             yesterday=self.make('water',kind='replace',amount='',occurred_at=(boundary-timedelta(minutes=20)).isoformat())

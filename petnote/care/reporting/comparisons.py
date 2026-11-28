@@ -6,8 +6,8 @@ Equal closed-calendar windows are separate from the older robust pattern detecto
 from collections import defaultdict
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
-from zoneinfo import ZoneInfo
 from urllib.parse import urlencode
+from zoneinfo import ZoneInfo
 
 from django.urls import reverse
 from django.utils import timezone

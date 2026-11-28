@@ -1,13 +1,18 @@
+import uuid
 from datetime import timedelta
 from decimal import Decimal as D
-import uuid
+
 from django.urls import reverse
-from care.tests.test_functional import CareCase
-from care.models import Product,Activity
+
+from care import services
 from care.forms import RecordForm
-from care.supplies import SupplyForm,stock_view
-from care import services,routine_completion
-from care.modules import record_summary, payload_display
+from care.inventory.supplies import SupplyForm, stock_view
+from care.models import Activity, Product
+from care.modules import payload_display, record_summary
+from care.services import completion as routine_completion
+from care.tests.test_functional import CareCase
+
+
 class PackageContextTests(CareCase):
     def pack_product(self,**kw):
         values=dict(room=self.room,name='포장 사료',category='meal',stock_item='포장 사료',stock_unit='g',package_label='봉지',package_amount=D('2'),package_unit='kg')

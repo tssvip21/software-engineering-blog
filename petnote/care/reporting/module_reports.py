@@ -4,24 +4,25 @@ Every number has a unit, time window, denominator and evidence IDs. No missing
 measurement becomes zero. No app score, causal effect, diagnosis or treatment is
 inferred. Observed-day averages describe the user's records, not all-day sensing.
 """
+import hashlib
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
-import hashlib
 
 from django.urls import reverse
 from django.utils import timezone
 
+from care.inventory.ledger import display_quantity, ledger, period_movement
+from care.services.schedule import completion_summary, logical_module
+
 from .. import services
 from ..breeds import reference_for
-from .comparisons import reference_geometry
-from ..inventory_ledger import ledger, period_movement, display_quantity
 from ..models import Activity
 from ..modules import MODULES, SELECTABLE_MODULES, compact
-from ..schedule import completion_summary, logical_module
+from .comparisons import reference_geometry
 from .stats import bounds, union_seconds
 
 ZERO = Decimal(0)
@@ -424,7 +425,7 @@ def build_report(member,days=7,*,end=None,records=None):
     enabled&=set(SELECTABLE_MODULES)
     if records is None:
         records=list(Activity.objects.filter(room=room,module__in=allowed,voided=False,status='done',occurred_at__lte=now).select_related('author').order_by('occurred_at','created_at','id'))
-    from ..supplies import filter_rows
+    from care.inventory.supplies import filter_rows
     rows=filter_rows(member,eligible(records,room.pk,allowed,now))
     metrics,grouped=build_measurements(room,rows,enabled,start,end,days,now)
     module_cards=[]

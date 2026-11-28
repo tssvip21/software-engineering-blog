@@ -1,9 +1,12 @@
-from django.core.exceptions import ValidationError, PermissionDenied
-from care import organization, services
-from care.breeds import catalogue, suggest_size, reference_for
+from django.core.exceptions import PermissionDenied, ValidationError
+
+from care import services
+from care.breeds import catalogue, reference_for, suggest_size
 from care.forms import RoomForm
 from care.models import ModuleGroup
 from care.reporting.insights import context_for
+from care.services import organization
+
 from .test_functional import CareCase
 
 
