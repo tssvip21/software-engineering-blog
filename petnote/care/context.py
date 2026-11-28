@@ -26,4 +26,5 @@ def site_context(request):
             "sidebar_people": people[:6], "sidebar_people_count": len(people),
             "room": room, "member": member, "demo_mode": settings.DEMO_MODE, "public_demo": settings.PUBLIC_DEMO, "public_demo_entry": settings.PUBLIC_DEMO_ENTRY,
             "google_configured": settings.GOOGLE_CONFIGURED, "local_mode": settings.DEBUG,
+            "csrf_cookie_name": settings.CSRF_COOKIE_NAME,
             "active_path": request.path}

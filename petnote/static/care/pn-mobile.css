@@ -149,26 +149,10 @@ a.pn-check::before {border-color: var(--line)}
 .pn-tl-foot .icon {width: 1.125rem; height: 1.125rem}
 
 /* ---------- Motion ---------- */
-/* Page changes: the bar stays put while the content swaps (cross-document view transitions).
-   Reduced motion keeps the opt-in but removes every animation below. */
-@view-transition {navigation: auto}
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) {animation: none !important}
-}
-/* The page transition owns the bar's motion. navigation.css also plays a 180ms
-   arrival on every context-bar page load, which made the bar pop up again when
-   moving between two menus of the same area; turn that one off. */
+/* Reading tabs keep the shell in place. Native fallback does not wait for
+   document snapshots; input sheets and press feedback retain their own motion. */
 .mobile-dock.is-context, .mobile-dock.is-global {animation: none}
 @media (prefers-reduced-motion: no-preference) {
-  .mobile-dock {view-transition-name: pn-dock}
-  .phone-header {view-transition-name: pn-header}
-  ::view-transition-old(root) {animation: pn-fade-out .12s ease-out both}
-  ::view-transition-new(root) {animation: pn-rise-in .26s var(--pn-ease) .04s both}
-  /* Main bar → area bar: the bar morphs in place. Same area: both snapshots match, so nothing moves. */
-  ::view-transition-group(pn-dock) {animation-duration: .28s; animation-timing-function: var(--pn-ease)}
-  ::view-transition-old(pn-dock), ::view-transition-new(pn-dock) {animation-duration: .18s; height: 100%}
-  ::view-transition-group(pn-header) {animation-duration: 0s}
-
   /* Bottom sheets rise from the bottom edge. */
   dialog[open] {animation: pn-sheet-in .34s var(--pn-ease)}
   dialog[open]::backdrop {animation: pn-fade-in .2s ease-out}
@@ -184,9 +168,7 @@ a.pn-check::before {border-color: var(--line)}
 @media (max-width: 640px) and (prefers-reduced-motion: no-preference) {
   dialog[open] {animation-name: pn-sheet-up}
 }
-@keyframes pn-fade-out {to {opacity: 0}}
 @keyframes pn-fade-in {from {opacity: 0}}
-@keyframes pn-rise-in {from {opacity: 0; transform: translateY(10px)}}
 @keyframes pn-sheet-in {from {opacity: 0; transform: translateY(12px)}}
 @keyframes pn-sheet-up {from {transform: translateY(100%)}}
 @keyframes pn-toast-in {from {opacity: 0; translate: 0 12px}}

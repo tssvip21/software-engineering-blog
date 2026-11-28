@@ -64,9 +64,13 @@
     $(`[data-category-manage="${category}"]`)?.focus({preventScroll: true});
   }
   async function refresh() {
-    const response = await fetch(location.href, {credentials: 'same-origin', cache: 'no-store'});
+    const navigation = window.PetnoteNavigation?.snapshot();
+    const url = location.href;
+    const response = await fetch(url, {credentials: 'same-origin', cache: 'no-store'});
     if (!response.ok) throw new Error('변경은 저장했지만 화면을 불러오지 못했어요. 새로고침해 주세요.');
-    const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
+    const html = await response.text();
+    if (url !== location.href || (navigation && !window.PetnoteNavigation.isCurrent(navigation))) return;
+    const doc = new DOMParser().parseFromString(html, 'text/html');
     const next = doc.getElementById('main');
     if (!next || doc.body.dataset.roomState !== document.body.dataset.roomState) throw new Error('참여 상태가 바뀌었어요. 새로고침해서 확인해 주세요.');
     const y = scrollY;

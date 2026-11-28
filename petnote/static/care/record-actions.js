@@ -5,7 +5,7 @@
   const endpoint = body.dataset.actionEndpoint7;
   const csrf = () => document.querySelector('#flow-csrf7 [name=csrfmiddlewaretoken]')?.value || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
   const pending = new Map(), busy = new Set(), gps = new Map();
-  let pageRequest = 0, lastPageRetry = null, memberTrigger = null;
+  let memberTrigger = null;
   let memberGeneration = 0, memberController = null;
   const token = () => crypto.randomUUID();
   const stored = key => { try { return JSON.parse(sessionStorage.getItem('taily7:' + key)); } catch (_) { return null; } };
@@ -75,9 +75,12 @@
     return parsed;
   }
   async function refreshSurface() {
-    const response = await fetch(location.href, {credentials:'same-origin',cache:'no-store'});
+    const navigation = window.PetnoteNavigation?.snapshot();
+    const url = location.href;
+    const response = await fetch(url, {credentials:'same-origin',cache:'no-store'});
     if (!response.ok) throw new Error('기록은 저장됐지만 화면 갱신에 실패했어요. 새로고침하거나 원기록을 확인해 주세요.');
     const html=await response.text();
+    if (url !== location.href || (navigation && !window.PetnoteNavigation.isCurrent(navigation))) return;
     const updated=replaceMain(html);
     const sidebar=updated.querySelector('.sidebar-members'),current=document.querySelector('.sidebar-members');
     if(sidebar&&current)current.replaceWith(sidebar);
@@ -139,27 +142,6 @@
       if ([400,403,404,409,422].includes(e.status)) {pending.delete(key);persist(key,null);}
     } finally {busy.delete(key);markButtons(key,false);}
   }
-  function pageState(message, error = false) {
-    let panel = document.querySelector('#flow-page-state7');
-    if (!panel) { panel = document.createElement('div');panel.id='flow-page-state7';panel.className='flow-page-state7';panel.setAttribute('role','status');document.querySelector('#main')?.prepend(panel); }
-    panel.textContent=message;panel.hidden=false;
-    if (error) { const retry=document.createElement('button');retry.type='button';retry.className='button secondary small';retry.textContent='다시 불러오기';retry.addEventListener('click',()=>lastPageRetry?.());panel.append(' ',retry); }
-  }
-  async function navigate(url, push = true) {
-    const serial = ++pageRequest;
-    const main=document.querySelector('#main');main?.setAttribute('aria-busy','true');
-    pageState('통계를 불러오는 중이에요. 기존 값은 불러오기가 끝날 때까지 유지해요.');
-    const controller=new AbortController(), timeout=setTimeout(()=>controller.abort(),20000);
-    lastPageRetry=()=>navigate(url,push);
-    try {
-      const response=await fetch(url,{credentials:'same-origin',cache:'no-store',signal:controller.signal});
-      if (!response.ok) throw new Error('통계를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
-      const html=await response.text();if (serial!==pageRequest)return;
-      replaceMain(html,{});if(push)history.pushState({phase7:true},'',url);
-      const heading=document.querySelector('#main h1');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
-    } catch(e) {if(serial===pageRequest)pageState(e.name==='AbortError'?'통계 응답이 늦어요. 기존 내용은 유지했어요.':e.message,true);}
-    finally {clearTimeout(timeout);document.querySelector('#main')?.removeAttribute('aria-busy');}
-  }
   function haversine(a,b) {
     const radians=x=>x*Math.PI/180, dlat=radians(b.lat-a.lat),dlon=radians(b.lon-a.lon);
     const x=Math.sin(dlat/2)**2+Math.cos(radians(a.lat))*Math.cos(radians(b.lat))*Math.sin(dlon/2)**2;
@@ -188,6 +170,7 @@
     {enableHighAccuracy:true,maximumAge:0,timeout:15000});gpsNotice(id);
   }
   function tick() {
+    if (document.hidden) return;
     document.querySelectorAll('[data-timer-id]').forEach(scope=>{
       const start=Date.parse(scope.dataset.startedAt);if(!Number.isFinite(start))return;
       const elapsed=Math.max(0,Math.floor((Date.now()-start)/1000)),minutes=Math.floor(elapsed/60),seconds=elapsed%60;
@@ -232,7 +215,7 @@
     else if(!event.shiftKey&&(active===last||!memberDialog.contains(active))){event.preventDefault();first.focus();}
   });
   memberDialog?.addEventListener('close',()=>{++memberGeneration;memberController?.abort();memberController=null;delete memberDialog.dataset.dirty;body.classList.remove('has-member-panel7');if(memberTrigger?.isConnected)memberTrigger.focus({preventScroll:true});else{const next=[...document.querySelectorAll('[data-member-open7]')].find(a=>a.href===memberDialog.dataset.url);next?.focus({preventScroll:true});}});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)gps.forEach((s,id)=>{if(s.watch!==null){s.hidden=true;s.gaps++;s.last=null;persist('gps:'+id,{metres:s.metres,samples:s.samples,gaps:s.gaps,hidden:true});}});});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden){tick();return;}gps.forEach((s,id)=>{if(s.watch!==null){s.hidden=true;s.gaps++;s.last=null;persist('gps:'+id,{metres:s.metres,samples:s.samples,gaps:s.gaps,hidden:true});}});});
   document.addEventListener('input',e=>{if(e.target.matches('[data-distance7]')){const s=gps.get(e.target.closest('[data-timer-id]')?.dataset.timerId);if(s)s.manuallyEdited=true;}});
   document.addEventListener('click',async e=>{
     const action=e.target.closest('[data-action7]');if(action){e.preventDefault();runAction(action);return;}
@@ -242,7 +225,11 @@
     if(e.target.closest('[data-toast-dismiss7]')){toast.hidden=true;return;}
     const undo=e.target.closest('[data-toast-undo7]');if(undo){undo.disabled=true;try{const data=new FormData();data.set('version',undo.dataset.version);const r=await post(undo.dataset.url,data,true);announce(r.message);await refreshSurface();}catch(err){announce(err.message,{error:true});}finally{undo.disabled=false;}return;}
     const notice=e.target.closest('[data-dismiss-notice7]');if(notice){notice.disabled=true;try{const r=await post(body.dataset.noticeEndpoint7,{key:notice.dataset.key,stage:notice.dataset.stage});notice.closest('[data-notice7]').remove();announce(r.message);}catch(err){feedback(notice,err.message,true);}finally{notice.disabled=false;}return;}
-    const period=e.target.closest('.statistics-periods a,.date-shortcuts a');if(period&&!e.ctrlKey&&!e.metaKey&&!e.shiftKey){e.preventDefault();navigate(period.href);}
+    const period=e.target.closest('.statistics-periods a,.date-shortcuts a');
+    if(period&&!e.defaultPrevented&&e.button===0&&!e.ctrlKey&&!e.metaKey&&!e.shiftKey&&!e.altKey&&!period.target&&!period.hasAttribute('download')){
+      e.preventDefault();
+      if(!window.PetnoteNavigation?.navigate(period.href))location.assign(period.href);
+    }
   });
   document.addEventListener('submit',async e=>{
     const memberForm=e.target.closest('[data-member-form7]');
@@ -265,7 +252,6 @@
       setTimeout(()=>{if(form.isConnected)form.querySelectorAll('button[type=submit]').forEach(b=>{b.disabled=true;b.setAttribute('aria-busy','true');});},0);
     }
   });
-  window.addEventListener('popstate',()=>navigate(location.href,false));
   window.addEventListener('pageshow',()=>{document.querySelectorAll('[data-safe-submit7]').forEach(form=>{delete form.dataset.saving;form.querySelectorAll('button[type=submit]').forEach(b=>{b.disabled=false;b.removeAttribute('aria-busy');});});});
   document.addEventListener('taily:refresh',tick);
   tick();setInterval(tick,1000);

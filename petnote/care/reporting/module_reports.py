@@ -414,7 +414,10 @@ def relationships(metrics,enabled,notes,inventory,weight):
     return result
 
 
-def build_report(member,days=7,*,end=None,records=None):
+def build_report(member,days=7,*,end=None,records=None,module=None):
+    # A detail page renders one comparison card. Weight keeps the full context
+    # because its card includes previous measurements and intervening activity.
+    comparison_only = module is not None and logical_module(module) != 'weight'
     member=services.read_member(member);room=member.room;now=timezone.now();today=services.local_date(room)
     try:days=int(days)
     except (ValueError,TypeError):days=7
@@ -423,8 +426,18 @@ def build_report(member,days=7,*,end=None,records=None):
     allowed=set(services.visible_modules(member))
     enabled={setting.key for setting in services.read_module_settings(room) if setting.enabled and setting.key in allowed and setting.key in SELECTABLE_MODULES}
     enabled&=set(SELECTABLE_MODULES)
+    if comparison_only:
+        selected = logical_module(module)
+        enabled &= {selected}
+        allowed = {key for key in allowed if logical_module(key) == selected}
     if records is None:
-        records=list(Activity.objects.filter(room=room,module__in=allowed,voided=False,status='done',occurred_at__lte=now).select_related('author').order_by('occurred_at','created_at','id'))
+        query = Activity.objects.filter(room=room,module__in=allowed,voided=False,status='done',occurred_at__lte=now)
+        if comparison_only and module != 'sleep':
+            lower, upper = bounds(room, start-timedelta(days=days), end)
+            query = query.filter(occurred_at__gte=lower, occurred_at__lt=upper)
+        # These calculations never display the author. Keep row data without
+        # materializing a joined membership for every historical activity.
+        records=list(query.order_by('occurred_at','created_at','id'))
     from care.inventory.supplies import filter_rows
     rows=filter_rows(member,eligible(records,room.pk,allowed,now))
     metrics,grouped=build_measurements(room,rows,enabled,start,end,days,now)
@@ -441,6 +454,13 @@ def build_report(member,days=7,*,end=None,records=None):
         m['evidence_url']=evidence_root+'?'+urlencode({**base,'period':'all'})
         for side in ('before','recent'):
             m[side]['url']=evidence_root+'?'+urlencode({**base,'period':side})
+    if comparison_only:
+        from .display_values import decorate_report
+        return decorate_report({
+            'days':days,'start':start,'end':end,'previous_start':start-timedelta(days=days),
+            'previous_end':start-timedelta(days=1),'today':today,
+            'module_cards':module_cards,'measurements':metrics,'enabled':enabled,
+        })
     notes=context_notes(room,rows,start,end) if 'observation' in enabled else []
     inventory=inventory_report(room,rows,start,end,days) if 'inventory' in enabled else {'items':[],'issues':[]}
     weight=latest_weight_context(room,rows,enabled,start,end)

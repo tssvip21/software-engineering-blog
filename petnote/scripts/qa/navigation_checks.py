@@ -65,6 +65,8 @@ def history_and_refresh(page, root, flows, passed):
     flows.go(page, root + "?layout=mobile")
     page.locator(".mobile-dock").get_by_role("link", name="돌봄", exact=True).click()
     page.locator(".mobile-dock").get_by_role("link", name="루틴", exact=True).click()
+    expect(page).to_have_url(flows.BASE + root + "routines/")
+    page.wait_for_function("() => !document.body.hasAttribute('data-navigation-pending')")
     page.go_back(wait_until="domcontentloaded")
     assert_scope(page, "care", "기능")
     page.go_back(wait_until="domcontentloaded")
@@ -149,7 +151,7 @@ def desktop_groups(page, root, flows, passed):
     expect(page.locator(".sidebar-members")).to_be_visible()
     expect(page.locator(".sidebar-settings")).to_be_visible()
     expect(page.locator(".sidebar-nav-group")).to_have_count(0)
-    expect(page.locator('link[href*="navigation.css"]')).to_have_count(0)
+    expect(page.locator('link[href*="/care/navigation.css"]')).to_have_count(0)
     expect(page.locator('script[src*="mobile-menu.js"]')).to_have_count(0)
     passed("PC 기존 사이드바 순서와 구성원·설정 영역 보존")
     for suffix, current in (("modules/", "돌봄 기능"), ("overview/", "최근 통계")):
@@ -272,6 +274,235 @@ def layout_preferences(browser, root, cookie, flows, passed):
         context.close()
 
 
+
+def accelerated_tabs(page, root, flows, passed):
+    for layout in ("mobile", "desktop"):
+        page.set_viewport_size({"width": 390 if layout == "mobile" else 1440, "height": 950})
+        flows.go(page, root + "?layout=" + layout)
+        page.evaluate("""() => {
+            window.navigationDocumentMarker = {};
+            window.navigationMainMarker = document.getElementById('main');
+            window.navigationShellMarker = document.querySelector('.phone-header, #sidebar');
+        }""")
+        nav = ".mobile-dock" if layout == "mobile" else "#sidebar"
+        pending = page.evaluate("""({nav, path}) => {
+            document.querySelector(nav + ' a[href="' + path + '"]').click();
+            return {
+                body: document.body.hasAttribute('data-navigation-pending'),
+                main: document.getElementById('main').getAttribute('aria-busy'),
+                inert: document.getElementById('main').inert
+            };
+        }""", {"nav": nav, "path": root + "modules/"})
+        assert pending == {"body": True, "main": "true", "inert": True}, pending
+        expect(page).to_have_url(flows.BASE + root + "modules/")
+        page.wait_for_function("() => !document.body.hasAttribute('data-navigation-pending')")
+        state = page.evaluate("""() => ({
+            sameDocument: Boolean(window.navigationDocumentMarker),
+            replacedMain: document.getElementById('main') !== window.navigationMainMarker,
+            keptShell: window.navigationShellMarker?.isConnected,
+            ready: !document.getElementById('main').inert &&
+                   !document.getElementById('main').hasAttribute('aria-busy')
+        })""")
+        assert all(state.values()), state
+        page.locator(nav + ' a[href="' + root + 'routines/"]').click()
+        expect(page).to_have_url(flows.BASE + root + "routines/")
+        page.wait_for_function("() => !document.body.hasAttribute('data-navigation-pending')")
+        assert page.evaluate("Boolean(window.navigationDocumentMarker)")
+        page.locator(nav + ' a[href="' + root + '"]').first.click()
+        expect(page).to_have_url(flows.BASE + root)
+        page.wait_for_function("() => !document.body.hasAttribute('data-navigation-pending')")
+        active = '.mobile-dock a[aria-current="page"]' if layout == "mobile" else '#sidebar nav[aria-label="돌봄 탐색"] a[aria-current="page"]'
+        expect(page.locator(active)).to_have_text("오늘")
+        passed(f"{layout} 탭 클릭 즉시 대기 표시·공통 메뉴 유지·본문 교체")
+
+
+def accelerated_history(page, root, flows, passed):
+    flows.go(page, root + "modules/?layout=mobile")
+    page.evaluate("window.navigationDocumentMarker = {}; window.scrollTo(0, 260)")
+    old_scroll = page.evaluate("window.scrollY")
+    page.locator('.mobile-dock a[href="' + root + 'routines/"]').click()
+    expect(page).to_have_url(flows.BASE + root + "routines/")
+    page.wait_for_function("() => !document.body.hasAttribute('data-navigation-pending')")
+    assert page.evaluate("window.scrollY") == 0
+    requests = []
+    def requested(request):
+        if request.resource_type in ("document", "fetch", "xhr") and request.url.startswith(flows.BASE + root):
+            requests.append(request.url)
+    page.on("request", requested)
+    try:
+        page.go_back(wait_until="domcontentloaded")
+        expect(page).to_have_url(flows.BASE + root + "modules/?layout=mobile")
+        page.wait_for_function("() => !document.body.hasAttribute('data-navigation-pending')")
+        page.wait_for_function("(y) => Math.abs(window.scrollY - y) <= 2", arg=old_scroll)
+        assert len(requests) == 1, requests
+        requests.clear()
+        page.go_forward(wait_until="domcontentloaded")
+        expect(page).to_have_url(flows.BASE + root + "routines/")
+        page.wait_for_function("() => !document.body.hasAttribute('data-navigation-pending')")
+        assert len(requests) == 1, requests
+        assert page.evaluate("Boolean(window.navigationDocumentMarker)")
+    finally:
+        page.remove_listener("request", requested)
+    passed("부분 전환 뒤 뒤로·앞으로 이동의 단일 조회와 스크롤 복원")
+
+
+def delayed_fetch(page, paths):
+    page.evaluate("""(paths) => {
+        window.navigationOriginalFetch = window.fetch;
+        window.fetch = (...args) => {
+            const request = args[0];
+            const path = new URL(request instanceof Request ? request.url : String(request), location.href).pathname;
+            const result = window.navigationOriginalFetch(...args);
+            const delay = paths[path] || 0;
+            return delay ? result.then(response => new Promise(resolve => setTimeout(() => resolve(response), delay))) : result;
+        };
+    }""", paths)
+
+
+def restore_fetch(page):
+    page.evaluate("""() => {
+        if (window.navigationOriginalFetch) {
+            window.fetch = window.navigationOriginalFetch;
+            delete window.navigationOriginalFetch;
+        }
+    }""")
+
+
+def accelerated_races(page, root, flows, passed):
+    flows.go(page, root + "?layout=mobile")
+    delayed_fetch(page, {root + "modules/": 450})
+    try:
+        page.evaluate("""(root) => {
+            document.querySelector('.mobile-dock a[href="' + root + 'modules/"]').click();
+            setTimeout(() => document.querySelector('.mobile-dock a[href="' + root + 'records/"]').click(), 20);
+        }""", root)
+        expect(page).to_have_url(flows.BASE + root + "records/")
+        page.wait_for_function("() => !document.body.hasAttribute('data-navigation-pending')")
+        page.wait_for_timeout(550)
+        expect(page).to_have_url(flows.BASE + root + "records/")
+        assert_scope(page, "history", "기록")
+    finally:
+        restore_fetch(page)
+    passed("빠른 연속 탭 선택에서 늦게 도착한 이전 응답 제외")
+
+    flows.go(page, root + "?layout=mobile")
+    delayed_fetch(page, {root: 450})
+    try:
+        page.evaluate("""(root) => {
+            window.navigationRefreshTask = window.TailyUI.refresh().catch(() => null);
+            setTimeout(() => document.querySelector('.mobile-dock a[href="' + root + 'records/"]').click(), 20);
+        }""", root)
+        expect(page).to_have_url(flows.BASE + root + "records/")
+        page.wait_for_function("() => !document.body.hasAttribute('data-navigation-pending')")
+        page.evaluate("() => window.navigationRefreshTask")
+        expect(page.locator("h1")).to_contain_text("기록")
+        assert_scope(page, "history", "기록")
+    finally:
+        restore_fetch(page)
+    passed("기존 화면 새로고침과 탭 이동의 응답 경합에서 현재 본문 유지")
+
+
+    flows.go(page, root + "?layout=mobile")
+    page.evaluate("window.navigationMainMarker = document.getElementById('main')")
+    delayed_fetch(page, {root + "modules/": 450})
+    try:
+        page.evaluate("""(root) => {
+            document.querySelector('.mobile-dock a[href="' + root + 'modules/"]').click();
+            setTimeout(() => document.querySelector('.skip-link').click(), 20);
+        }""", root)
+        page.wait_for_function("() => location.hash === '#main'")
+        page.wait_for_timeout(550)
+        expect(page).to_have_url(flows.BASE + root + "?layout=mobile#main")
+        assert page.evaluate("document.getElementById('main') === window.navigationMainMarker")
+        assert_scope(page, "global", "오늘")
+    finally:
+        restore_fetch(page)
+    passed("일반 본문 이동을 선택하면 이전 탭 요청의 늦은 응답 무시")
+
+
+def accelerated_fallbacks(page, root, flows, passed):
+    flows.go(page, root + "?layout=mobile")
+    page.evaluate("""(target) => {
+        window.navigationDocumentMarker = {};
+        const original = window.fetch;
+        window.fetch = (...args) => {
+            const request = args[0];
+            const url = request instanceof Request ? request.url : String(request);
+            if (new URL(url, location.href).pathname === target) return Promise.reject(new TypeError('Network unavailable'));
+            return original(...args);
+        };
+    }""", root + "modules/")
+    page.locator('.mobile-dock a[href="' + root + 'modules/"]').click()
+    expect(page).to_have_url(flows.BASE + root + "modules/")
+    expect(page.locator("#main")).to_be_visible()
+    assert page.evaluate("typeof window.navigationDocumentMarker === 'undefined'")
+    assert_scope(page, "care", "기능")
+    passed("부분 조회 실패 시 일반 페이지 이동으로 복구")
+
+    flows.go(page, root + "settings/?layout=mobile")
+    page.evaluate("window.navigationDocumentMarker = {}")
+    name = page.locator('form[data-pet-profile] [name="name"]')
+    name.fill(name.input_value() + " 확인")
+    page.locator(".phone-menu-trigger").click()
+    page.locator('#phone-menu form[method="dialog"] button').first.click()
+    expect(page.locator("#phone-menu")).not_to_be_visible()
+    before = page.url
+    page.once("dialog", lambda dialog: dialog.dismiss())
+    page.locator('.mobile-dock a[href="' + root + '"]').click(no_wait_after=True)
+    page.wait_for_timeout(150)
+    expect(page).to_have_url(before)
+    assert page.evaluate("Boolean(window.navigationDocumentMarker)")
+    expect(name).to_have_value(re.compile(" 확인$"))
+    page.once("dialog", lambda dialog: dialog.accept())
+    page.locator('.mobile-dock a[href="' + root + '"]').click(no_wait_after=True)
+    expect(page).to_have_url(flows.BASE + root)
+    assert page.evaluate("typeof window.navigationDocumentMarker === 'undefined'")
+    passed("수정 중 입력은 이동 확인을 거치며 취소하면 그대로 보존")
+
+
+
+def accelerated_session_boundary(page, root, flows, passed):
+    flows.go(page, root + "?layout=mobile")
+    page.evaluate("window.navigationDocumentMarker = {}")
+    cookie_name = page.locator("body").get_attribute("data-csrf-cookie")
+    csrf = next(item for item in page.context.cookies() if item["name"] == cookie_name)
+    page.context.add_cookies([{**csrf, "value": "n" * 32}])
+    requests = []
+    def requested(request):
+        if request.url == flows.BASE + root + "modules/":
+            requests.append(request.resource_type)
+    page.on("request", requested)
+    try:
+        page.locator('.mobile-dock a[href="' + root + 'modules/"]').click()
+        expect(page).to_have_url(flows.BASE + root + "modules/")
+        assert page.evaluate("typeof window.navigationDocumentMarker === 'undefined'")
+        assert requests == ["document"], requests
+    finally:
+        page.remove_listener("request", requested)
+    passed("설정된 CSRF 쿠키가 바뀌면 새 문서로 이동해 세션 상태 재확인")
+
+    flows.go(page, root + "?layout=mobile")
+    page.evaluate("window.navigationDocumentMarker = {}")
+    target = flows.BASE + root + "modules/"
+    def changed_context(route):
+        if route.request.resource_type == "fetch":
+            response = route.fetch()
+            body = re.sub(r'data-navigation-context="[^"]+"',
+                          'data-navigation-context="changed-context"', response.text(), count=1)
+            route.fulfill(response=response, body=body)
+        else:
+            route.continue_()
+    page.route(target, changed_context)
+    try:
+        page.locator('.mobile-dock a[href="' + root + 'modules/"]').click()
+        expect(page).to_have_url(target)
+        assert page.evaluate("typeof window.navigationDocumentMarker === 'undefined'")
+        assert_scope(page, "care", "기능")
+    finally:
+        page.unroute(target, changed_context)
+    passed("탐색 권한 문맥이 달라진 응답은 기존 화면에 끼우지 않고 새 문서로 확인")
+
+
 def exercise_navigation(browser, root, cookie, flows, passed, failed):
     """Run after sample records exist and before the owner account logs out."""
     context = browser.new_context(
@@ -283,6 +514,11 @@ def exercise_navigation(browser, root, cookie, flows, passed, failed):
     errors = []
     page.on("pageerror", lambda error: errors.append(str(error)))
     checks = [
+        ("Accelerated tab navigation", lambda: accelerated_tabs(page, root, flows, passed)),
+        ("Navigation history", lambda: accelerated_history(page, root, flows, passed)),
+        ("Navigation races", lambda: accelerated_races(page, root, flows, passed)),
+        ("Navigation fallbacks", lambda: accelerated_fallbacks(page, root, flows, passed)),
+        ("Session boundary", lambda: accelerated_session_boundary(page, root, flows, passed)),
         ("기본·영역별 하단바", lambda: global_and_context(page, root, flows, passed)),
         ("탐색 이력과 화면 갱신", lambda: history_and_refresh(page, root, flows, passed)),
         ("상세 경로 메뉴", lambda: deep_links(page, root, flows, passed)),
